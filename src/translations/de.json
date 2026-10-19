@@ -767,7 +767,7 @@
   "OrderBreakdown.bookingStart": "Buchungsbeginn",
   "OrderBreakdown.bookingWithDSTInEffect": "Sommerzeit",
   "OrderBreakdown.commission": "{role, select, customer {{marketplaceName}-Gebühr *} provider {{marketplaceName}-Gebühr *} other {}}",
-  "OrderBreakdown.commissionFeeNote": "* Die Gebühr hilft uns, diese Plattform zu betreiben und dir den bestmöglichen Service zu bieten!",
+  "OrderBreakdown.commissionFeeNote": "* Die Gebühr hilft uns, diese Plattform zu betreiben und dir den bestmöglichen Service zu bieten! Sie wird auf den Preis vor GST berechnet.",
   "OrderBreakdown.pickupFee": "Abholung",
   "OrderBreakdown.providerTotalDefault": "Du verdienst",
   "OrderBreakdown.providerTotalReceived": "Du hast verdient",
@@ -1682,5 +1682,6 @@
   "TransactionPage.default-booking.customer.cancelled-without-refund.title": "Deine Buchung wurde storniert.",
   "TransactionPage.default-booking.provider.cancelled-without-refund.title": "Die Buchung von {customerName} wurde storniert.",
   "SectionBrowseTiles.eyebrow": "Entdecken",
-  "SectionLandingHero.showImage": "Bild {number} von {count} anzeigen"
+  "SectionLandingHero.showImage": "Bild {number} von {count} anzeigen",
+  "EditListingPricingForm.priceInclusiveOfGst": "{priceLabel} (inkl. GST)"
 }

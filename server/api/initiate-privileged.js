@@ -1,6 +1,5 @@
 const sharetribeSdk = require('sharetribe-flex-sdk');
 const { assertExpectedPayinTotal } = require('../api-util/assertExpectedPayinTotal');
-const { transactionLineItems } = require('../api-util/lineItems');
 const { isIntentionToMakeOffer } = require('../api-util/negotiation');
 const {
   createCookieTokenStore,
@@ -11,7 +10,7 @@ const {
   fetchCommission,
 } = require('../api-util/sdk');
 const { getPoliciesProtectedData } = require('../services/policies');
-const { getIncludedRelationship, getProviderCommission } = require('../services/commission');
+const { getIncludedRelationship, getTransactionLineItems } = require('../services/commission');
 
 const { Money } = sharetribeSdk.types;
 
@@ -73,12 +72,13 @@ module.exports = (req, res) => {
       const { providerCommission, customerCommission } =
         commissionAsset?.type === 'jsonAsset' ? commissionAsset.attributes.data : {};
 
-      lineItems = transactionLineItems(
+      lineItems = getTransactionLineItems({
         listing,
-        getFullOrderData(orderData, bodyParams, currency),
-        getProviderCommission(providerCommission, author),
-        customerCommission
-      );
+        orderData: getFullOrderData(orderData, bodyParams, currency),
+        providerCommission,
+        customerCommission,
+        provider: author,
+      });
 
       // If the client sends expectedPayinTotal (checkout payment flows), ensure it
       assertExpectedPayinTotal(lineItems, orderData?.expectedPayinTotal);

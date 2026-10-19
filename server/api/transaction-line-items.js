@@ -1,7 +1,6 @@
-const { transactionLineItems } = require('../api-util/lineItems');
 const { getSdk, handleError, serialize, fetchCommission } = require('../api-util/sdk');
 const { constructValidLineItems } = require('../api-util/lineItemHelpers');
-const { getIncludedRelationship, getProviderCommission } = require('../services/commission');
+const { getIncludedRelationship, getTransactionLineItems } = require('../services/commission');
 
 module.exports = (req, res) => {
   const { isOwnListing, listingId, orderData } = req.body || {};
@@ -23,12 +22,13 @@ module.exports = (req, res) => {
       const { providerCommission, customerCommission } =
         commissionAsset?.type === 'jsonAsset' ? commissionAsset.attributes.data : {};
 
-      const lineItems = transactionLineItems(
+      const lineItems = getTransactionLineItems({
         listing,
-        orderData,
-        getProviderCommission(providerCommission, author),
-        customerCommission
-      );
+        orderData: orderData,
+        providerCommission,
+        customerCommission,
+        provider: author,
+      });
 
       // Because we are using returned lineItems directly in this template we need to use the helper function
       // to add some attributes like lineTotal and reversal that Marketplace API also adds to the response.

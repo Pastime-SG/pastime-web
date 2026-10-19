@@ -1420,9 +1420,9 @@ describe('EditListingPage', () => {
       expect(getByText('EditListingPricingPanel.title')).toBeInTheDocument();
 
       // Tab/form: price
-      expect(getByRole('textbox', { name: 'EditListingPricingForm.pricePerProduct' })).toHaveValue(
-        '$10.00'
-      );
+      expect(
+        getByRole('textbox', { name: 'EditListingPricingForm.priceInclusiveOfGst' })
+      ).toHaveValue('$10.00');
 
       expect(
         getByRole('button', { name: 'EditListingWizard.edit.savePricing' })
@@ -1430,12 +1430,15 @@ describe('EditListingPage', () => {
     });
 
     // Test intercation
-    await user.clear(getByRole('textbox', { name: 'EditListingPricingForm.pricePerProduct' }));
-    await user.type(getByRole('textbox', { name: 'EditListingPricingForm.pricePerProduct' }), '12');
+    await user.clear(getByRole('textbox', { name: 'EditListingPricingForm.priceInclusiveOfGst' }));
+    await user.type(
+      getByRole('textbox', { name: 'EditListingPricingForm.priceInclusiveOfGst' }),
+      '12'
+    );
     await user.click(queryAllByRole('heading')[0]); // create blur event
 
     // Tab/form: existing building
-    expect(getByLabelText('EditListingPricingForm.pricePerProduct')).toHaveValue('$12.00');
+    expect(getByLabelText('EditListingPricingForm.priceInclusiveOfGst')).toHaveValue('$12.00');
   });
 
   it('Booking (day): edit flow on availability tab', async () => {

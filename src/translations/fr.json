@@ -750,7 +750,7 @@
   "OrderBreakdown.bookingStart": "Début de la réservation",
   "OrderBreakdown.bookingWithDSTInEffect": "Heure d'été",
   "OrderBreakdown.commission": "{role, select, customer {Frais {marketplaceName} *} provider {Frais {marketplaceName} *} other {}}",
-  "OrderBreakdown.commissionFeeNote": "* Les frais nous aident à gérer cette plateforme et à vous fournir le meilleur service possible !",
+  "OrderBreakdown.commissionFeeNote": "* Les frais nous aident à faire fonctionner cette plateforme et à vous offrir le meilleur service possible ! Ils sont calculés sur le prix hors GST.",
   "OrderBreakdown.pickupFee": "Retrait",
   "OrderBreakdown.providerTotalDefault": "Vous recevrez",
   "OrderBreakdown.providerTotalReceived": "Vous avez gagné",
@@ -1682,5 +1682,6 @@
   "TransactionPage.default-booking.customer.cancelled-without-refund.title": "Votre réservation a été annulée.",
   "TransactionPage.default-booking.provider.cancelled-without-refund.title": "La réservation de {customerName} a été annulée.",
   "SectionBrowseTiles.eyebrow": "Explorer",
-  "SectionLandingHero.showImage": "Afficher l'image {number} sur {count}"
+  "SectionLandingHero.showImage": "Afficher l'image {number} sur {count}",
+  "EditListingPricingForm.priceInclusiveOfGst": "{priceLabel} (GST incluse)"
 }

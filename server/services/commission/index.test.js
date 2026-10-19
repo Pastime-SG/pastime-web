@@ -65,3 +65,51 @@ describe('provider commission', () => {
     expect(commission.percentage).toBe(-8);
   });
 });
+
+describe('commission before GST', () => {
+  const { types } = require('sharetribe-flex-sdk');
+  const { constructValidLineItems } = require('../../api-util/lineItemHelpers');
+  const { getAmountBeforeGst, getTransactionLineItems } = require('./index');
+
+  // A $50 listing (GST included), sold as one item
+  const listing = {
+    attributes: {
+      price: new types.Money(5000, 'SGD'),
+      publicData: { unitType: 'item' },
+    },
+  };
+  const lineItemsWith = (providerCommission, provider) =>
+    constructValidLineItems(
+      getTransactionLineItems({
+        listing,
+        orderData: { stockReservationQuantity: 1 },
+        providerCommission,
+        provider,
+      })
+    );
+  const commissionOf = lineItems =>
+    lineItems.find(item => item.code === 'line-item/provider-commission').lineTotal.amount;
+
+  it('takes the amount before 9% GST', () => {
+    expect(getAmountBeforeGst(5000)).toBe(4587);
+  });
+
+  it('takes the commission from the amount before GST: $50 at 10% is $4.59', () => {
+    const lineItems = lineItemsWith({ percentage: 10 });
+    expect(commissionOf(lineItems)).toBe(-459);
+    // The customer still pays the listed price
+    const order = lineItems.find(item => item.code === 'line-item/item');
+    expect(order.lineTotal.amount).toBe(5000);
+  });
+
+  it("uses the provider's own percentage", () => {
+    expect(
+      commissionOf(lineItemsWith({ percentage: 10 }, providerWith({ providerCommission: 20 })))
+    ).toBe(-917);
+  });
+
+  it('uses the minimum commission when it is more', () => {
+    // 1% of $45.87 is $0.46: the $0.47 minimum applies (1% of $50 would be $0.50)
+    expect(commissionOf(lineItemsWith({ percentage: 1, minimum_amount: 47 }))).toBe(-47);
+  });
+});

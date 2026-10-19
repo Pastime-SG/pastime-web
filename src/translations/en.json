@@ -767,7 +767,7 @@
   "OrderBreakdown.bookingStart": "Booking start",
   "OrderBreakdown.bookingWithDSTInEffect": "Daylight saving time",
   "OrderBreakdown.commission": "{role, select, customer {{marketplaceName} fee *} provider {{marketplaceName} fee *} other {}}",
-  "OrderBreakdown.commissionFeeNote": "* The fee helps us run this platform and provide the best possible service to you!",
+  "OrderBreakdown.commissionFeeNote": "* The fee helps us run this platform and provide the best possible service to you! It's calculated on the price before GST.",
   "OrderBreakdown.pickupFee": "Pickup",
   "OrderBreakdown.providerTotalDefault": "You'll earn",
   "OrderBreakdown.providerTotalReceived": "You earned",
@@ -1682,5 +1682,6 @@
   "TransactionPage.default-booking.customer.cancelled-without-refund.title": "Your booking was canceled.",
   "TransactionPage.default-booking.provider.cancelled-without-refund.title": "The booking from {customerName} was canceled.",
   "SectionBrowseTiles.eyebrow": "Browse",
-  "SectionLandingHero.showImage": "Show image {number} of {count}"
+  "SectionLandingHero.showImage": "Show image {number} of {count}",
+  "EditListingPricingForm.priceInclusiveOfGst": "{priceLabel} (inclusive of GST)"
 }

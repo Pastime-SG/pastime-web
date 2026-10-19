@@ -34,7 +34,7 @@ describe('EditListingDeliveryForm', () => {
     expect(screen.getByRole('button', { name: saveActionMsg })).toBeDisabled();
 
     // Fill mandatory attributes
-    const price = 'EditListingPricingForm.pricePerProduct';
+    const price = 'EditListingPricingForm.priceInclusiveOfGst';
     await user.type(screen.getByRole('textbox', { name: price }), '10');
 
     // Test that save button is enabled

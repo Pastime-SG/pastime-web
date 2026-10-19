@@ -340,8 +340,13 @@ const PriceVariant = props => {
         id={`${idPrefix}_price`}
         name={`${name}.price`}
         label={intl.formatMessage(
-          { id: 'EditListingPricingForm.priceVariant.pricePerProduct' },
-          { unitType }
+          { id: 'EditListingPricingForm.priceInclusiveOfGst' },
+          {
+            priceLabel: intl.formatMessage(
+              { id: 'EditListingPricingForm.priceVariant.pricePerProduct' },
+              { unitType }
+            ),
+          }
         )}
         placeholder={intl.formatMessage({
           id: 'EditListingPricingForm.priceVariant.priceInputPlaceholder',
