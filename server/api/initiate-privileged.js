@@ -11,10 +11,12 @@ const {
   fetchCommission,
 } = require('../api-util/sdk');
 const { getPoliciesProtectedData } = require('../services/policies');
+const { getIncludedRelationship, getProviderCommission } = require('../services/commission');
 
 const { Money } = sharetribeSdk.types;
 
-const listingPromise = (sdk, id) => sdk.listings.show({ id });
+// The author is included for their own commission percentage (if they have one)
+const listingPromise = (sdk, id) => sdk.listings.show({ id, include: ['author'] });
 
 const getFullOrderData = (orderData, bodyParams, currency) => {
   const { offerInSubunits } = orderData || {};
@@ -64,6 +66,7 @@ module.exports = (req, res) => {
   Promise.all([listingPromise(sdk, bodyParams?.params?.listingId), fetchCommission(sdk)])
     .then(([showListingResponse, fetchAssetsResponse]) => {
       const listing = showListingResponse.data.data;
+      const author = getIncludedRelationship(showListingResponse.data, 'author');
       const commissionAsset = fetchAssetsResponse.data.data[0];
 
       const currency = listing.attributes.price?.currency || orderData.currency;
@@ -73,7 +76,7 @@ module.exports = (req, res) => {
       lineItems = transactionLineItems(
         listing,
         getFullOrderData(orderData, bodyParams, currency),
-        providerCommission,
+        getProviderCommission(providerCommission, author),
         customerCommission
       );
 

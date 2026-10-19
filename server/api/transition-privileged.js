@@ -21,10 +21,13 @@ const {
 const { RESCHEDULE_USER_TRANSITIONS } = require('../services/reschedule');
 const { getPoliciesProtectedData } = require('../services/policies');
 const { CANCEL_PRIVILEGED_TRANSITIONS } = require('../services/cancellation');
+const { getIncludedRelationship, getProviderCommission } = require('../services/commission');
 
 const { Money } = sharetribeSdk.types;
 
-const transactionPromise = (sdk, id) => sdk.transactions.show({ id, include: ['listing'] });
+// The provider is included for their own commission percentage (if they have one)
+const transactionPromise = (sdk, id) =>
+  sdk.transactions.show({ id, include: ['listing', 'provider'] });
 const getListingRelationShip = transactionShowAPIData => {
   const { data, included } = transactionShowAPIData;
   const { relationships } = data;
@@ -144,6 +147,7 @@ module.exports = (req, res) => {
       const [showTransactionResponse, fetchAssetsResponse] = responses;
       const transaction = showTransactionResponse.data.data;
       const listing = getListingRelationShip(showTransactionResponse.data);
+      const provider = getIncludedRelationship(showTransactionResponse.data, 'provider');
       const commissionAsset = fetchAssetsResponse.data.data[0];
 
       const existingMetadata = transaction?.attributes?.metadata;
@@ -163,7 +167,7 @@ module.exports = (req, res) => {
       lineItems = transactionLineItems(
         listing,
         getFullOrderData(orderData, bodyParams, currency, existingOffers),
-        providerCommission,
+        getProviderCommission(providerCommission, provider),
         customerCommission
       );
 

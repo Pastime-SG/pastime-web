@@ -1,18 +1,23 @@
 const { transactionLineItems } = require('../api-util/lineItems');
 const { getSdk, handleError, serialize, fetchCommission } = require('../api-util/sdk');
 const { constructValidLineItems } = require('../api-util/lineItemHelpers');
+const { getIncludedRelationship, getProviderCommission } = require('../services/commission');
 
 module.exports = (req, res) => {
   const { isOwnListing, listingId, orderData } = req.body || {};
 
   const sdk = getSdk(req, res);
 
+  // The author is included for their own commission percentage (if they have one)
   const listingPromise = () =>
-    isOwnListing ? sdk.ownListings.show({ id: listingId }) : sdk.listings.show({ id: listingId });
+    isOwnListing
+      ? sdk.ownListings.show({ id: listingId, include: ['author'] })
+      : sdk.listings.show({ id: listingId, include: ['author'] });
 
   Promise.all([listingPromise(), fetchCommission(sdk)])
     .then(([showListingResponse, fetchAssetsResponse]) => {
       const listing = showListingResponse.data.data;
+      const author = getIncludedRelationship(showListingResponse.data, 'author');
       const commissionAsset = fetchAssetsResponse.data.data[0];
 
       const { providerCommission, customerCommission } =
@@ -21,7 +26,7 @@ module.exports = (req, res) => {
       const lineItems = transactionLineItems(
         listing,
         orderData,
-        providerCommission,
+        getProviderCommission(providerCommission, author),
         customerCommission
       );
 
