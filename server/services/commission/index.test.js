@@ -163,4 +163,18 @@ describe('promo code discounts', () => {
     // The provider's payout doesn't change
     expect(totalFor(lineItems, 'provider')).toBe(4541);
   });
+
+  it("leaves the merchant's payout as without a discount for an admin's percentage code", () => {
+    // $50, 10% off from an admin code: the merchant still gets $50 minus 10% of $45.87 = $45.41.
+    // The $5 discount is more than the $4.59 commission, so it's limited to the commission.
+    const lineItems = lineItemsWith({
+      createdBy: 'admin',
+      discountType: 'percentage',
+      percentage: 10,
+    });
+    expect(lineTotal(lineItems, 'line-item/provider-commission')).toBe(-459);
+    expect(totalFor(lineItems, 'provider')).toBe(4541);
+    expect(lineTotal(lineItems, 'line-item/promo-discount')).toBe(-459);
+    expect(totalFor(lineItems, 'customer')).toBe(4541);
+  });
 });
