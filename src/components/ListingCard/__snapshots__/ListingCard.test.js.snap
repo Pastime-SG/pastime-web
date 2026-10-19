@@ -26,23 +26,27 @@ exports[`ListingCard matches snapshot 1`] = `
     class="info"
   >
     <div
-      class="price"
-      title="55"
-    >
-      ListingCard.price
-    </div>
-    <div
       class="mainInfo"
     >
+      <div
+        class="authorInfo"
+      >
+        ListingCard.author
+      </div>
       <div
         class="title"
       >
         listing1 title
       </div>
+    </div>
+    <div
+      class="priceRow"
+    >
       <div
-        class="authorInfo"
+        class="price"
+        title="55"
       >
-        ListingCard.author
+        ListingCard.price
       </div>
     </div>
   </div>
@@ -78,14 +82,14 @@ exports[`ListingCard matches snapshot without price 1`] = `
       class="mainInfo"
     >
       <div
-        class="title"
-      >
-        listing1 title
-      </div>
-      <div
         class="authorInfo"
       >
         ListingCard.author
+      </div>
+      <div
+        class="title"
+      >
+        listing1 title
       </div>
     </div>
   </div>
