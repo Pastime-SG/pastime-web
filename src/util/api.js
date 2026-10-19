@@ -191,3 +191,9 @@ export const deletePromoCode = (id, isAdmin = false) => {
 export const fetchPromoCodeLedger = (id, isAdmin = false) => {
   return request(promoCodesPath(isAdmin, id, '/ledger'), { method: methods.GET });
 };
+
+// The signed-in customer's loyalty credits: balance, points and history (Firestore, see
+// `server/api/loyalty/`).
+export const fetchLoyalty = () => {
+  return request('/api/loyalty', { method: methods.GET });
+};

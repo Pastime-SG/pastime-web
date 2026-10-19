@@ -6,6 +6,11 @@ import { LINE_ITEMS, propTypes } from '../../util/types';
 
 import css from './OrderBreakdown.module.css';
 
+const PASTIME_LINE_ITEM_LABELS = {
+  'line-item/promo-discount': 'OrderBreakdown.promoDiscount',
+  'line-item/loyalty-credit': 'OrderBreakdown.loyaltyCredit',
+};
+
 /**
  * Renders non-reversal line items that are not listed in the
  * `LINE_ITEMS` array in util/types.js
@@ -39,11 +44,12 @@ const LineItemUnknownItemsMaybe = props => {
       {items.map((item, i) => {
         const quantity = item.quantity;
 
-        // Pastime's promo code discount (see server/services/commission) has its own label
-        const name =
-          item.code === 'line-item/promo-discount'
-            ? intl.formatMessage({ id: 'OrderBreakdown.promoDiscount' })
-            : humanizeLineItemCode(item.code);
+        // Pastime's promo code discount and loyalty credits (see server/services/commission)
+        // have their own labels
+        const labelId = PASTIME_LINE_ITEM_LABELS[item.code];
+        const name = labelId
+          ? intl.formatMessage({ id: labelId })
+          : humanizeLineItemCode(item.code);
         const label = quantity && quantity > 1 ? `${name} x ${quantity}` : name;
 
         const formattedTotal = formatMoney(intl, item.lineTotal);

@@ -400,6 +400,7 @@ describe('CheckoutPage', () => {
         transaction: null,
         confirmPaymentError: null,
         initiateInquiryError: null,
+        loyaltyAccount: null,
         initiateInquiryInProgress: false,
       };
 

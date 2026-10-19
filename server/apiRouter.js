@@ -22,6 +22,7 @@ const {
   router: promoCodesRouter,
   adminRouter: adminPromoCodesRouter,
 } = require('./api/promo-codes');
+const loyaltyRouter = require('./api/loyalty');
 const middleware = require('./middleware');
 
 const createUserWithIdp = require('./api/auth/createUserWithIdp');
@@ -83,6 +84,7 @@ router.use('/cancel', cancelRouter);
 // Merchants' promo codes (Firestore)
 router.use('/promo-codes', promoCodesRouter);
 router.use('/admin/promo-codes', adminPromoCodesRouter);
+router.use('/loyalty', loyaltyRouter);
 
 // Create user with identity provider (e.g. Facebook or Google)
 // This endpoint is called to create a new user after user has confirmed

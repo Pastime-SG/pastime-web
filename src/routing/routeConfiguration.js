@@ -24,6 +24,7 @@ const LandingPage = loadable(() => import(/* webpackChunkName: "LandingPage" */ 
 const ListingPageCoverPhoto = loadable(() => import(/* webpackChunkName: "ListingPageCoverPhoto" */ /* webpackPrefetch: true */ '../containers/ListingPage/ListingPageCoverPhoto'));
 const ListingPageCarousel = loadable(() => import(/* webpackChunkName: "ListingPageCarousel" */ /* webpackPrefetch: true */ '../containers/ListingPage/ListingPageCarousel'));
 const ManageListingsPage = loadable(() => import(/* webpackChunkName: "ManageListingsPage" */ '../containers/ManageListingsPage/ManageListingsPage'));
+const LoyaltyPage = loadable(() => import(/* webpackChunkName: "LoyaltyPage" */ '../containers/LoyaltyPage/LoyaltyPage'));
 const PromoCodesPage = loadable(() => import(/* webpackChunkName: "PromoCodesPage" */ '../containers/PromoCodesPage/PromoCodesPage'));
 const ManageAccountPage = loadable(() => import(/* webpackChunkName: "ManageAccountPage" */ '../containers/ManageAccountPage/ManageAccountPage'));
 const PasswordChangePage = loadable(() => import(/* webpackChunkName: "PasswordChangePage" */ '../containers/PasswordChangePage/PasswordChangePage'));
@@ -324,6 +325,14 @@ const routeConfiguration = (layoutConfig, accessControlConfig) => {
       authPage: 'LoginPage',
       component: ManageListingsPage,
       loadData: pageDataLoadingAPI.ManageListingsPage.loadData,
+    },
+    {
+      path: '/credits',
+      name: 'LoyaltyPage',
+      auth: true,
+      authPage: 'LoginPage',
+      component: LoyaltyPage,
+      loadData: pageDataLoadingAPI.LoyaltyPage.loadData,
     },
     {
       path: '/promo-codes',

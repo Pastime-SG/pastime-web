@@ -26,6 +26,12 @@ const {
   getPromoCodeProtectedData,
   withPromoCodeUse,
 } = require('../services/promoCodes/checkout');
+const {
+  getBookingLoyalty,
+  getLoyaltyCreditsToUse,
+  getLoyaltyProtectedData,
+  withLoyaltyCredits,
+} = require('../services/loyalty/checkout');
 
 const { Money } = sharetribeSdk.types;
 
@@ -146,6 +152,7 @@ module.exports = (req, res) => {
   let metadataMaybe = {};
   let policiesMaybe = {};
   let promoCode = null;
+  let loyalty = null;
   let providerId = null;
 
   Promise.all([transactionPromise(sdk, bodyParams?.id), fetchCommission(sdk)])
@@ -159,6 +166,8 @@ module.exports = (req, res) => {
 
       // The promo code entered at checkout (if any), for booking requests after an inquiry
       promoCode = await getBookingPromoCode({ orderData, providerId, transitionName });
+      // The customer's loyalty credits, if they chose to use them
+      loyalty = await getBookingLoyalty({ sdk, orderData, transitionName });
 
       const existingMetadata = transaction?.attributes?.metadata;
       const existingOffers = existingMetadata?.offers || [];
@@ -181,6 +190,7 @@ module.exports = (req, res) => {
         customerCommission,
         provider: provider,
         promoCode,
+        loyaltyCredits: getLoyaltyCreditsToUse(loyalty, currency),
       });
 
       // If the client sends expectedPayinTotal (checkout payment flows), ensure it
@@ -210,13 +220,28 @@ module.exports = (req, res) => {
       const { listingId, ...restParams } = roleBasedBodyParams?.params || {};
       // Policies are only set here, from the listing: never from the client
       const { policies, ...protectedData } = restParams.protectedData || {};
-      // A copy of the applied promo code, set here only (never from the client)
-      const { promoCode: clientPromoCode, ...clientProtectedData } = protectedData;
+      // Copies of the applied promo code and credits, set here only (never from the client)
+      const {
+        promoCode: clientPromoCode,
+        loyalty: clientLoyalty,
+        ...clientProtectedData
+      } = protectedData;
       const promoCodeMaybe = getPromoCodeProtectedData(promoCode, lineItems);
+      const loyaltyMaybe = getLoyaltyProtectedData(loyalty, lineItems);
       const hasProtectedData =
-        !!restParams.protectedData || !!policiesMaybe.policies || !!promoCodeMaybe.promoCode;
+        !!restParams.protectedData ||
+        !!policiesMaybe.policies ||
+        !!promoCodeMaybe.promoCode ||
+        !!loyaltyMaybe.loyalty;
       const protectedDataMaybe = hasProtectedData
-        ? { protectedData: { ...clientProtectedData, ...policiesMaybe, ...promoCodeMaybe } }
+        ? {
+            protectedData: {
+              ...clientProtectedData,
+              ...policiesMaybe,
+              ...promoCodeMaybe,
+              ...loyaltyMaybe,
+            },
+          }
         : {};
 
       // Add lineItems to the body params
@@ -241,7 +266,10 @@ module.exports = (req, res) => {
           isSpeculative,
           details: { providerId, listingId: listingId?.uuid || null },
         },
-        () => trustedSdk.transactions.transition(body, queryParams)
+        () =>
+          withLoyaltyCredits({ loyalty, lineItems, isSpeculative }, () =>
+            trustedSdk.transactions.transition(body, queryParams)
+          )
       );
     })
     .then(apiResponse => {

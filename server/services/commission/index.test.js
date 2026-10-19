@@ -122,13 +122,14 @@ describe('promo code discounts', () => {
   const listing = {
     attributes: { price: new types.Money(5000, 'SGD'), publicData: { unitType: 'item' } },
   };
-  const lineItemsWith = (promoCode, providerCommission = { percentage: 10 }) =>
+  const lineItemsWith = (promoCode, providerCommission = { percentage: 10 }, loyaltyCredits = 0) =>
     constructValidLineItems(
       getTransactionLineItems({
         listing,
         orderData: { stockReservationQuantity: 1 },
         providerCommission,
         promoCode,
+        loyaltyCredits,
       })
     );
   const totalFor = (lineItems, role) =>
@@ -176,5 +177,46 @@ describe('promo code discounts', () => {
     expect(totalFor(lineItems, 'provider')).toBe(4541);
     expect(lineTotal(lineItems, 'line-item/promo-discount')).toBe(-459);
     expect(totalFor(lineItems, 'customer')).toBe(4541);
+  });
+
+  describe('loyalty credits', () => {
+    const merchantCode = { createdBy: 'merchant', discountType: 'percentage', percentage: 10 };
+    const adminCode = { createdBy: 'admin', discountType: 'percentage', percentage: 5 };
+
+    it("are paid from the marketplace's commission, at most the commission", () => {
+      // $50: commission $4.59. $10 of credits is limited to $4.59
+      const lineItems = lineItemsWith(null, undefined, 1000);
+      expect(lineTotal(lineItems, 'line-item/loyalty-credit')).toBe(-459);
+      expect(totalFor(lineItems, 'customer')).toBe(4541);
+      // The merchant's payout doesn't change
+      expect(totalFor(lineItems, 'provider')).toBe(4541);
+    });
+
+    it('use only the balance when it is lower', () => {
+      const lineItems = lineItemsWith(null, undefined, 200);
+      expect(lineTotal(lineItems, 'line-item/loyalty-credit')).toBe(-200);
+      expect(totalFor(lineItems, 'customer')).toBe(4800);
+    });
+
+    it("come on top of a merchant's discount, from the commission on the discounted price", () => {
+      // $45 after 10% off: commission $4.13
+      const lineItems = lineItemsWith(merchantCode, undefined, 1000);
+      expect(lineTotal(lineItems, 'line-item/loyalty-credit')).toBe(-413);
+      expect(totalFor(lineItems, 'customer')).toBe(4500 - 413);
+      expect(totalFor(lineItems, 'provider')).toBe(4087);
+    });
+
+    it("share the commission with an admin's discount", () => {
+      // Commission $4.59, admin's 5% is $2.50: $2.09 is left for credits
+      const lineItems = lineItemsWith(adminCode, undefined, 1000);
+      expect(lineTotal(lineItems, 'line-item/promo-discount')).toBe(-250);
+      expect(lineTotal(lineItems, 'line-item/loyalty-credit')).toBe(-209);
+      expect(totalFor(lineItems, 'provider')).toBe(4541);
+    });
+
+    it('are left out when nothing of the commission is left', () => {
+      const lineItems = lineItemsWith(null, { percentage: 0 }, 1000);
+      expect(lineTotal(lineItems, 'line-item/loyalty-credit')).toBeUndefined();
+    });
   });
 });

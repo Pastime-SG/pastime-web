@@ -10,6 +10,7 @@ import InboxPage from './InboxPage/InboxPage.duck';
 import ListingPage from './ListingPage/ListingPage.duck';
 import MakeOfferPage from './MakeOfferPage/MakeOfferPage.duck';
 import ManageListingsPage from './ManageListingsPage/ManageListingsPage.duck';
+import LoyaltyPage from './LoyaltyPage/LoyaltyPage.duck';
 import PromoCodesPage from './PromoCodesPage/PromoCodesPage.duck';
 import PasswordChangePage from './PasswordChangePage/PasswordChangePage.duck';
 import PasswordRecoveryPage from './PasswordRecoveryPage/PasswordRecoveryPage.duck';
@@ -31,6 +32,7 @@ export {
   ListingPage,
   MakeOfferPage,
   ManageListingsPage,
+  LoyaltyPage,
   PromoCodesPage,
   PasswordChangePage,
   PasswordRecoveryPage,

@@ -162,6 +162,16 @@ export const getPromoCodeErrorCode = error =>
     .find(code => PROMO_CODE_ERROR_CODES.includes(code)) || null;
 
 /**
+ * Check if a booking request failed because the customer's loyalty credits changed (e.g. used
+ * in another booking at the same time). See server/services/loyalty.
+ *
+ * @param {Object} error
+ * @returns {boolean}
+ */
+export const isLoyaltyCreditsUnavailableError = error =>
+  hasErrorWithCode(error, 'loyalty-credits-unavailable');
+
+/**
  * Check if the given API error (from `sdk.transaction.initiate()` or
  * `sdk.transaction.initiateSpeculative()`) is due to insufficient stock.
  */

@@ -1,5 +1,6 @@
 const log = require('../../log');
 const { getIntegrationSdk } = require('../sharetribe/integration');
+const { earnCredits, returnCredits } = require('../loyalty');
 const {
   cancelPromoCodeUse,
   completePromoCodeUse,
@@ -8,9 +9,10 @@ const {
 } = require('./index');
 
 /**
- * Keeps promo code uses in line with what happens to the bookings later. A use is given back when
- * the booking doesn't go ahead (declined, expired, payment not completed, cancelled), and it's
- * marked completed when the booking is finished.
+ * Keeps promo code uses and loyalty credits in line with what happens to the bookings later.
+ * When a booking doesn't go ahead (declined, expired, payment not completed, cancelled), its
+ * promo code use and the credits it used are given back. When it's finished, the promo code use
+ * is marked completed and the customer earns credits for what they paid.
  *
  * Booking changes are read from the Sharetribe Integration API's transaction events every 30
  * minutes, resuming after the last event read (its sequence id is saved in Firestore after every
@@ -46,15 +48,25 @@ const FIRST_READ_LOOKBACK_MS = 60 * 60 * 1000;
 // First check shortly after the server starts (e.g. after a deploy)
 const FIRST_CHECK_DELAY_MS = 60 * 1000;
 
-/**
- * Apply one transaction event to the promo code use of its booking, if it has one.
- *
- * @param {Object} event Integration API event
- * @returns {Promise<string|null>} 'cancelled', 'completed' or null
- */
-const applyEvent = async event => {
-  const transaction = event?.attributes?.resource;
-  const { state, protectedData } = transaction?.attributes || {};
+const getUuid = value => value?.uuid || (typeof value === 'string' ? value : null);
+
+// The booking's customer: from the event's resource (1-to-1 relationships are included as ids),
+// or the copy stored with the credits it used
+const getCustomerId = (transaction, protectedData) =>
+  getUuid(transaction?.relationships?.customer?.data?.id) ||
+  getUuid(transaction?.customer?.id) ||
+  protectedData?.loyalty?.customerId ||
+  null;
+
+const fetchCustomerId = transactionId =>
+  transactionId
+    ? getIntegrationSdk()
+        .transactions.show({ id: transactionId, include: ['customer'], 'fields.user': [] })
+        .then(response => getUuid(response.data.data.relationships?.customer?.data?.id))
+    : Promise.resolve(null);
+
+// The promo code use of the booking, if it has one
+const applyPromoCodeEvent = async (state, protectedData) => {
   const { id, redemptionId } = protectedData?.promoCode || {};
   if (!id || !redemptionId) {
     return null;
@@ -66,6 +78,55 @@ const applyEvent = async event => {
     return (await completePromoCodeUse(id, redemptionId)) ? 'completed' : null;
   }
   return null;
+};
+
+// Loyalty credits: the credits a booking used are given back if it doesn't go ahead, and a
+// finished booking earns credits for what the customer paid
+const applyLoyaltyEvent = async (event, transaction, state, protectedData) => {
+  const transactionId = getUuid(event.attributes.resourceId) || getUuid(transaction?.id);
+  if (RELEASE_STATES.includes(state)) {
+    const { customerId, redemptionId } = protectedData?.loyalty || {};
+    return customerId &&
+      redemptionId &&
+      (await returnCredits(customerId, redemptionId, transactionId))
+      ? 'credits-returned'
+      : null;
+  }
+  // Credits are earned once, when the booking first becomes finished (not e.g. when reviewed)
+  const previousState = event.attributes.previousValues?.attributes?.state;
+  const payinTotal = transaction?.attributes?.payinTotal;
+  if (!FINISHED_STATES.includes(state) || FINISHED_STATES.includes(previousState)) {
+    return null;
+  }
+  // If the event doesn't name the customer, the transaction is fetched (one Integration API call)
+  const customerId =
+    getCustomerId(transaction, protectedData) || (await fetchCustomerId(transactionId));
+  if (customerId && transactionId && payinTotal) {
+    const earned = await earnCredits({
+      customerId,
+      transactionId,
+      paidAmount: payinTotal.amount,
+      currency: payinTotal.currency,
+    });
+    return earned != null ? 'credits-earned' : null;
+  }
+  return null;
+};
+
+/**
+ * Apply one transaction event to the booking's promo code use and loyalty credits.
+ *
+ * @param {Object} event Integration API event
+ * @returns {Promise<Array<string>>} What changed, e.g. ['cancelled', 'credits-returned']
+ */
+const applyEvent = async event => {
+  const transaction = event?.attributes?.resource;
+  const { state, protectedData } = transaction?.attributes || {};
+  const results = await Promise.all([
+    applyPromoCodeEvent(state, protectedData),
+    applyLoyaltyEvent(event, transaction, state, protectedData),
+  ]);
+  return results.filter(Boolean);
 };
 
 /**
@@ -92,9 +153,7 @@ const processBookingEvents = async (now = new Date()) => {
     const events = response.data.data;
     for (const event of events) {
       // eslint-disable-next-line no-await-in-loop
-      if (await applyEvent(event)) {
-        changed += 1;
-      }
+      changed += (await applyEvent(event)).length;
       position = event.attributes.sequenceId;
     }
     eventCount += events.length;

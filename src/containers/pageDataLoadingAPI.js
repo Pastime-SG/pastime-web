@@ -12,6 +12,7 @@ import { loadData as InboxPageLoader } from './InboxPage/InboxPage.duck';
 import { loadData as ListingPageLoader } from './ListingPage/ListingPage.duck';
 import { loadData as MakeOfferPageLoader } from './MakeOfferPage/MakeOfferPage.duck';
 import { loadData as ManageListingsPageLoader } from './ManageListingsPage/ManageListingsPage.duck';
+import { loadData as LoyaltyPageLoader } from './LoyaltyPage/LoyaltyPage.duck';
 import { loadData as PromoCodesPageLoader } from './PromoCodesPage/PromoCodesPage.duck';
 import { loadData as PaymentMethodsPageLoader } from './PaymentMethodsPage/PaymentMethodsPage.duck';
 import { loadData as PrivacyPolicyPageLoader } from './PrivacyPolicyPage/PrivacyPolicyPage.duck';
@@ -59,6 +60,9 @@ const getPageDataLoadingAPI = () => {
     },
     ManageListingsPage: {
       loadData: ManageListingsPageLoader,
+    },
+    LoyaltyPage: {
+      loadData: LoyaltyPageLoader,
     },
     PromoCodesPage: {
       loadData: PromoCodesPageLoader,

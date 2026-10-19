@@ -16,6 +16,12 @@ const {
   getPromoCodeProtectedData,
   withPromoCodeUse,
 } = require('../services/promoCodes/checkout');
+const {
+  getBookingLoyalty,
+  getLoyaltyCreditsToUse,
+  getLoyaltyProtectedData,
+  withLoyaltyCredits,
+} = require('../services/loyalty/checkout');
 
 const { Money } = sharetribeSdk.types;
 
@@ -67,6 +73,7 @@ module.exports = (req, res) => {
   let metadataMaybe = {};
   let policiesMaybe = {};
   let promoCode = null;
+  let loyalty = null;
   let providerId = null;
 
   Promise.all([listingPromise(sdk, bodyParams?.params?.listingId), fetchCommission(sdk)])
@@ -78,6 +85,8 @@ module.exports = (req, res) => {
 
       // The promo code entered at checkout (if any): the provider's own code or an admin's
       promoCode = await getBookingPromoCode({ orderData, providerId, transitionName });
+      // The customer's loyalty credits, if they chose to use them
+      loyalty = await getBookingLoyalty({ sdk, orderData, transitionName });
 
       const currency = listing.attributes.price?.currency || orderData.currency;
       const { providerCommission, customerCommission } =
@@ -90,6 +99,7 @@ module.exports = (req, res) => {
         customerCommission,
         provider: author,
         promoCode,
+        loyaltyCredits: getLoyaltyCreditsToUse(loyalty, currency),
       });
 
       // If the client sends expectedPayinTotal (checkout payment flows), ensure it
@@ -111,13 +121,28 @@ module.exports = (req, res) => {
       const { params } = bodyParams;
       // Policies are only set here, from the listing: never from the client
       const { policies, ...protectedData } = params?.protectedData || {};
-      // A copy of the applied promo code, set here only (never from the client)
-      const { promoCode: clientPromoCode, ...clientProtectedData } = protectedData;
+      // Copies of the applied promo code and credits, set here only (never from the client)
+      const {
+        promoCode: clientPromoCode,
+        loyalty: clientLoyalty,
+        ...clientProtectedData
+      } = protectedData;
       const promoCodeMaybe = getPromoCodeProtectedData(promoCode, lineItems);
+      const loyaltyMaybe = getLoyaltyProtectedData(loyalty, lineItems);
       const hasProtectedData =
-        !!params?.protectedData || !!policiesMaybe.policies || !!promoCodeMaybe.promoCode;
+        !!params?.protectedData ||
+        !!policiesMaybe.policies ||
+        !!promoCodeMaybe.promoCode ||
+        !!loyaltyMaybe.loyalty;
       const protectedDataMaybe = hasProtectedData
-        ? { protectedData: { ...clientProtectedData, ...policiesMaybe, ...promoCodeMaybe } }
+        ? {
+            protectedData: {
+              ...clientProtectedData,
+              ...policiesMaybe,
+              ...promoCodeMaybe,
+              ...loyaltyMaybe,
+            },
+          }
         : {};
 
       // Add lineItems to the body params
@@ -134,7 +159,7 @@ module.exports = (req, res) => {
       if (isSpeculative) {
         return trustedSdk.transactions.initiateSpeculative(body, queryParams);
       }
-      // A use of the promo code is counted only when the booking is made
+      // A use of the promo code is counted, and credits taken, only when the booking is made
       return withPromoCodeUse(
         {
           promoCode,
@@ -142,7 +167,10 @@ module.exports = (req, res) => {
           isSpeculative,
           details: { providerId, listingId: params?.listingId?.uuid || null },
         },
-        () => trustedSdk.transactions.initiate(body, queryParams)
+        () =>
+          withLoyaltyCredits({ loyalty, lineItems, isSpeculative }, () =>
+            trustedSdk.transactions.initiate(body, queryParams)
+          )
       );
     })
     .then(apiResponse => {

@@ -167,7 +167,14 @@ const TopbarMobileMenu = props => {
         </NamedLink>
       </li>
     </>
-  ) : null;
+  ) : (
+    // Customers: their loyalty credits
+    <li className={classNames(css.navigationLink, currentPageClass('LoyaltyPage'))}>
+      <NamedLink name="LoyaltyPage">
+        <FormattedMessage id="TopbarMobileMenu.creditsLink" />
+      </NamedLink>
+    </li>
+  );
 
   return (
     <div className={css.root}>

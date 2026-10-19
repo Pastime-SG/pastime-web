@@ -7,6 +7,7 @@ import {
   isTransactionInitiateBookingTimeNotAvailableError,
   isTransactionInitiateBookingCutoffError,
   getPromoCodeErrorCode,
+  isLoyaltyCreditsUnavailableError,
   isTransactionInitiateListingInsufficientStockError,
   isTransactionChargeDisabledError,
   isTransactionZeroPaymentError,
@@ -42,6 +43,8 @@ export const getErrorMessages = (
     initiateOrderErrorMessage = <FormattedMessage id="CheckoutPage.initiateOrderAmountTooLow" />;
   } else if (getPromoCodeErrorCode(initiateOrderError)) {
     initiateOrderErrorMessage = <FormattedMessage id="CheckoutPage.promoCodeError" />;
+  } else if (isLoyaltyCreditsUnavailableError(initiateOrderError)) {
+    initiateOrderErrorMessage = <FormattedMessage id="CheckoutPage.loyaltyCreditsError" />;
   } else if (isTransactionInitiateBookingCutoffError(initiateOrderError)) {
     initiateOrderErrorMessage = <FormattedMessage id="CheckoutPage.bookingCutoffError" />;
   } else if (isTransactionInitiateBookingTimeNotAvailableError(initiateOrderError)) {

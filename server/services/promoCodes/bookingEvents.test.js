@@ -10,18 +10,44 @@ jest.mock('./index', () => ({
   getPromoCodeSyncPosition: (...args) => mockPromoCodes.getPromoCodeSyncPosition(...args),
   setPromoCodeSyncPosition: (...args) => mockPromoCodes.setPromoCodeSyncPosition(...args),
 }));
+const mockLoyalty = { earnCredits: jest.fn(), returnCredits: jest.fn() };
+jest.mock('../loyalty', () => ({
+  earnCredits: (...args) => mockLoyalty.earnCredits(...args),
+  returnCredits: (...args) => mockLoyalty.returnCredits(...args),
+}));
 const mockEventsQuery = jest.fn();
+const mockTransactionsShow = jest.fn();
 jest.mock('../sharetribe/integration', () => ({
-  getIntegrationSdk: () => ({ events: { query: (...args) => mockEventsQuery(...args) } }),
+  getIntegrationSdk: () => ({
+    events: { query: (...args) => mockEventsQuery(...args) },
+    transactions: { show: (...args) => mockTransactionsShow(...args) },
+  }),
 }));
 jest.mock('../../log', () => ({ error: jest.fn() }));
 
 const { applyEvent, processBookingEvents } = require('./bookingEvents');
 
-const event = (sequenceId, state, promoCode = { id: 'code-1', redemptionId: 'r1' }) => ({
+const event = (
+  sequenceId,
+  state,
+  promoCode = { id: 'code-1', redemptionId: 'r1' },
+  { loyalty, previousState = 'state/accepted', customerId = 'customer-1' } = {}
+) => ({
   attributes: {
     sequenceId,
-    resource: { attributes: { state, protectedData: promoCode ? { promoCode } : {} } },
+    resourceId: { uuid: 'tx-1' },
+    previousValues: { attributes: { state: previousState } },
+    resource: {
+      id: { uuid: 'tx-1' },
+      ...(customerId
+        ? { relationships: { customer: { data: { id: { uuid: customerId } } } } }
+        : {}),
+      attributes: {
+        state,
+        payinTotal: { amount: 6000, currency: 'SGD' },
+        protectedData: { ...(promoCode ? { promoCode } : {}), ...(loyalty ? { loyalty } : {}) },
+      },
+    },
   },
 });
 
@@ -31,19 +57,53 @@ describe('promo code booking events', () => {
     mockPromoCodes.cancelPromoCodeUse.mockResolvedValue(true);
     mockPromoCodes.completePromoCodeUse.mockResolvedValue(true);
     mockPromoCodes.setPromoCodeSyncPosition.mockResolvedValue();
+    mockLoyalty.earnCredits.mockResolvedValue(100);
+    mockLoyalty.returnCredits.mockResolvedValue(true);
   });
 
   it('gives the use back when the booking does not go ahead, completes it when finished', async () => {
-    expect(await applyEvent(event(1, 'state/declined'))).toBe('cancelled');
+    expect(await applyEvent(event(1, 'state/declined'))).toEqual(['cancelled']);
     expect(mockPromoCodes.cancelPromoCodeUse).toHaveBeenCalledWith(
       'code-1',
       'r1',
       'state/declined'
     );
-    expect(await applyEvent(event(2, 'state/delivered'))).toBe('completed');
-    expect(await applyEvent(event(3, 'state/accepted'))).toBe(null);
-    // Bookings without a promo code are skipped
-    expect(await applyEvent(event(4, 'state/declined', null))).toBe(null);
+    expect(await applyEvent(event(2, 'state/delivered'))).toEqual(['completed', 'credits-earned']);
+    expect(await applyEvent(event(3, 'state/accepted'))).toEqual([]);
+    // Bookings without a promo code or credits are skipped
+    expect(await applyEvent(event(4, 'state/declined', null))).toEqual([]);
+  });
+
+  it('gives credits back when the booking does not go ahead', async () => {
+    const loyalty = { customerId: 'customer-1', redemptionId: 'l1' };
+    expect(await applyEvent(event(1, 'state/expired', null, { loyalty }))).toEqual([
+      'credits-returned',
+    ]);
+    expect(mockLoyalty.returnCredits).toHaveBeenCalledWith('customer-1', 'l1', 'tx-1');
+    expect(mockLoyalty.earnCredits).not.toHaveBeenCalled();
+  });
+
+  it('earns credits once, when the booking first becomes finished', async () => {
+    await applyEvent(event(1, 'state/delivered', null));
+    expect(mockLoyalty.earnCredits).toHaveBeenCalledWith({
+      customerId: 'customer-1',
+      transactionId: 'tx-1',
+      paidAmount: 6000,
+      currency: 'SGD',
+    });
+    // A review after the booking is finished doesn't earn again
+    await applyEvent(event(2, 'state/reviewed', null, { previousState: 'state/delivered' }));
+    expect(mockLoyalty.earnCredits).toHaveBeenCalledTimes(1);
+    expect(mockTransactionsShow).not.toHaveBeenCalled();
+  });
+
+  it("fetches the customer only when the event doesn't name them", async () => {
+    mockTransactionsShow.mockResolvedValue({
+      data: { data: { relationships: { customer: { data: { id: { uuid: 'customer-2' } } } } } },
+    });
+    await applyEvent(event(1, 'state/delivered', null, { customerId: null }));
+    expect(mockTransactionsShow).toHaveBeenCalledTimes(1);
+    expect(mockLoyalty.earnCredits.mock.calls[0][0].customerId).toBe('customer-2');
   });
 
   it('resumes after the last event read and saves where it got to', async () => {

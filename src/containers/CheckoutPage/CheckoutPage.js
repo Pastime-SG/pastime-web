@@ -36,6 +36,7 @@ import {
   confirmPayment,
   fetchTransaction,
   initiateInquiryWithoutPayment,
+  fetchLoyaltyAccountThunk,
 } from './CheckoutPage.duck';
 
 import CheckoutPageWithPayment, {
@@ -123,7 +124,7 @@ const CheckoutPageComponent = props => {
   ) : processName &&
     !isInquiryProcess &&
     // The page stays while a promo code is applied (the price preview is fetched again)
-    (!speculateTransactionInProgress || pageData?.isUpdatingPromoCode) ? (
+    (!speculateTransactionInProgress || pageData?.isUpdatingPrice) ? (
     <CheckoutPageWithPayment
       config={config}
       routeConfiguration={routeConfiguration}
@@ -178,6 +179,7 @@ const CheckoutPage = props => {
     initiateInquiryError,
     initiateOrderError,
     confirmPaymentError,
+    loyaltyAccount,
   } = useSelector(state => state.CheckoutPage);
 
   const currentUser = useSelector(state => state.user.currentUser);
@@ -192,6 +194,7 @@ const CheckoutPage = props => {
     [dispatch]
   );
   const fetchStripeCustomer = useCallback(() => dispatch(stripeCustomer()), [dispatch]);
+  const fetchLoyaltyAccount = useCallback(() => dispatch(fetchLoyaltyAccountThunk()), [dispatch]);
   const onInquiryWithoutPayment = useCallback(
     (params, processAlias, transitionName) =>
       dispatch(initiateInquiryWithoutPayment(params, processAlias, transitionName)),
@@ -236,6 +239,7 @@ const CheckoutPage = props => {
           pageData: data || {},
           fetchSpeculatedTransaction,
           fetchStripeCustomer,
+          fetchLoyaltyAccount,
           config,
           setPageData,
           sessionStorageKey: STORAGE_KEY,
@@ -266,6 +270,7 @@ const CheckoutPage = props => {
       dispatch={dispatch}
       fetchSpeculatedTransaction={fetchSpeculatedTransaction}
       fetchStripeCustomer={fetchStripeCustomer}
+      loyaltyAccount={loyaltyAccount}
       onInquiryWithoutPayment={onInquiryWithoutPayment}
       onInitiateOrder={onInitiateOrder}
       onRetrievePaymentIntent={onRetrievePaymentIntent}

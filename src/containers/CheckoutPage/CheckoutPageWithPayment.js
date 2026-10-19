@@ -48,6 +48,7 @@ import DetailsSideCard from './DetailsSideCard';
 import MobileListingImage from './MobileListingImage';
 import MobileOrderBreakdown from './MobileOrderBreakdown';
 import PromoCodeField from './PromoCodeField/PromoCodeField';
+import LoyaltyCreditsField from './LoyaltyCreditsField/LoyaltyCreditsField';
 
 import css from './CheckoutPage.module.css';
 
@@ -137,6 +138,8 @@ const getOrderParams = (
   // The promo code the customer applied (checked and applied by the app's server)
   const promoCode = pageData.orderData?.promoCode;
   const promoCodeMaybe = promoCode ? { promoCode } : {};
+  // Whether the customer uses their loyalty credits (the amount is worked out by the server)
+  const useCreditsMaybe = pageData.orderData?.useCredits === true ? { useCredits: true } : {};
 
   const protectedDataMaybe = {
     protectedData: {
@@ -166,6 +169,7 @@ const getOrderParams = (
     ...bookingDatesMaybe(pageData.orderData?.bookingDates),
     ...priceVariantNameMaybe,
     ...promoCodeMaybe,
+    ...useCreditsMaybe,
     ...protectedDataMaybe,
     ...optionalPaymentParams,
   };
@@ -235,6 +239,7 @@ export const loadInitialDataForStripePayments = ({
   pageData,
   fetchSpeculatedTransaction,
   fetchStripeCustomer,
+  fetchLoyaltyAccount,
   config,
   setPageData,
   sessionStorageKey,
@@ -243,6 +248,10 @@ export const loadInitialDataForStripePayments = ({
   // Note: since there's need for data loading in "componentWillMount" function,
   //       this is added here instead of loadData static function.
   fetchStripeCustomer();
+  // The customer's credits: checkout offers to use them (not used unless the customer opts in)
+  if (fetchLoyaltyAccount) {
+    fetchLoyaltyAccount();
+  }
 
   // Fetch speculated transaction for showing price in order breakdown
   // NOTE: if unit type is line-item/item, quantity needs to be added.
@@ -263,7 +272,7 @@ export const loadInitialDataForStripePayments = ({
       }
       const { listing, transaction } = pageData;
       const newPageData = { ...pageData, orderData: orderDataWithoutCode, promoCodeError };
-      setPageData({ ...newPageData, isUpdatingPromoCode: true });
+      setPageData({ ...newPageData, isUpdatingPrice: true });
       storeData(orderDataWithoutCode, listing, transaction, sessionStorageKey);
       const newOrderParams = getOrderParams(
         newPageData,
@@ -275,14 +284,14 @@ export const loadInitialDataForStripePayments = ({
         newOrderParams,
         newPageData,
         fetchSpeculatedTransaction
-      ).finally(() => setPageData(current => ({ ...current, isUpdatingPromoCode: false })));
+      ).finally(() => setPageData(current => ({ ...current, isUpdatingPrice: false })));
     }
   );
 };
 
 const handleSubmit = (values, process, props, stripe, submitting, setSubmitting) => {
   // No paying while the price is updated for a promo code
-  if (submitting || props.pageData?.isUpdatingPromoCode) {
+  if (submitting || props.pageData?.isUpdatingPrice) {
     return;
   }
   setSubmitting(true);
@@ -558,7 +567,7 @@ export const CheckoutPageWithPayment = props => {
   const { fetchSpeculatedTransaction, setPageData, sessionStorageKey } = props;
   const appliedPromoCode = orderData?.promoCode || null;
   const canUsePromoCode = !(existingTransaction?.attributes?.lineItems?.length > 0);
-  const isUpdatingPromoCode = !!pageData.isUpdatingPromoCode;
+  const isUpdatingPrice = !!pageData.isUpdatingPrice;
   const orderDataWithPromoCode = promoCode => {
     const { promoCode: oldCode, ...restOrderData } = orderData || {};
     return promoCode ? { ...restOrderData, promoCode } : restOrderData;
@@ -566,7 +575,7 @@ export const CheckoutPageWithPayment = props => {
   const fetchPreviewWithPromoCode = promoCode => {
     const newOrderData = orderDataWithPromoCode(promoCode);
     const newPageData = { ...pageData, orderData: newOrderData, promoCodeError: null };
-    setPageData({ ...newPageData, isUpdatingPromoCode: true });
+    setPageData({ ...newPageData, isUpdatingPrice: true });
     storeData(newOrderData, listing, transaction, sessionStorageKey);
     const orderParams = getOrderParams(newPageData, {}, {}, config);
     return fetchSpeculatedTransactionIfNeeded(orderParams, newPageData, fetchSpeculatedTransaction);
@@ -574,7 +583,7 @@ export const CheckoutPageWithPayment = props => {
   const finishPromoCodeUpdate = (promoCodeError = null, previousCode = null) =>
     setPageData(current => ({
       ...current,
-      isUpdatingPromoCode: false,
+      isUpdatingPrice: false,
       ...(promoCodeError
         ? { orderData: orderDataWithPromoCode(previousCode), promoCodeError }
         : {}),
@@ -596,6 +605,25 @@ export const CheckoutPageWithPayment = props => {
   };
   const handleRemovePromoCode = () =>
     fetchPreviewWithPromoCode(null).finally(() => finishPromoCodeUpdate());
+
+  // Loyalty credits: the customer opts in (never automatic). The price preview is fetched again
+  // with or without them.
+  const { loyaltyAccount } = props;
+  const creditBalance = loyaltyAccount?.creditBalance || 0;
+  const useCredits = orderData?.useCredits === true;
+  const handleToggleCredits = () => {
+    const { useCredits: oldValue, ...restOrderData } = orderData || {};
+    const newOrderData = useCredits ? restOrderData : { ...restOrderData, useCredits: true };
+    const newPageData = { ...pageData, orderData: newOrderData };
+    setPageData({ ...newPageData, isUpdatingPrice: true });
+    storeData(newOrderData, listing, transaction, sessionStorageKey);
+    const orderParams = getOrderParams(newPageData, {}, {}, config);
+    return fetchSpeculatedTransactionIfNeeded(
+      orderParams,
+      newPageData,
+      fetchSpeculatedTransaction
+    ).finally(() => finishPromoCodeUpdate());
+  };
   const transactionProcessAlias = listing?.attributes?.publicData?.transactionProcessAlias;
   const priceVariantName = tx.attributes.protectedData?.priceVariantName;
 
@@ -752,10 +780,20 @@ export const CheckoutPageWithPayment = props => {
               <PromoCodeField
                 appliedCode={appliedPromoCode}
                 errorCode={pageData.promoCodeError}
-                disabled={submitting || isUpdatingPromoCode}
-                inProgress={isUpdatingPromoCode}
+                disabled={submitting || isUpdatingPrice}
+                inProgress={isUpdatingPrice}
                 onApply={handleApplyPromoCode}
                 onRemove={handleRemovePromoCode}
+              />
+            ) : null}
+            {showPaymentForm && canUsePromoCode && (creditBalance > 0 || useCredits) ? (
+              <LoyaltyCreditsField
+                balance={creditBalance}
+                currency={loyaltyAccount?.currency}
+                checked={useCredits}
+                disabled={submitting || isUpdatingPrice}
+                inProgress={isUpdatingPrice}
+                onToggle={handleToggleCredits}
               />
             ) : null}
             {showPaymentForm ? (

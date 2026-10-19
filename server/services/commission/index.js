@@ -91,6 +91,7 @@ const getIncludedRelationship = (responseData, relationship) => {
 const PROVIDER_COMMISSION = 'line-item/provider-commission';
 const CUSTOMER_COMMISSION = 'line-item/customer-commission';
 const PROMO_DISCOUNT = 'line-item/promo-discount';
+const LOYALTY_CREDIT = 'line-item/loyalty-credit';
 
 const isCommission = item => [PROVIDER_COMMISSION, CUSTOMER_COMMISSION].includes(item.code);
 const isOrderItem = item =>
@@ -142,6 +143,7 @@ const getCommissionBeforeGst = (item, commission, baseAmount) => {
  * @param {Object} [params.customerCommission] Marketplace-wide customer commission (Console)
  * @param {Object} [params.provider] User entity of the provider (for their own percentage)
  * @param {Object} [params.promoCode] Promo code from findPromoCodeForBooking
+ * @param {number} [params.loyaltyCredits] The customer's credit balance to use (minor units)
  * @returns {Array<Object>}
  */
 const getTransactionLineItems = ({
@@ -151,6 +153,7 @@ const getTransactionLineItems = ({
   customerCommission,
   provider,
   promoCode,
+  loyaltyCredits = 0,
 }) => {
   const commission = getProviderCommission(providerCommission, provider);
   const lineItems = transactionLineItems(listing, orderData, commission, customerCommission);
@@ -165,31 +168,59 @@ const getTransactionLineItems = ({
       ? getCommissionBeforeGst(item, commission, commissionBase)
       : item
   );
-  if (!discount) {
-    return withCommission;
-  }
-
   // An admin's discount is paid from the marketplace's commission: at most the commission
   const marketplaceCommission = withCommission
     .filter(isCommission)
     .reduce((sum, item) => sum + Math.abs(calculateLineTotal(item).amount), 0);
-  const discountAmount = isMerchantDiscount ? discount : Math.min(discount, marketplaceCommission);
-  if (discountAmount <= 0) {
-    return withCommission;
-  }
-  const discountItem = {
-    code: PROMO_DISCOUNT,
-    unitPrice: new Money(-discountAmount, orderTotal.currency),
-    quantity: 1,
-    includeFor: isMerchantDiscount ? ['customer', 'provider'] : ['customer'],
-  };
+  const discountAmount = !discount
+    ? 0
+    : isMerchantDiscount
+    ? discount
+    : Math.min(discount, marketplaceCommission);
+  const discountItemMaybe =
+    discountAmount > 0
+      ? [
+          {
+            code: PROMO_DISCOUNT,
+            unitPrice: new Money(-discountAmount, orderTotal.currency),
+            quantity: 1,
+            includeFor: isMerchantDiscount ? ['customer', 'provider'] : ['customer'],
+          },
+        ]
+      : [];
+
+  // Loyalty credits are paid from the marketplace's commission too (what's left of it after an
+  // admin's discount), and are at most the booking's price after discounts
+  const commissionLeft = marketplaceCommission - (isMerchantDiscount ? 0 : discountAmount);
+  const creditsAmount = Math.max(
+    0,
+    Math.min(Math.floor(loyaltyCredits || 0), orderTotal.amount - discountAmount, commissionLeft)
+  );
+  const creditsItemMaybe =
+    creditsAmount > 0
+      ? [
+          {
+            code: LOYALTY_CREDIT,
+            unitPrice: new Money(-creditsAmount, orderTotal.currency),
+            quantity: 1,
+            includeFor: ['customer'],
+          },
+        ]
+      : [];
+
   // After the order's line items, before the commissions
   const firstCommissionIndex = withCommission.findIndex(isCommission);
   const insertAt = firstCommissionIndex === -1 ? withCommission.length : firstCommissionIndex;
-  return [...withCommission.slice(0, insertAt), discountItem, ...withCommission.slice(insertAt)];
+  return [
+    ...withCommission.slice(0, insertAt),
+    ...discountItemMaybe,
+    ...creditsItemMaybe,
+    ...withCommission.slice(insertAt),
+  ];
 };
 
 module.exports = {
+  LOYALTY_CREDIT,
   PROMO_DISCOUNT,
   getAmountBeforeGst,
   getIncludedRelationship,

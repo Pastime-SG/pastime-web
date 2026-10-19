@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 
 import { pick } from '../../util/common';
-import { initiatePrivileged, transitionPrivileged } from '../../util/api';
+import { fetchLoyalty, initiatePrivileged, transitionPrivileged } from '../../util/api';
 import { denormalisedResponseEntities } from '../../util/data';
 import { getPromoCodeErrorCode, storableError } from '../../util/errors';
 import * as log from '../../util/log';
@@ -29,6 +29,7 @@ const initiateOrderPayloadCreator = (
     bookingDates,
     expectedPayinTotal,
     promoCode,
+    useCredits,
     ...otherOrderParams
   } = orderParams;
   const quantityMaybe = quantity ? { stockReservationQuantity: quantity } : {};
@@ -39,6 +40,7 @@ const initiateOrderPayloadCreator = (
     ...(deliveryMethod ? { deliveryMethod } : {}),
     ...(expectedPayinTotal ? { expectedPayinTotal } : {}),
     ...(promoCode ? { promoCode } : {}),
+    ...(useCredits ? { useCredits: true } : {}),
   };
 
   // Parameters for Marketplace API
@@ -310,6 +312,7 @@ const speculateTransactionPayloadCreator = (
     quantity,
     bookingDates,
     promoCode,
+    useCredits,
     ...otherOrderParams
   } = orderParams;
   const quantityMaybe = quantity ? { stockReservationQuantity: quantity } : {};
@@ -320,6 +323,7 @@ const speculateTransactionPayloadCreator = (
     ...(deliveryMethod ? { deliveryMethod } : {}),
     ...(priceVariantName ? { priceVariantName } : {}),
     ...(promoCode ? { promoCode } : {}),
+    ...(useCredits ? { useCredits: true } : {}),
   };
 
   // Parameters for Marketplace API
@@ -448,6 +452,12 @@ export const stripeCustomer = () => dispatch => {
   return dispatch(stripeCustomerThunk({}));
 };
 
+// The customer's loyalty credits, so that checkout can offer to use them (app's server, which
+// reads the balance from Firestore)
+export const fetchLoyaltyAccountThunk = createAsyncThunk('CheckoutPage/fetchLoyaltyAccount', () =>
+  fetchLoyalty().then(response => response.account)
+);
+
 // ================ Slice ================ //
 
 const initialState = {
@@ -463,6 +473,7 @@ const initialState = {
   stripeCustomerFetchError: null,
   initiateInquiryInProgress: false,
   initiateInquiryError: null,
+  loyaltyAccount: null,
 };
 
 const checkoutPageSlice = createSlice({
@@ -520,6 +531,9 @@ const checkoutPageSlice = createSlice({
         state.speculatedTransaction = null;
       })
       // Stripe Customer cases
+      .addCase(fetchLoyaltyAccountThunk.fulfilled, (state, action) => {
+        state.loyaltyAccount = action.payload;
+      })
       .addCase(stripeCustomerThunk.pending, state => {
         state.stripeCustomerFetched = false;
         state.stripeCustomerFetchError = null;
