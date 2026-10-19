@@ -204,6 +204,80 @@
     {:name :action/cancel-booking}],
    :from :state/reschedule-requested-by-provider,
    :to :state/cancelled}
+  ;; Customer cancellations. Providers can't cancel bookings for now.
+  ;; Before the booking is accepted: always free. The card was only authorized, so the payment
+  ;; intent is cancelled (no charge, no Stripe fee).
+  {:name :transition/customer-cancel-request,
+   :actor :actor.role/customer,
+   :actions
+   [{:name :action/calculate-full-refund}
+    {:name :action/stripe-refund-payment}
+    ;; Keep this action last in the list of actions for
+    ;; the transition
+    {:name :action/decline-booking}],
+   :from :state/preauthorized,
+   :to :state/cancelled}
+  ;; After the booking is accepted: only when a cancellation rule of the listing's policies (copied
+  ;; to protected data when the booking was made) applies. These transitions are privileged: the
+  ;; server checks the rule (see server/api/cancel).
+  ;; With a refund: the refund (minus the non-refundable Stripe fee) is made on the server with the
+  ;; Stripe API, because the Stripe refund action only does full refunds. The provider's share of
+  ;; a partial refund is paid out by the server once the funds are available. These transitions
+  ;; only cancel the booking and store the cancellation details in metadata.
+  {:name :transition/customer-cancel,
+   :actor :actor.role/customer,
+   :actions
+   [{:name :action/cancel-booking}
+    {:name :action/privileged-update-metadata}],
+   :from :state/accepted,
+   :to :state/cancelled,
+   :privileged? true}
+  {:name :transition/customer-cancel-reschedule-requested-by-customer,
+   :actor :actor.role/customer,
+   :actions
+   [{:name :action/cancel-booking}
+    {:name :action/privileged-update-metadata}],
+   :from :state/reschedule-requested-by-customer,
+   :to :state/cancelled,
+   :privileged? true}
+  {:name :transition/customer-cancel-reschedule-requested-by-provider,
+   :actor :actor.role/customer,
+   :actions
+   [{:name :action/cancel-booking}
+    {:name :action/privileged-update-metadata}],
+   :from :state/reschedule-requested-by-provider,
+   :to :state/cancelled,
+   :privileged? true}
+  ;; Without a refund: the provider is paid out as usual when the booking would have ended.
+  {:name :transition/customer-cancel-no-refund,
+   :actor :actor.role/customer,
+   :actions
+   [{:name :action/cancel-booking}
+    {:name :action/privileged-update-metadata}],
+   :from :state/accepted,
+   :to :state/cancelled-without-refund,
+   :privileged? true}
+  {:name :transition/customer-cancel-no-refund-reschedule-requested-by-customer,
+   :actor :actor.role/customer,
+   :actions
+   [{:name :action/cancel-booking}
+    {:name :action/privileged-update-metadata}],
+   :from :state/reschedule-requested-by-customer,
+   :to :state/cancelled-without-refund,
+   :privileged? true}
+  {:name :transition/customer-cancel-no-refund-reschedule-requested-by-provider,
+   :actor :actor.role/customer,
+   :actions
+   [{:name :action/cancel-booking}
+    {:name :action/privileged-update-metadata}],
+   :from :state/reschedule-requested-by-provider,
+   :to :state/cancelled-without-refund,
+   :privileged? true}
+  {:name :transition/payout-cancelled-without-refund,
+   :at {:fn/timepoint [:time/booking-end]},
+   :actions [{:name :action/stripe-create-payout}],
+   :from :state/cancelled-without-refund,
+   :to :state/cancelled}
   ;; Reviews: only the customer can review the provider. Providers don't review customers.
   ;; The customer's review is published right away. The review period ends 7 days after the
   ;; booking.
@@ -302,6 +376,62 @@
    :on :transition/decline-reschedule-by-customer,
    :to :actor.role/provider,
    :template :booking-reschedule-declined-by-customer}
+  {:name :notification/customer-cancel-request-to-provider,
+   :on :transition/customer-cancel-request,
+   :to :actor.role/provider,
+   :template :booking-request-cancelled-by-customer}
+  {:name :notification/customer-cancel-request-to-customer,
+   :on :transition/customer-cancel-request,
+   :to :actor.role/customer,
+   :template :booking-request-cancelled-confirmation}
+  {:name :notification/customer-cancel-to-provider,
+   :on :transition/customer-cancel,
+   :to :actor.role/provider,
+   :template :booking-cancelled-by-customer}
+  {:name :notification/customer-cancel-to-customer,
+   :on :transition/customer-cancel,
+   :to :actor.role/customer,
+   :template :booking-cancelled-refund}
+  {:name :notification/customer-cancel-reschedule-requested-by-customer-to-provider,
+   :on :transition/customer-cancel-reschedule-requested-by-customer,
+   :to :actor.role/provider,
+   :template :booking-cancelled-by-customer}
+  {:name :notification/customer-cancel-reschedule-requested-by-customer-to-customer,
+   :on :transition/customer-cancel-reschedule-requested-by-customer,
+   :to :actor.role/customer,
+   :template :booking-cancelled-refund}
+  {:name :notification/customer-cancel-reschedule-requested-by-provider-to-provider,
+   :on :transition/customer-cancel-reschedule-requested-by-provider,
+   :to :actor.role/provider,
+   :template :booking-cancelled-by-customer}
+  {:name :notification/customer-cancel-reschedule-requested-by-provider-to-customer,
+   :on :transition/customer-cancel-reschedule-requested-by-provider,
+   :to :actor.role/customer,
+   :template :booking-cancelled-refund}
+  {:name :notification/customer-cancel-no-refund-to-provider,
+   :on :transition/customer-cancel-no-refund,
+   :to :actor.role/provider,
+   :template :booking-cancelled-by-customer}
+  {:name :notification/customer-cancel-no-refund-to-customer,
+   :on :transition/customer-cancel-no-refund,
+   :to :actor.role/customer,
+   :template :booking-cancelled-no-refund}
+  {:name :notification/customer-cancel-no-refund-reschedule-requested-by-customer-to-provider,
+   :on :transition/customer-cancel-no-refund-reschedule-requested-by-customer,
+   :to :actor.role/provider,
+   :template :booking-cancelled-by-customer}
+  {:name :notification/customer-cancel-no-refund-reschedule-requested-by-customer-to-customer,
+   :on :transition/customer-cancel-no-refund-reschedule-requested-by-customer,
+   :to :actor.role/customer,
+   :template :booking-cancelled-no-refund}
+  {:name :notification/customer-cancel-no-refund-reschedule-requested-by-provider-to-provider,
+   :on :transition/customer-cancel-no-refund-reschedule-requested-by-provider,
+   :to :actor.role/provider,
+   :template :booking-cancelled-by-customer}
+  {:name :notification/customer-cancel-no-refund-reschedule-requested-by-provider-to-customer,
+   :on :transition/customer-cancel-no-refund-reschedule-requested-by-provider,
+   :to :actor.role/customer,
+   :template :booking-cancelled-no-refund}
   {:name :notification/review-by-customer,
    :on :transition/review-by-customer,
    :to :actor.role/provider,
