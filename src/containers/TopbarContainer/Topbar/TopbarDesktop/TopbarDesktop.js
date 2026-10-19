@@ -86,6 +86,17 @@ const ProfileMenu = ({ currentPage, currentUser, onLogout, showManageListingsLin
             </NamedLink>
           </MenuItem>
         ) : null}
+        {showManageListingsLink ? (
+          <MenuItem key="PromoCodesPage">
+            <NamedLink
+              className={classNames(css.menuLink, currentPageClass('PromoCodesPage'))}
+              name="PromoCodesPage"
+            >
+              <span className={css.menuItemBorder} />
+              <FormattedMessage id="TopbarDesktop.promoCodesLink" />
+            </NamedLink>
+          </MenuItem>
+        ) : null}
         <MenuItem key="ProfileSettingsPage">
           <NamedLink
             className={classNames(css.menuLink, currentPageClass('ProfileSettingsPage'))}

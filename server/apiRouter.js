@@ -18,6 +18,11 @@ const transitionPrivileged = require('./api/transition-privileged');
 const deleteAccount = require('./api/delete-account');
 const rescheduleRouter = require('./api/reschedule');
 const cancelRouter = require('./api/cancel');
+const {
+  router: promoCodesRouter,
+  adminRouter: adminPromoCodesRouter,
+} = require('./api/promo-codes');
+const middleware = require('./middleware');
 
 const createUserWithIdp = require('./api/auth/createUserWithIdp');
 
@@ -52,11 +57,21 @@ router.use((req, res, next) => {
 
 // ================ API router endpoints: ================ //
 
+// Promo codes entered at checkout: limited per IP address, so that codes can't be guessed by
+// trying many. Requests without a code aren't limited.
+const promoCodeAttemptLimit = middleware.createRateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 30,
+  keyFn: req => `ip:${req.ip}`,
+});
+const limitPromoCodeAttempts = (req, res, next) =>
+  req.body?.orderData?.promoCode ? promoCodeAttemptLimit(req, res, next) : next();
+
 router.get('/initiate-login-as', initiateLoginAs);
 router.get('/login-as', loginAs);
 router.post('/transaction-line-items', transactionLineItems);
-router.post('/initiate-privileged', initiatePrivileged);
-router.post('/transition-privileged', transitionPrivileged);
+router.post('/initiate-privileged', limitPromoCodeAttempts, initiatePrivileged);
+router.post('/transition-privileged', limitPromoCodeAttempts, transitionPrivileged);
 router.post('/delete-account', deleteAccount);
 
 // Rescheduling an accepted booking (privileged transitions of the booking process)
@@ -64,6 +79,10 @@ router.use('/reschedule', rescheduleRouter);
 
 // Customer cancellations of accepted bookings (privileged transitions, refunds with Stripe)
 router.use('/cancel', cancelRouter);
+
+// Merchants' promo codes (Firestore)
+router.use('/promo-codes', promoCodesRouter);
+router.use('/admin/promo-codes', adminPromoCodesRouter);
 
 // Create user with identity provider (e.g. Facebook or Google)
 // This endpoint is called to create a new user after user has confirmed

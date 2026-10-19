@@ -21,6 +21,11 @@ const { RESCHEDULE_USER_TRANSITIONS } = require('../services/reschedule');
 const { assertBookingStartAfterCutoff, getPoliciesProtectedData } = require('../services/policies');
 const { CANCEL_PRIVILEGED_TRANSITIONS } = require('../services/cancellation');
 const { getIncludedRelationship, getTransactionLineItems } = require('../services/commission');
+const {
+  getBookingPromoCode,
+  getPromoCodeProtectedData,
+  withPromoCodeUse,
+} = require('../services/promoCodes/checkout');
 
 const { Money } = sharetribeSdk.types;
 
@@ -140,14 +145,20 @@ module.exports = (req, res) => {
   let lineItems = null;
   let metadataMaybe = {};
   let policiesMaybe = {};
+  let promoCode = null;
+  let providerId = null;
 
   Promise.all([transactionPromise(sdk, bodyParams?.id), fetchCommission(sdk)])
-    .then(responses => {
+    .then(async responses => {
       const [showTransactionResponse, fetchAssetsResponse] = responses;
       const transaction = showTransactionResponse.data.data;
       const listing = getListingRelationShip(showTransactionResponse.data);
       const provider = getIncludedRelationship(showTransactionResponse.data, 'provider');
       const commissionAsset = fetchAssetsResponse.data.data[0];
+      providerId = provider?.id?.uuid;
+
+      // The promo code entered at checkout (if any), for booking requests after an inquiry
+      promoCode = await getBookingPromoCode({ orderData, providerId, transitionName });
 
       const existingMetadata = transaction?.attributes?.metadata;
       const existingOffers = existingMetadata?.offers || [];
@@ -169,6 +180,7 @@ module.exports = (req, res) => {
         providerCommission,
         customerCommission,
         provider: provider,
+        promoCode,
       });
 
       // If the client sends expectedPayinTotal (checkout payment flows), ensure it
@@ -198,9 +210,13 @@ module.exports = (req, res) => {
       const { listingId, ...restParams } = roleBasedBodyParams?.params || {};
       // Policies are only set here, from the listing: never from the client
       const { policies, ...protectedData } = restParams.protectedData || {};
-      const hasProtectedData = !!restParams.protectedData || !!policiesMaybe.policies;
+      // A copy of the applied promo code, set here only (never from the client)
+      const { promoCode: clientPromoCode, ...clientProtectedData } = protectedData;
+      const promoCodeMaybe = getPromoCodeProtectedData(promoCode, lineItems);
+      const hasProtectedData =
+        !!restParams.protectedData || !!policiesMaybe.policies || !!promoCodeMaybe.promoCode;
       const protectedDataMaybe = hasProtectedData
-        ? { protectedData: { ...protectedData, ...policiesMaybe } }
+        ? { protectedData: { ...clientProtectedData, ...policiesMaybe, ...promoCodeMaybe } }
         : {};
 
       // Add lineItems to the body params
@@ -217,7 +233,16 @@ module.exports = (req, res) => {
       if (isSpeculative) {
         return trustedSdk.transactions.transitionSpeculative(body, queryParams);
       }
-      return trustedSdk.transactions.transition(body, queryParams);
+      // A use of the promo code is counted only when the booking is made
+      return withPromoCodeUse(
+        {
+          promoCode,
+          lineItems,
+          isSpeculative,
+          details: { providerId, listingId: listingId?.uuid || null },
+        },
+        () => trustedSdk.transactions.transition(body, queryParams)
+      );
     })
     .then(apiResponse => {
       const { status, statusText, data } = apiResponse;

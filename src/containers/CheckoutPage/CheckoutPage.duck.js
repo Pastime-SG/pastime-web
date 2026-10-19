@@ -3,7 +3,7 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { pick } from '../../util/common';
 import { initiatePrivileged, transitionPrivileged } from '../../util/api';
 import { denormalisedResponseEntities } from '../../util/data';
-import { storableError } from '../../util/errors';
+import { getPromoCodeErrorCode, storableError } from '../../util/errors';
 import * as log from '../../util/log';
 import { setCurrentUserHasOrders, fetchCurrentUser } from '../../ducks/user.duck';
 
@@ -28,6 +28,7 @@ const initiateOrderPayloadCreator = (
     quantity,
     bookingDates,
     expectedPayinTotal,
+    promoCode,
     ...otherOrderParams
   } = orderParams;
   const quantityMaybe = quantity ? { stockReservationQuantity: quantity } : {};
@@ -37,6 +38,7 @@ const initiateOrderPayloadCreator = (
   const orderData = {
     ...(deliveryMethod ? { deliveryMethod } : {}),
     ...(expectedPayinTotal ? { expectedPayinTotal } : {}),
+    ...(promoCode ? { promoCode } : {}),
   };
 
   // Parameters for Marketplace API
@@ -307,6 +309,7 @@ const speculateTransactionPayloadCreator = (
     priceVariantName,
     quantity,
     bookingDates,
+    promoCode,
     ...otherOrderParams
   } = orderParams;
   const quantityMaybe = quantity ? { stockReservationQuantity: quantity } : {};
@@ -316,6 +319,7 @@ const speculateTransactionPayloadCreator = (
   const orderData = {
     ...(deliveryMethod ? { deliveryMethod } : {}),
     ...(priceVariantName ? { priceVariantName } : {}),
+    ...(promoCode ? { promoCode } : {}),
   };
 
   // Parameters for Marketplace API
@@ -497,16 +501,23 @@ const checkoutPageSlice = createSlice({
       .addCase(speculateTransactionThunk.pending, state => {
         state.speculateTransactionInProgress = true;
         state.speculateTransactionError = null;
-        state.speculatedTransaction = null;
+        // The previous preview stays until the new one arrives (e.g. when a promo code is
+        // applied), so that the price breakdown doesn't disappear meanwhile
       })
       .addCase(speculateTransactionThunk.fulfilled, (state, action) => {
         state.speculateTransactionInProgress = false;
         state.speculatedTransaction = action.payload;
       })
       .addCase(speculateTransactionThunk.rejected, (state, action) => {
-        console.error(action.payload);
         state.speculateTransactionInProgress = false;
+        // A promo code that can't be used isn't a page error: the previous preview (without the
+        // code) stays, and the promo code field explains why
+        if (getPromoCodeErrorCode(action.payload)) {
+          return;
+        }
+        console.error(action.payload);
         state.speculateTransactionError = action.payload;
+        state.speculatedTransaction = null;
       })
       // Stripe Customer cases
       .addCase(stripeCustomerThunk.pending, state => {

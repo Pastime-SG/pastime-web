@@ -39,10 +39,12 @@ const LineItemUnknownItemsMaybe = props => {
       {items.map((item, i) => {
         const quantity = item.quantity;
 
-        const label =
-          quantity && quantity > 1
-            ? `${humanizeLineItemCode(item.code)} x ${quantity}`
+        // Pastime's promo code discount (see server/services/commission) has its own label
+        const name =
+          item.code === 'line-item/promo-discount'
+            ? intl.formatMessage({ id: 'OrderBreakdown.promoDiscount' })
             : humanizeLineItemCode(item.code);
+        const label = quantity && quantity > 1 ? `${name} x ${quantity}` : name;
 
         const formattedTotal = formatMoney(intl, item.lineTotal);
         return (

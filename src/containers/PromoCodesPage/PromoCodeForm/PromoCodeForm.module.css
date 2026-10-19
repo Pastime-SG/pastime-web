@@ -1,0 +1,83 @@
+@import '../../../styles/customMediaQueries.css';
+
+.root {
+  display: flex;
+  flex-direction: column;
+}
+
+.field {
+  margin-top: 18px;
+
+  @media (--viewportMedium) {
+    margin-top: 24px;
+  }
+}
+
+.fieldset {
+  margin: 18px 0 0 0;
+  padding: 0;
+  border: none;
+
+  @media (--viewportMedium) {
+    margin: 24px 0 0 0;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+  }
+}
+
+.legend {
+  padding: 0;
+  font-weight: var(--fontWeightSemiBold);
+}
+
+.radios {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 24px;
+}
+
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-top: 18px;
+
+  @media (--viewportMedium) {
+    flex-direction: row;
+    gap: 16px;
+    margin-top: 24px;
+  }
+}
+
+.rowField {
+  flex: 1;
+}
+
+.note {
+  margin: 6px 0 0 0;
+  font-size: 14px;
+  color: var(--colorGrey700);
+
+  @media (--viewportMedium) {
+    margin: 8px 0 0 0;
+  }
+}
+
+.error {
+  margin: 18px 0 0 0;
+  color: var(--colorFail);
+
+  @media (--viewportMedium) {
+    margin: 24px 0 0 0;
+  }
+}
+
+.submitButton {
+  margin-top: 24px;
+
+  @media (--viewportMedium) {
+    margin-top: 32px;
+  }
+}

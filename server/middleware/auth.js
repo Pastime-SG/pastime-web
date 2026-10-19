@@ -11,7 +11,13 @@ const { getSdk, handleError } = require('../api-util/sdk');
 const authenticateUser = async (req, res) => {
   const sdk = getSdk(req, res);
   const userResponse = await sdk.currentUser.show({
-    'fields.user': ['profile.firstName', 'profile.lastName', 'profile.publicData.userType'],
+    'fields.user': [
+      'profile.firstName',
+      'profile.lastName',
+      'profile.publicData.userType',
+      // isAdmin (see middleware.admin): metadata can only be set by an operator
+      'profile.metadata',
+    ],
   });
   const currentUser = userResponse?.data?.data;
 

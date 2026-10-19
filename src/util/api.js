@@ -166,3 +166,28 @@ export const rescheduleBooking = body => {
 export const cancelBooking = body => {
   return post('/api/cancel', body);
 };
+
+// Promo codes (Firestore, see `server/api/promo-codes/`): the signed-in merchant's own codes, or
+// with `isAdmin`, the marketplace's codes (admins only, checked on the server).
+const promoCodesPath = (isAdmin, id = null, suffix = '') =>
+  `/api${isAdmin ? '/admin' : ''}/promo-codes${id ? `/${encodeURIComponent(id)}` : ''}${suffix}`;
+
+export const fetchPromoCodes = (isAdmin = false) => {
+  return request(promoCodesPath(isAdmin), { method: methods.GET });
+};
+
+export const createPromoCode = (body, isAdmin = false) => {
+  return post(promoCodesPath(isAdmin), body);
+};
+
+export const updatePromoCode = (id, body, isAdmin = false) => {
+  return request(promoCodesPath(isAdmin, id), { method: methods.PATCH, body });
+};
+
+export const deletePromoCode = (id, isAdmin = false) => {
+  return request(promoCodesPath(isAdmin, id), { method: methods.DELETE });
+};
+
+export const fetchPromoCodeLedger = (id, isAdmin = false) => {
+  return request(promoCodesPath(isAdmin, id, '/ledger'), { method: methods.GET });
+};

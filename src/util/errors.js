@@ -146,6 +146,21 @@ export const isTransactionInitiateBookingTimeNotAvailableError = error =>
 export const isTransactionInitiateBookingCutoffError = error =>
   hasErrorWithCode(error, 'booking-cutoff');
 
+const PROMO_CODE_ERROR_CODES = ['promo-code-invalid', 'promo-code-expired', 'promo-code-used-up'];
+
+/**
+ * The promo code error of a booking request (from the local API's initiate-privileged or
+ * transition-privileged, see server/services/promoCodes): 'promo-code-invalid',
+ * 'promo-code-expired' or 'promo-code-used-up'. Null for other errors.
+ *
+ * @param {Object} error
+ * @returns {string|null}
+ */
+export const getPromoCodeErrorCode = error =>
+  errorAPIErrors(error)
+    .map(apiError => apiError.code)
+    .find(code => PROMO_CODE_ERROR_CODES.includes(code)) || null;
+
 /**
  * Check if the given API error (from `sdk.transaction.initiate()` or
  * `sdk.transaction.initiateSpeculative()`) is due to insufficient stock.

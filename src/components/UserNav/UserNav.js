@@ -30,6 +30,13 @@ const UserNav = props => {
             name: 'ManageListingsPage',
           },
         },
+        {
+          text: <FormattedMessage id="UserNav.promoCodes" />,
+          selected: currentPage === 'PromoCodesPage',
+          linkProps: {
+            name: 'PromoCodesPage',
+          },
+        },
       ]
     : [];
 

@@ -1,5 +1,10 @@
 const { types } = require('sharetribe-flex-sdk');
 const { transactionLineItems } = require('../../api-util/lineItems');
+const {
+  calculateLineTotal,
+  calculateTotalFromLineItems,
+} = require('../../api-util/lineItemHelpers');
+const { CREATED_BY_MERCHANT, getPromoCodeDiscount } = require('../promoCodes');
 
 const { Money } = types;
 
@@ -15,6 +20,13 @@ const { Money } = types;
  * Listing prices include GST (what customers see and pay). The provider commission is taken from
  * the amount before GST: e.g. a $50 listing is $45.87 before 9% GST, and a 10% commission is
  * $4.59, so the provider is paid $45.41.
+ *
+ * Promo codes (see server/services/promoCodes) add a discount line item:
+ *  - A merchant's code lowers the price for the customer and the provider's payout. The commission
+ *    is taken from the amount before GST, net of the discount: $50 with 10% off is $45, which is
+ *    $41.28 before GST, so a 10% commission is $4.13 and the provider is paid $40.87.
+ *  - An admin's (marketplace-wide) code is paid by the marketplace: only the customer's price is
+ *    lowered, at most by the marketplace's commission, so the provider's payout doesn't change.
  */
 
 // GST included in listing prices (Singapore: 9%). Can be changed with the GST_PERCENTAGE env var.
@@ -77,6 +89,14 @@ const getIncludedRelationship = (responseData, relationship) => {
 };
 
 const PROVIDER_COMMISSION = 'line-item/provider-commission';
+const CUSTOMER_COMMISSION = 'line-item/customer-commission';
+const PROMO_DISCOUNT = 'line-item/promo-discount';
+
+const isCommission = item => [PROVIDER_COMMISSION, CUSTOMER_COMMISSION].includes(item.code);
+const isOrderItem = item =>
+  !isCommission(item) &&
+  item.includeFor.includes('customer') &&
+  item.includeFor.includes('provider');
 
 /**
  * The provider commission line item, taken from the amount before GST. The template's line item
@@ -86,16 +106,18 @@ const PROVIDER_COMMISSION = 'line-item/provider-commission';
  *
  * @param {Object} item Provider commission line item from transactionLineItems
  * @param {Object} [commission] The provider commission used (percentage, minimum_amount)
+ * @param {number} [baseAmount] The amount (with GST) the commission is taken from, if not the
+ * line item's (e.g. the order total net of a merchant's discount)
  * @returns {Object} Line item
  */
-const getCommissionBeforeGst = (item, commission) => {
+const getCommissionBeforeGst = (item, commission, baseAmount) => {
   // A minimum commission is used already: it's more than the percentage of the total with GST,
   // so it's also more than the percentage of the amount before GST
   if (item.percentage == null) {
     return item;
   }
   const { currency } = item.unitPrice;
-  const base = getAmountBeforeGst(item.unitPrice.amount);
+  const base = getAmountBeforeGst(baseAmount != null ? baseAmount : item.unitPrice.amount);
   const commissionFromPercentage = (base * Math.abs(item.percentage)) / 100;
   const minimum = commission?.minimum_amount;
   return minimum > commissionFromPercentage
@@ -110,7 +132,8 @@ const getCommissionBeforeGst = (item, commission) => {
 
 /**
  * Line items of a booking or order: the template's line items, with the provider's own
- * commission percentage (if any) taken from the amount before GST.
+ * commission percentage (if any) taken from the amount before GST, and the promo code's
+ * discount (if any).
  *
  * @param {Object} params
  * @param {Object} params.listing
@@ -118,6 +141,7 @@ const getCommissionBeforeGst = (item, commission) => {
  * @param {Object} [params.providerCommission] Marketplace-wide provider commission (Console)
  * @param {Object} [params.customerCommission] Marketplace-wide customer commission (Console)
  * @param {Object} [params.provider] User entity of the provider (for their own percentage)
+ * @param {Object} [params.promoCode] Promo code from findPromoCodeForBooking
  * @returns {Array<Object>}
  */
 const getTransactionLineItems = ({
@@ -126,14 +150,47 @@ const getTransactionLineItems = ({
   providerCommission,
   customerCommission,
   provider,
+  promoCode,
 }) => {
   const commission = getProviderCommission(providerCommission, provider);
-  return transactionLineItems(listing, orderData, commission, customerCommission).map(item =>
-    item.code === PROVIDER_COMMISSION ? getCommissionBeforeGst(item, commission) : item
+  const lineItems = transactionLineItems(listing, orderData, commission, customerCommission);
+  const orderTotal = calculateTotalFromLineItems(lineItems.filter(isOrderItem));
+  const discount = promoCode ? getPromoCodeDiscount(promoCode, orderTotal) : 0;
+  const isMerchantDiscount = promoCode?.createdBy === CREATED_BY_MERCHANT;
+
+  // A merchant's discount lowers the amount the commission is taken from
+  const commissionBase = isMerchantDiscount ? orderTotal.amount - discount : undefined;
+  const withCommission = lineItems.map(item =>
+    item.code === PROVIDER_COMMISSION
+      ? getCommissionBeforeGst(item, commission, commissionBase)
+      : item
   );
+  if (!discount) {
+    return withCommission;
+  }
+
+  // An admin's discount is paid from the marketplace's commission: at most the commission
+  const marketplaceCommission = withCommission
+    .filter(isCommission)
+    .reduce((sum, item) => sum + Math.abs(calculateLineTotal(item).amount), 0);
+  const discountAmount = isMerchantDiscount ? discount : Math.min(discount, marketplaceCommission);
+  if (discountAmount <= 0) {
+    return withCommission;
+  }
+  const discountItem = {
+    code: PROMO_DISCOUNT,
+    unitPrice: new Money(-discountAmount, orderTotal.currency),
+    quantity: 1,
+    includeFor: isMerchantDiscount ? ['customer', 'provider'] : ['customer'],
+  };
+  // After the order's line items, before the commissions
+  const firstCommissionIndex = withCommission.findIndex(isCommission);
+  const insertAt = firstCommissionIndex === -1 ? withCommission.length : firstCommissionIndex;
+  return [...withCommission.slice(0, insertAt), discountItem, ...withCommission.slice(insertAt)];
 };
 
 module.exports = {
+  PROMO_DISCOUNT,
   getAmountBeforeGst,
   getIncludedRelationship,
   getTransactionLineItems,

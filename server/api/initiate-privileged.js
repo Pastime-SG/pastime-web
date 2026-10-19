@@ -11,6 +11,11 @@ const {
 } = require('../api-util/sdk');
 const { assertBookingStartAfterCutoff, getPoliciesProtectedData } = require('../services/policies');
 const { getIncludedRelationship, getTransactionLineItems } = require('../services/commission');
+const {
+  getBookingPromoCode,
+  getPromoCodeProtectedData,
+  withPromoCodeUse,
+} = require('../services/promoCodes/checkout');
 
 const { Money } = sharetribeSdk.types;
 
@@ -61,12 +66,18 @@ module.exports = (req, res) => {
   let lineItems = null;
   let metadataMaybe = {};
   let policiesMaybe = {};
+  let promoCode = null;
+  let providerId = null;
 
   Promise.all([listingPromise(sdk, bodyParams?.params?.listingId), fetchCommission(sdk)])
-    .then(([showListingResponse, fetchAssetsResponse]) => {
+    .then(async ([showListingResponse, fetchAssetsResponse]) => {
       const listing = showListingResponse.data.data;
       const author = getIncludedRelationship(showListingResponse.data, 'author');
       const commissionAsset = fetchAssetsResponse.data.data[0];
+      providerId = author?.id?.uuid;
+
+      // The promo code entered at checkout (if any): the provider's own code or an admin's
+      promoCode = await getBookingPromoCode({ orderData, providerId, transitionName });
 
       const currency = listing.attributes.price?.currency || orderData.currency;
       const { providerCommission, customerCommission } =
@@ -78,6 +89,7 @@ module.exports = (req, res) => {
         providerCommission,
         customerCommission,
         provider: author,
+        promoCode,
       });
 
       // If the client sends expectedPayinTotal (checkout payment flows), ensure it
@@ -99,9 +111,13 @@ module.exports = (req, res) => {
       const { params } = bodyParams;
       // Policies are only set here, from the listing: never from the client
       const { policies, ...protectedData } = params?.protectedData || {};
-      const hasProtectedData = !!params?.protectedData || !!policiesMaybe.policies;
+      // A copy of the applied promo code, set here only (never from the client)
+      const { promoCode: clientPromoCode, ...clientProtectedData } = protectedData;
+      const promoCodeMaybe = getPromoCodeProtectedData(promoCode, lineItems);
+      const hasProtectedData =
+        !!params?.protectedData || !!policiesMaybe.policies || !!promoCodeMaybe.promoCode;
       const protectedDataMaybe = hasProtectedData
-        ? { protectedData: { ...protectedData, ...policiesMaybe } }
+        ? { protectedData: { ...clientProtectedData, ...policiesMaybe, ...promoCodeMaybe } }
         : {};
 
       // Add lineItems to the body params
@@ -118,7 +134,16 @@ module.exports = (req, res) => {
       if (isSpeculative) {
         return trustedSdk.transactions.initiateSpeculative(body, queryParams);
       }
-      return trustedSdk.transactions.initiate(body, queryParams);
+      // A use of the promo code is counted only when the booking is made
+      return withPromoCodeUse(
+        {
+          promoCode,
+          lineItems,
+          isSpeculative,
+          details: { providerId, listingId: params?.listingId?.uuid || null },
+        },
+        () => trustedSdk.transactions.initiate(body, queryParams)
+      );
     })
     .then(apiResponse => {
       const { status, statusText, data } = apiResponse;

@@ -13,6 +13,7 @@ import { createSlug } from '../../util/urlHelpers';
 import {
   isTransactionInitiateListingNotFoundError,
   isTransactionsTransitionInvalidTransition,
+  getPromoCodeErrorCode,
 } from '../../util/errors';
 import {
   getProcess,
@@ -26,7 +27,7 @@ import {
 import { H3, H4, NamedLink, OrderBreakdown, Page, TopbarSimplified } from '../../components';
 
 // Session helpers file needs to be imported before other CheckoutPage modules that use it
-import { clearData } from './CheckoutPageSessionHelpers';
+import { clearData, storeData } from './CheckoutPageSessionHelpers';
 
 import {
   bookingDatesMaybe,
@@ -46,6 +47,7 @@ import StripePaymentForm from './StripePaymentForm/StripePaymentForm';
 import DetailsSideCard from './DetailsSideCard';
 import MobileListingImage from './MobileListingImage';
 import MobileOrderBreakdown from './MobileOrderBreakdown';
+import PromoCodeField from './PromoCodeField/PromoCodeField';
 
 import css from './CheckoutPage.module.css';
 
@@ -132,6 +134,9 @@ const getOrderParams = (
   const priceVariantMaybe = priceVariant ? prefixPriceVariantProperties(priceVariant) : {};
 
   const customerDefaultMessageMaybe = customerDefaultMessage ? { customerDefaultMessage } : {};
+  // The promo code the customer applied (checked and applied by the app's server)
+  const promoCode = pageData.orderData?.promoCode;
+  const promoCodeMaybe = promoCode ? { promoCode } : {};
 
   const protectedDataMaybe = {
     protectedData: {
@@ -160,6 +165,7 @@ const getOrderParams = (
     ...seatsMaybe,
     ...bookingDatesMaybe(pageData.orderData?.bookingDates),
     ...priceVariantNameMaybe,
+    ...promoCodeMaybe,
     ...protectedDataMaybe,
     ...optionalPaymentParams,
   };
@@ -198,7 +204,7 @@ const fetchSpeculatedTransactionIfNeeded = (orderParams, pageData, fetchSpeculat
       : process.transitions.REQUEST_PAYMENT;
     const isPrivileged = process.isPrivileged(requestTransition);
 
-    fetchSpeculatedTransaction(
+    return fetchSpeculatedTransaction(
       orderParams,
       processAlias,
       transactionId,
@@ -206,6 +212,7 @@ const fetchSpeculatedTransactionIfNeeded = (orderParams, pageData, fetchSpeculat
       isPrivileged
     );
   }
+  return Promise.resolve(null);
 };
 
 /**
@@ -229,6 +236,8 @@ export const loadInitialDataForStripePayments = ({
   fetchSpeculatedTransaction,
   fetchStripeCustomer,
   config,
+  setPageData,
+  sessionStorageKey,
 }) => {
   // Fetch currentUser with stripeCustomer entity
   // Note: since there's need for data loading in "componentWillMount" function,
@@ -242,11 +251,38 @@ export const loadInitialDataForStripePayments = ({
   const optionalPaymentParams = {};
   const orderParams = getOrderParams(pageData, shippingDetails, optionalPaymentParams, config);
 
-  fetchSpeculatedTransactionIfNeeded(orderParams, pageData, fetchSpeculatedTransaction);
+  fetchSpeculatedTransactionIfNeeded(orderParams, pageData, fetchSpeculatedTransaction).then(
+    action => {
+      // A promo code kept from earlier (session storage) can't be used anymore, e.g. it was
+      // deactivated or used up: drop it, show why, and fetch the price without it
+      const { promoCode, ...orderDataWithoutCode } = pageData.orderData || {};
+      const promoCodeError =
+        promoCode && action?.error ? getPromoCodeErrorCode(action.payload) : null;
+      if (!promoCodeError || !setPageData) {
+        return null;
+      }
+      const { listing, transaction } = pageData;
+      const newPageData = { ...pageData, orderData: orderDataWithoutCode, promoCodeError };
+      setPageData({ ...newPageData, isUpdatingPromoCode: true });
+      storeData(orderDataWithoutCode, listing, transaction, sessionStorageKey);
+      const newOrderParams = getOrderParams(
+        newPageData,
+        shippingDetails,
+        optionalPaymentParams,
+        config
+      );
+      return fetchSpeculatedTransactionIfNeeded(
+        newOrderParams,
+        newPageData,
+        fetchSpeculatedTransaction
+      ).finally(() => setPageData(current => ({ ...current, isUpdatingPromoCode: false })));
+    }
+  );
 };
 
 const handleSubmit = (values, process, props, stripe, submitting, setSubmitting) => {
-  if (submitting) {
+  // No paying while the price is updated for a promo code
+  if (submitting || props.pageData?.isUpdatingPromoCode) {
     return;
   }
   setSubmitting(true);
@@ -514,6 +550,52 @@ export const CheckoutPageWithPayment = props => {
       ? existingTransaction
       : speculatedTransaction;
   const timeZone = listing?.attributes?.availabilityPlan?.timezone;
+
+  // Promo code: it's part of the order data, so the price preview (speculated transaction) and
+  // the booking request both send it to the app's server, which checks it and adds the discount.
+  // The code is kept in the page data (and session storage) because this component is unmounted
+  // while the preview loads.
+  const { fetchSpeculatedTransaction, setPageData, sessionStorageKey } = props;
+  const appliedPromoCode = orderData?.promoCode || null;
+  const canUsePromoCode = !(existingTransaction?.attributes?.lineItems?.length > 0);
+  const isUpdatingPromoCode = !!pageData.isUpdatingPromoCode;
+  const orderDataWithPromoCode = promoCode => {
+    const { promoCode: oldCode, ...restOrderData } = orderData || {};
+    return promoCode ? { ...restOrderData, promoCode } : restOrderData;
+  };
+  const fetchPreviewWithPromoCode = promoCode => {
+    const newOrderData = orderDataWithPromoCode(promoCode);
+    const newPageData = { ...pageData, orderData: newOrderData, promoCodeError: null };
+    setPageData({ ...newPageData, isUpdatingPromoCode: true });
+    storeData(newOrderData, listing, transaction, sessionStorageKey);
+    const orderParams = getOrderParams(newPageData, {}, {}, config);
+    return fetchSpeculatedTransactionIfNeeded(orderParams, newPageData, fetchSpeculatedTransaction);
+  };
+  const finishPromoCodeUpdate = (promoCodeError = null, previousCode = null) =>
+    setPageData(current => ({
+      ...current,
+      isUpdatingPromoCode: false,
+      ...(promoCodeError
+        ? { orderData: orderDataWithPromoCode(previousCode), promoCodeError }
+        : {}),
+    }));
+  const handleApplyPromoCode = code => {
+    const previousCode = appliedPromoCode;
+    return fetchPreviewWithPromoCode(code).then(
+      action => {
+        // The code can't be used: show why. The previous preview (with the previous code, if
+        // any) stays, so there's no second preview call.
+        const promoCodeError = action?.error ? getPromoCodeErrorCode(action.payload) : null;
+        if (promoCodeError) {
+          storeData(orderDataWithPromoCode(previousCode), listing, transaction, sessionStorageKey);
+        }
+        finishPromoCodeUpdate(promoCodeError, previousCode);
+      },
+      () => finishPromoCodeUpdate()
+    );
+  };
+  const handleRemovePromoCode = () =>
+    fetchPreviewWithPromoCode(null).finally(() => finishPromoCodeUpdate());
   const transactionProcessAlias = listing?.attributes?.publicData?.transactionProcessAlias;
   const priceVariantName = tx.attributes.protectedData?.priceVariantName;
 
@@ -666,6 +748,16 @@ export const CheckoutPageWithPayment = props => {
             {errorMessages.retrievePaymentIntentErrorMessage}
             {errorMessages.paymentExpiredMessage}
 
+            {showPaymentForm && canUsePromoCode ? (
+              <PromoCodeField
+                appliedCode={appliedPromoCode}
+                errorCode={pageData.promoCodeError}
+                disabled={submitting || isUpdatingPromoCode}
+                inProgress={isUpdatingPromoCode}
+                onApply={handleApplyPromoCode}
+                onRemove={handleRemovePromoCode}
+              />
+            ) : null}
             {showPaymentForm ? (
               <StripePaymentForm
                 className={css.paymentForm}

@@ -33,7 +33,11 @@ describe('middleware.auth', () => {
 
     expect(next).toHaveBeenCalled();
     expect(req.currentUser.id.uuid).toBe('user-1');
-    expect(req).toMatchObject({ tokenUserId: 'user-1', userType: 'provider', displayName: 'Pat Doe' });
+    expect(req).toMatchObject({
+      tokenUserId: 'user-1',
+      userType: 'provider',
+      displayName: 'Pat Doe',
+    });
   });
 
   it("responds with the error and doesn't continue if the user isn't signed in", async () => {

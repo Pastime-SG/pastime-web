@@ -37,6 +37,8 @@ const passport = require('passport');
 const auth = require('./auth');
 const apiRouter = require('./apiRouter');
 const { startPendingPayoutsJob } = require('./services/cancellation/payouts');
+const { startBookingEventsJob } = require('./services/promoCodes/bookingEvents');
+const { hasIntegrationCredentials } = require('./services/sharetribe/integration');
 const wellKnownRouter = require('./wellKnownRouter');
 const webmanifestResourceRoute = require('./resources/webmanifest');
 const robotsTxtRoute = require('./resources/robotsTxt');
@@ -344,9 +346,12 @@ if (cspEnabled) {
   });
 }
 
-// Payouts of cancelled bookings that wait for the funds to be available (partial refunds).
-// Started once the server is listening, stopped on shutdown.
+// Background jobs, started once the server is listening and stopped on shutdown:
+// - payouts of cancelled bookings that wait for the funds to be available (partial refunds)
+// - promo code uses given back or completed when bookings change (reads Sharetribe events every
+//   30 minutes)
 let pendingPayoutsJob = null;
+let bookingEventsJob = null;
 
 const server = app.listen(PORT, () => {
   const mode = dev ? 'development' : 'production';
@@ -357,6 +362,11 @@ const server = app.listen(PORT, () => {
   if (process.env.STRIPE_SECRET_KEY) {
     pendingPayoutsJob = startPendingPayoutsJob();
   }
+  const hasFirebase =
+    !!process.env.FIREBASE_SERVICE_ACCOUNT || !!process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
+  if (hasFirebase && hasIntegrationCredentials()) {
+    bookingEventsJob = startBookingEventsJob();
+  }
 });
 
 // Graceful shutdown:
@@ -365,6 +375,7 @@ const server = app.listen(PORT, () => {
   process.on(signal, () => {
     console.log('Shutting down...'); // eslint-disable-line no-console
     clearInterval(pendingPayoutsJob);
+    clearInterval(bookingEventsJob);
     server.close(() => {
       console.log('Server shut down.'); // eslint-disable-line no-console
     });

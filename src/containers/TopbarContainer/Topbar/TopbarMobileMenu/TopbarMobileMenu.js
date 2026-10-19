@@ -155,11 +155,18 @@ const TopbarMobileMenu = props => {
   };
 
   const manageListingsLinkMaybe = showCreateListingsLink ? (
-    <li className={classNames(css.navigationLink, currentPageClass('ManageListingsPage'))}>
-      <NamedLink name="ManageListingsPage">
-        <FormattedMessage id="TopbarMobileMenu.yourListingsLink" />
-      </NamedLink>
-    </li>
+    <>
+      <li className={classNames(css.navigationLink, currentPageClass('ManageListingsPage'))}>
+        <NamedLink name="ManageListingsPage">
+          <FormattedMessage id="TopbarMobileMenu.yourListingsLink" />
+        </NamedLink>
+      </li>
+      <li className={classNames(css.navigationLink, currentPageClass('PromoCodesPage'))}>
+        <NamedLink name="PromoCodesPage">
+          <FormattedMessage id="TopbarMobileMenu.promoCodesLink" />
+        </NamedLink>
+      </li>
+    </>
   ) : null;
 
   return (

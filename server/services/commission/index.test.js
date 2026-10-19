@@ -113,3 +113,54 @@ describe('commission before GST', () => {
     expect(commissionOf(lineItemsWith({ percentage: 1, minimum_amount: 47 }))).toBe(-47);
   });
 });
+
+describe('promo code discounts', () => {
+  const { types } = require('sharetribe-flex-sdk');
+  const { constructValidLineItems } = require('../../api-util/lineItemHelpers');
+  const { getTransactionLineItems } = require('./index');
+
+  const listing = {
+    attributes: { price: new types.Money(5000, 'SGD'), publicData: { unitType: 'item' } },
+  };
+  const lineItemsWith = (promoCode, providerCommission = { percentage: 10 }) =>
+    constructValidLineItems(
+      getTransactionLineItems({
+        listing,
+        orderData: { stockReservationQuantity: 1 },
+        providerCommission,
+        promoCode,
+      })
+    );
+  const totalFor = (lineItems, role) =>
+    lineItems
+      .filter(item => item.includeFor.includes(role))
+      .reduce((sum, item) => sum + item.lineTotal.amount, 0);
+  const lineTotal = (lineItems, code) => lineItems.find(i => i.code === code)?.lineTotal.amount;
+
+  it("takes a merchant's discount from the price and the payout, commission from the net pre-GST amount", () => {
+    // $50, 10% off: $45, $41.28 before GST, 10% commission $4.13, merchant gets $40.87
+    const lineItems = lineItemsWith({
+      createdBy: 'merchant',
+      discountType: 'percentage',
+      percentage: 10,
+    });
+    expect(lineTotal(lineItems, 'line-item/promo-discount')).toBe(-500);
+    expect(lineTotal(lineItems, 'line-item/provider-commission')).toBe(-413);
+    expect(totalFor(lineItems, 'customer')).toBe(4500);
+    expect(totalFor(lineItems, 'provider')).toBe(4087);
+  });
+
+  it("pays an admin's discount from the marketplace commission, at most the commission", () => {
+    const lineItems = lineItemsWith({
+      createdBy: 'admin',
+      discountType: 'fixed',
+      amount: 1000,
+      currency: 'SGD',
+    });
+    // Commission is $4.59 (from $45.87 before GST): the $10 discount is limited to it
+    expect(lineTotal(lineItems, 'line-item/promo-discount')).toBe(-459);
+    expect(totalFor(lineItems, 'customer')).toBe(4541);
+    // The provider's payout doesn't change
+    expect(totalFor(lineItems, 'provider')).toBe(4541);
+  });
+});

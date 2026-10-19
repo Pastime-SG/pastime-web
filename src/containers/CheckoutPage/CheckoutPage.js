@@ -120,7 +120,10 @@ const CheckoutPageComponent = props => {
       transactionFieldConfigs={transactionFieldConfigs}
       {...props}
     />
-  ) : processName && !isInquiryProcess && !speculateTransactionInProgress ? (
+  ) : processName &&
+    !isInquiryProcess &&
+    // The page stays while a promo code is applied (the price preview is fetched again)
+    (!speculateTransactionInProgress || pageData?.isUpdatingPromoCode) ? (
     <CheckoutPageWithPayment
       config={config}
       routeConfiguration={routeConfiguration}
@@ -234,6 +237,8 @@ const CheckoutPage = props => {
           fetchSpeculatedTransaction,
           fetchStripeCustomer,
           config,
+          setPageData,
+          sessionStorageKey: STORAGE_KEY,
         });
       }
     }
