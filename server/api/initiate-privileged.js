@@ -10,6 +10,7 @@ const {
   fetchCommission,
 } = require('../api-util/sdk');
 const { assertBookingStartAfterCutoff, getPoliciesProtectedData } = require('../services/policies');
+const { getProtectedDataParams } = require('../services/bookingData');
 const { getIncludedRelationship, getTransactionLineItems } = require('../services/commission');
 const {
   getBookingPromoCode,
@@ -84,9 +85,11 @@ module.exports = (req, res) => {
       providerId = author?.id?.uuid;
 
       // The promo code entered at checkout (if any): the provider's own code or an admin's
-      promoCode = await getBookingPromoCode({ orderData, providerId, transitionName });
+      // The process the booking is made with (Sharetribe uses this alias)
+      const processName = bodyParams.processAlias;
+      promoCode = await getBookingPromoCode({ orderData, providerId, transitionName, processName });
       // The customer's loyalty credits, if they chose to use them
-      loyalty = await getBookingLoyalty({ sdk, orderData, transitionName });
+      loyalty = await getBookingLoyalty({ sdk, orderData, transitionName, processName });
 
       const currency = listing.attributes.price?.currency || orderData.currency;
       const { providerCommission, customerCommission } =
@@ -118,32 +121,18 @@ module.exports = (req, res) => {
       return getTrustedSdk(req, res, tokenStore);
     })
     .then(trustedSdk => {
-      const { params } = bodyParams;
-      // Policies are only set here, from the listing: never from the client
-      const { policies, ...protectedData } = params?.protectedData || {};
-      // Copies of the applied promo code and credits, set here only (never from the client)
-      const {
-        promoCode: clientPromoCode,
-        loyalty: clientLoyalty,
-        ...clientProtectedData
-      } = protectedData;
-      const promoCodeMaybe = getPromoCodeProtectedData(promoCode, lineItems);
-      const loyaltyMaybe = getLoyaltyProtectedData(loyalty, lineItems);
-      const hasProtectedData =
-        !!params?.protectedData ||
-        !!policiesMaybe.policies ||
-        !!promoCodeMaybe.promoCode ||
-        !!loyaltyMaybe.loyalty;
-      const protectedDataMaybe = hasProtectedData
-        ? {
-            protectedData: {
-              ...clientProtectedData,
-              ...policiesMaybe,
-              ...promoCodeMaybe,
-              ...loyaltyMaybe,
-            },
-          }
-        : {};
+      // The client's protected data is only passed on through getProtectedDataParams
+      const { protectedData: clientProtectedData, ...params } = bodyParams.params || {};
+      // Server-owned protected data (policies, promo code, credits) is only set here, never from
+      // the client
+      const protectedDataMaybe = getProtectedDataParams({
+        clientProtectedData,
+        serverProtectedData: {
+          ...policiesMaybe,
+          ...getPromoCodeProtectedData(promoCode, lineItems),
+          ...getLoyaltyProtectedData(loyalty, lineItems),
+        },
+      });
 
       // Add lineItems to the body params
       const body = {

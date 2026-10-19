@@ -90,6 +90,7 @@ describe('cancellation', () => {
         price: 10000,
         providerCommission: 1000,
         customerCommission: 500,
+        customerReductions: 0,
       });
     });
 
@@ -121,6 +122,42 @@ describe('cancellation', () => {
       const reversal = providerShare - amounts.providerPayout;
       const platformNet = applicationFee - 335 + reversal - amounts.refund;
       expect(platformNet).toBe(amounts.platformCommission);
+    });
+  });
+
+  describe('getCancellationAmounts with credits or an admin discount', () => {
+    // $100, provider commission $10, customer commission $5, $5 of credits: the customer paid $100
+    const withCredits = [
+      ...lineItems,
+      {
+        code: 'line-item/loyalty-credit',
+        includeFor: ['customer'],
+        lineTotal: money(-500),
+        reversal: false,
+      },
+    ];
+    const params = { bookingAmounts: getBookingAmounts(withCredits), paid: 10000, stripeFee: 335 };
+
+    it('treats the credits as part of what the customer paid', () => {
+      expect(params.bookingAmounts.customerReductions).toBe(500);
+      // Half refunded: the customer pays $50 for the retained half ($52.50 minus $2.50 credits)
+      // and gets the rest of the cash back; half the credits come back as credits
+      expect(getCancellationAmounts({ ...params, refundPercentage: 50 })).toEqual({
+        retainedPrice: 5000,
+        providerPayout: 4500,
+        platformCommission: 500,
+        refund: 10000 - 5000 - 335,
+      });
+      expect(getCancellationAmounts({ ...params, refundPercentage: 100 }).refund).toBe(10000 - 335);
+    });
+
+    it('leaves the platform with exactly its commission, minus what it paid for the customer', () => {
+      const amounts = getCancellationAmounts({ ...params, refundPercentage: 50 });
+      const applicationFee = 10000 - 9000;
+      const reversal = 9000 - amounts.providerPayout;
+      const platformNet = applicationFee - 335 + reversal - amounts.refund;
+      expect(platformNet).toBe(amounts.platformCommission);
+      expect(amounts.platformCommission).toBeGreaterThanOrEqual(0);
     });
   });
 

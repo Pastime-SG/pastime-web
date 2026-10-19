@@ -93,8 +93,10 @@ const sumLineTotals = items => items.reduce((sum, item) => sum + item.lineTotal.
  * with).
  *
  * @param {Array<Object>} lineItems
- * @returns {{price: number, providerCommission: number, customerCommission: number}} Minor units,
- * commissions as positive amounts
+ * @returns {{price: number, providerCommission: number, customerCommission: number,
+ * customerReductions: number}} Minor units, commissions and reductions as positive amounts.
+ * Customer reductions are what the marketplace paid for the customer: an admin's promo code
+ * discount and loyalty credits.
  */
 const getBookingAmounts = lineItems => {
   const active = (lineItems || []).filter(item => !item.reversal);
@@ -112,15 +114,28 @@ const getBookingAmounts = lineItems => {
   const customerCommission = sumLineTotals(
     active.filter(item => item.code === 'line-item/customer-commission')
   );
-  return { price, providerCommission, customerCommission };
+  const customerReductions = Math.abs(
+    sumLineTotals(
+      active.filter(
+        item =>
+          !isCommission(item) &&
+          item.includeFor.includes('customer') &&
+          !item.includeFor.includes('provider') &&
+          (item.lineTotal?.amount ?? 0) < 0
+      )
+    )
+  );
+  return { price, providerCommission, customerCommission, customerReductions };
 };
 
 /**
  * Who gets what when the booking is cancelled with the given refund percentage.
  *
  * The part of the price that isn't refunded is treated as the new price: the commissions apply to
- * it in the same proportion as to the full price (e.g. 15% of it). The customer is refunded the
- * rest of the payment, minus the Stripe fee, which is non-refundable.
+ * it in the same proportion as to the full price (e.g. 15% of it), and so do the reductions the
+ * marketplace paid for the customer (admin discount, credits; the credits' refunded share is
+ * given back as credits). The customer is refunded the rest of the payment, minus the Stripe
+ * fee, which is non-refundable.
  *
  * @param {Object} params
  * @param {number} params.refundPercentage 0-100
@@ -130,16 +145,20 @@ const getBookingAmounts = lineItems => {
  * @returns {{retainedPrice: number, providerPayout: number, platformCommission: number, refund: number}}
  */
 const getCancellationAmounts = ({ refundPercentage, bookingAmounts, paid, stripeFee }) => {
-  const { price, providerCommission, customerCommission } = bookingAmounts;
+  const { price, providerCommission, customerCommission, customerReductions = 0 } = bookingAmounts;
   const retainedPrice = Math.round((price * (100 - refundPercentage)) / 100);
   const share = price > 0 ? retainedPrice / price : 0;
   const retainedProviderCommission = Math.round(providerCommission * share);
   const retainedCustomerCommission = Math.round(customerCommission * share);
+  const retainedReductions = Math.round(customerReductions * share);
+  // What the customer pays for the part that isn't refunded
+  const retainedCharge = retainedPrice + retainedCustomerCommission - retainedReductions;
   return {
     retainedPrice,
     providerPayout: retainedPrice - retainedProviderCommission,
-    platformCommission: retainedProviderCommission + retainedCustomerCommission,
-    refund: Math.max(paid - retainedPrice - retainedCustomerCommission - stripeFee, 0),
+    platformCommission:
+      retainedProviderCommission + retainedCustomerCommission - retainedReductions,
+    refund: Math.max(paid - retainedCharge - stripeFee, 0),
   };
 };
 

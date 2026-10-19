@@ -60,6 +60,10 @@ const adminCodeId = code => `admin_${code}`;
 // so that an id from a request can't point to another document path (e.g. 'a/redemptions/b').
 const ID_PATTERN = /^(merchant_[A-Za-z0-9-]{1,64}_|admin_)[A-Z0-9_-]{3,20}$/;
 const isPromoCodeId = id => typeof id === 'string' && ID_PATTERN.test(id);
+// Redemption ids are UUIDs made by the server (see checkout.js)
+const isRedemptionId = id =>
+  typeof id === 'string' &&
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id);
 
 // The promo code document of the id: admin codes are in their own collection
 const promoCodeRef = (db, id) => {
@@ -240,7 +244,8 @@ const updatePromoCode = async (owner, id, input) => {
   const changesDiscount =
     values.discountType !== data.discountType ||
     values.percentage !== (data.percentage ?? null) ||
-    values.amount !== (data.amount ?? null);
+    values.amount !== (data.amount ?? null) ||
+    values.currency !== (data.currency ?? null);
   if (usesCount > 0 && changesDiscount) {
     throw promoCodeError(409, 'code-in-use');
   }
@@ -470,6 +475,9 @@ const reservePromoCodeUse = ({ promoCodeId, redemptionId, details, now = new Dat
  * @param {string} transactionId
  */
 const confirmPromoCodeUse = (promoCodeId, redemptionId, transactionId) => {
+  if (!isPromoCodeId(promoCodeId) || !isRedemptionId(redemptionId) || !transactionId) {
+    return Promise.resolve();
+  }
   const db = getFirestore();
   const codeRef = promoCodeRef(db, promoCodeId);
   const redemptionRef = codeRef.collection(REDEMPTIONS).doc(redemptionId);
@@ -490,23 +498,27 @@ const confirmPromoCodeUse = (promoCodeId, redemptionId, transactionId) => {
 
 /**
  * The booking didn't go ahead after it was made (declined, expired or cancelled): the use is
- * given back. The use stays in the code's history as cancelled. Calling this again for the same
- * use does nothing.
+ * given back. The use stays in the code's history as cancelled. Only the booking that made the
+ * use can give it back, and calling this again for the same use does nothing.
  *
  * @param {string} promoCodeId
  * @param {string} redemptionId
+ * @param {string} transactionId The booking: must be the one the use was confirmed with
  * @param {string} [transactionState] E.g. 'state/declined'
  * @returns {Promise<boolean>} Whether a use was given back
  */
-const cancelPromoCodeUse = (promoCodeId, redemptionId, transactionState) => {
+const cancelPromoCodeUse = (promoCodeId, redemptionId, transactionId, transactionState) => {
+  if (!isPromoCodeId(promoCodeId) || !isRedemptionId(redemptionId) || !transactionId) {
+    return Promise.resolve(false);
+  }
   const db = getFirestore();
   const codeRef = promoCodeRef(db, promoCodeId);
   const redemptionRef = codeRef.collection(REDEMPTIONS).doc(redemptionId);
   const ledgerRef = codeRef.collection(LEDGER).doc(`${redemptionId}_${LEDGER_RETURNED}`);
   return db.runTransaction(async t => {
     const [code, redemption] = [await t.get(codeRef), await t.get(redemptionRef)];
-    const status = redemption.exists ? redemption.data().status : null;
-    if (!['reserved', 'used'].includes(status)) {
+    const { status, transactionId: usedBy } = redemption.exists ? redemption.data() : {};
+    if (status !== 'used' || usedBy !== transactionId) {
       return false;
     }
     if (code.exists) {
@@ -533,17 +545,21 @@ const cancelPromoCodeUse = (promoCodeId, redemptionId, transactionState) => {
  *
  * @param {string} promoCodeId
  * @param {string} redemptionId
+ * @param {string} transactionId The booking: must be the one the use was confirmed with
  * @returns {Promise<boolean>} Whether the use was completed now
  */
-const completePromoCodeUse = (promoCodeId, redemptionId) => {
+const completePromoCodeUse = (promoCodeId, redemptionId, transactionId) => {
+  if (!isPromoCodeId(promoCodeId) || !isRedemptionId(redemptionId) || !transactionId) {
+    return Promise.resolve(false);
+  }
   const db = getFirestore();
   const redemptionRef = promoCodeRef(db, promoCodeId)
     .collection(REDEMPTIONS)
     .doc(redemptionId);
   return db.runTransaction(async t => {
     const redemption = await t.get(redemptionRef);
-    const status = redemption.exists ? redemption.data().status : null;
-    if (!['reserved', 'used'].includes(status)) {
+    const { status, transactionId: usedBy } = redemption.exists ? redemption.data() : {};
+    if (status !== 'used' || usedBy !== transactionId) {
       return false;
     }
     t.update(redemptionRef, { status: 'completed', completedAt: FieldValue.serverTimestamp() });

@@ -30,9 +30,20 @@ describe('loyalty credits at checkout', () => {
 
   it('makes no calls unless the customer opts in', async () => {
     const sdk = { currentUser: { show: jest.fn() } };
-    const params = { sdk, transitionName: 'transition/request-payment' };
+    const params = {
+      sdk,
+      transitionName: 'transition/request-payment',
+      processName: 'default-booking/release-1',
+    };
     expect(await getBookingLoyalty({ ...params, orderData: {} })).toBe(null);
     expect(await getBookingLoyalty({ ...params, orderData: { useCredits: 'true' } })).toBe(null);
+    expect(
+      await getBookingLoyalty({
+        ...params,
+        processName: 'default-purchase/release-1',
+        orderData: { useCredits: true },
+      })
+    ).toBe(null);
     expect(sdk.currentUser.show).not.toHaveBeenCalled();
   });
 
@@ -47,6 +58,7 @@ describe('loyalty credits at checkout', () => {
       sdk,
       orderData: { useCredits: true, customerId: 'someone-else' },
       transitionName: 'transition/request-payment',
+      processName: 'default-booking/release-1',
     });
     expect(mockLoyalty.getLoyaltyAccount).toHaveBeenCalledWith('customer-1');
     expect(result).toMatchObject({ customerId: 'customer-1', balance: 500, currency: 'SGD' });

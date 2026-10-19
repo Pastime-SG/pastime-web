@@ -2,6 +2,7 @@ const crypto = require('crypto');
 
 const log = require('../../log');
 const { BOOKING_REQUEST_TRANSITIONS } = require('../policies');
+const { isBookingProcess } = require('../bookingData');
 const { LOYALTY_CREDIT } = require('../commission');
 const {
   confirmSpentCredits,
@@ -27,10 +28,15 @@ const {
  * @param {Object} params.sdk The user's SDK
  * @param {Object} [params.orderData]
  * @param {string} params.transitionName
+ * @param {string} params.processName The transaction's process name or alias
  * @returns {Promise<Object|null>} { customerId, balance, currency, redemptionId }
  */
-const getBookingLoyalty = async ({ sdk, orderData, transitionName }) => {
-  if (orderData?.useCredits !== true || !BOOKING_REQUEST_TRANSITIONS.includes(transitionName)) {
+const getBookingLoyalty = async ({ sdk, orderData, transitionName, processName }) => {
+  if (
+    orderData?.useCredits !== true ||
+    !BOOKING_REQUEST_TRANSITIONS.includes(transitionName) ||
+    !isBookingProcess(processName)
+  ) {
     return null;
   }
   const userResponse = await sdk.currentUser.show({ 'fields.user': ['profile.displayName'] });

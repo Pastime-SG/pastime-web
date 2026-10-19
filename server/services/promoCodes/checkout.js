@@ -2,6 +2,7 @@ const crypto = require('crypto');
 
 const log = require('../../log');
 const { BOOKING_REQUEST_TRANSITIONS } = require('../policies');
+const { isBookingProcess } = require('../bookingData');
 const {
   confirmPromoCodeUse,
   findPromoCodeForBooking,
@@ -27,10 +28,13 @@ const PROMO_DISCOUNT = 'line-item/promo-discount';
  * @param {Object} [params.orderData]
  * @param {string} params.providerId The listing's author
  * @param {string} params.transitionName
+ * @param {string} params.processName The transaction's process name or alias
  * @returns {Promise<Object|null>}
  */
-const getBookingPromoCode = ({ orderData, providerId, transitionName }) =>
-  orderData?.promoCode && BOOKING_REQUEST_TRANSITIONS.includes(transitionName)
+const getBookingPromoCode = ({ orderData, providerId, transitionName, processName }) =>
+  orderData?.promoCode &&
+  BOOKING_REQUEST_TRANSITIONS.includes(transitionName) &&
+  isBookingProcess(processName)
     ? findPromoCodeForBooking({ code: orderData.promoCode, providerId }).then(promoCode => ({
         ...promoCode,
         // The use of the code by this booking: it's stored with the booking, so that it can be

@@ -18,7 +18,12 @@ const {
   fetchCommission,
 } = require('../api-util/sdk');
 const { RESCHEDULE_USER_TRANSITIONS } = require('../services/reschedule');
-const { assertBookingStartAfterCutoff, getPoliciesProtectedData } = require('../services/policies');
+const {
+  BOOKING_REQUEST_TRANSITIONS,
+  assertBookingStartAfterCutoff,
+  getPoliciesProtectedData,
+} = require('../services/policies');
+const { getProtectedDataParams } = require('../services/bookingData');
 const { CANCEL_PRIVILEGED_TRANSITIONS } = require('../services/cancellation');
 const { getIncludedRelationship, getTransactionLineItems } = require('../services/commission');
 const {
@@ -165,9 +170,10 @@ module.exports = (req, res) => {
       providerId = provider?.id?.uuid;
 
       // The promo code entered at checkout (if any), for booking requests after an inquiry
-      promoCode = await getBookingPromoCode({ orderData, providerId, transitionName });
+      const { processName } = transaction.attributes;
+      promoCode = await getBookingPromoCode({ orderData, providerId, transitionName, processName });
       // The customer's loyalty credits, if they chose to use them
-      loyalty = await getBookingLoyalty({ sdk, orderData, transitionName });
+      loyalty = await getBookingLoyalty({ sdk, orderData, transitionName, processName });
 
       const existingMetadata = transaction?.attributes?.metadata;
       const existingOffers = existingMetadata?.offers || [];
@@ -217,32 +223,21 @@ module.exports = (req, res) => {
       //   after a provider's offer, you can add that logic in this same function.
       const roleBasedBodyParams = getRoleBasedBodyParams(orderData, bodyParams);
       // Omit listingId from params (transition/request-payment-after-inquiry does not need it)
-      const { listingId, ...restParams } = roleBasedBodyParams?.params || {};
-      // Policies are only set here, from the listing: never from the client
-      const { policies, ...protectedData } = restParams.protectedData || {};
-      // Copies of the applied promo code and credits, set here only (never from the client)
-      const {
-        promoCode: clientPromoCode,
-        loyalty: clientLoyalty,
-        ...clientProtectedData
-      } = protectedData;
-      const promoCodeMaybe = getPromoCodeProtectedData(promoCode, lineItems);
-      const loyaltyMaybe = getLoyaltyProtectedData(loyalty, lineItems);
-      const hasProtectedData =
-        !!restParams.protectedData ||
-        !!policiesMaybe.policies ||
-        !!promoCodeMaybe.promoCode ||
-        !!loyaltyMaybe.loyalty;
-      const protectedDataMaybe = hasProtectedData
-        ? {
-            protectedData: {
-              ...clientProtectedData,
-              ...policiesMaybe,
-              ...promoCodeMaybe,
-              ...loyaltyMaybe,
-            },
-          }
-        : {};
+      // The client's protected data is only passed on through getProtectedDataParams
+      const { listingId, protectedData: clientProtectedData, ...restParams } =
+        roleBasedBodyParams?.params || {};
+      // Server-owned protected data (policies, promo code, credits) is only set here, never from
+      // the client
+      const protectedDataMaybe = getProtectedDataParams({
+        clientProtectedData,
+        serverProtectedData: {
+          ...policiesMaybe,
+          ...getPromoCodeProtectedData(promoCode, lineItems),
+          ...getLoyaltyProtectedData(loyalty, lineItems),
+        },
+        // A booking request after an inquiry: replace whatever the inquiry stored
+        replaceServerOwned: BOOKING_REQUEST_TRANSITIONS.includes(transitionName),
+      });
 
       // Add lineItems to the body params
       const body = {

@@ -30,13 +30,23 @@ describe('promo codes at checkout', () => {
   it('only takes a code on booking requests', async () => {
     mockPromoCodes.findPromoCodeForBooking.mockResolvedValue(promoCode);
     const orderData = { promoCode: 'summer10' };
-    await getBookingPromoCode({ orderData, providerId: 'p', transitionName: 'transition/accept' });
-    expect(mockPromoCodes.findPromoCodeForBooking).not.toHaveBeenCalled();
+    const processName = 'default-booking/release-1';
+    const request = 'transition/request-payment';
     await getBookingPromoCode({
       orderData,
       providerId: 'p',
-      transitionName: 'transition/request-payment',
+      transitionName: 'transition/accept',
+      processName,
     });
+    // Only the booking process takes codes
+    await getBookingPromoCode({
+      orderData,
+      providerId: 'p',
+      transitionName: request,
+      processName: 'default-purchase/release-1',
+    });
+    expect(mockPromoCodes.findPromoCodeForBooking).not.toHaveBeenCalled();
+    await getBookingPromoCode({ orderData, providerId: 'p', transitionName: request, processName });
     expect(mockPromoCodes.findPromoCodeForBooking).toHaveBeenCalledWith({
       code: 'summer10',
       providerId: 'p',

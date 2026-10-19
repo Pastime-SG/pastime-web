@@ -89,6 +89,10 @@ jest.mock('../firebase', () => ({
   }),
 }));
 
+const R1 = '11111111-1111-4111-8111-111111111111';
+const R2 = '22222222-2222-4222-8222-222222222222';
+const R3 = '33333333-3333-4333-8333-333333333333';
+
 const {
   createMerchantPromoCode,
   deleteMerchantPromoCode,
@@ -212,13 +216,13 @@ describe('promo codes', () => {
       const reserve = redemptionId =>
         reservePromoCodeUse({ promoCodeId: created.id, redemptionId, details: {} });
 
-      await reserve('r1');
+      await reserve(R1);
       expect(mockStore.get(created.id).usesCount).toBe(1);
-      await expect(reserve('r2')).rejects.toThrow('promo-code-used-up');
+      await expect(reserve(R2)).rejects.toThrow('promo-code-used-up');
 
-      await releasePromoCodeUse(created.id, 'r1');
+      await releasePromoCodeUse(created.id, R1);
       expect(mockStore.get(created.id).usesCount).toBe(0);
-      await reserve('r3');
+      await reserve(R3);
       expect(mockStore.get(created.id).usesCount).toBe(1);
     });
   });
@@ -234,31 +238,55 @@ describe('promo codes', () => {
     it('gives a use back once when the booking does not go ahead, completes finished ones', async () => {
       const created = await createMerchantPromoCode('provider-1', percentageCode);
       const details = { discount: 2500, currency: 'SGD' };
-      await reservePromoCodeUse({ promoCodeId: created.id, redemptionId: 'r1', details });
-      await reservePromoCodeUse({ promoCodeId: created.id, redemptionId: 'r2', details });
-      await confirmPromoCodeUse(created.id, 'r1', 'tx-1');
-      await confirmPromoCodeUse(created.id, 'r2', 'tx-2');
+      await reservePromoCodeUse({ promoCodeId: created.id, redemptionId: R1, details });
+      await reservePromoCodeUse({ promoCodeId: created.id, redemptionId: R2, details });
+      await confirmPromoCodeUse(created.id, R1, 'tx-1');
+      await confirmPromoCodeUse(created.id, R2, 'tx-2');
       expect(mockStore.get(created.id).usesCount).toBe(2);
 
-      expect(await cancelPromoCodeUse(created.id, 'r1', 'state/declined')).toBe(true);
-      expect(await cancelPromoCodeUse(created.id, 'r1', 'state/declined')).toBe(false);
+      expect(await cancelPromoCodeUse(created.id, R1, 'tx-1', 'state/declined')).toBe(true);
+      expect(await cancelPromoCodeUse(created.id, R1, 'tx-1', 'state/declined')).toBe(false);
       expect(mockStore.get(created.id).usesCount).toBe(1);
-      expect(mockStore.get(`${created.id}/redemptions/r1`).status).toBe('cancelled');
+      expect(mockStore.get(`${created.id}/redemptions/${R1}`).status).toBe('cancelled');
 
-      expect(await completePromoCodeUse(created.id, 'r2')).toBe(true);
+      expect(await completePromoCodeUse(created.id, R2, 'tx-2')).toBe(true);
       expect(mockStore.get(created.id).usesCount).toBe(1);
-      expect(mockStore.get(`${created.id}/redemptions/r2`).status).toBe('completed');
+      expect(mockStore.get(`${created.id}/redemptions/${R2}`).status).toBe('completed');
+    });
+
+    it("doesn't throw on ids that aren't promo code or redemption ids", async () => {
+      await expect(cancelPromoCodeUse('x', R1, 'tx-1')).resolves.toBe(false);
+      await expect(completePromoCodeUse('admin_X/../y', R1, 'tx-1')).resolves.toBe(false);
+      await expect(confirmPromoCodeUse('x', 'not-a-uuid', 'tx-1')).resolves.toBeUndefined();
+    });
+
+    it('only gives a use back or completes it for the booking that made it', async () => {
+      const created = await createMerchantPromoCode('provider-1', percentageCode);
+      const details = { discount: 2500, currency: 'SGD' };
+      await reservePromoCodeUse({ promoCodeId: created.id, redemptionId: R1, details });
+      // Not yet linked to a booking: nothing can give it back
+      expect(await cancelPromoCodeUse(created.id, R1, 'tx-1', 'state/declined')).toBe(false);
+      await confirmPromoCodeUse(created.id, R1, 'tx-1');
+      // Another booking naming this use (e.g. in data it stored itself) changes nothing
+      expect(await cancelPromoCodeUse(created.id, R1, 'tx-other', 'state/declined')).toBe(false);
+      expect(await completePromoCodeUse(created.id, R1, 'tx-other')).toBe(false);
+      expect(await cancelPromoCodeUse(created.id, 'not-a-uuid/../x', 'tx-1')).toBe(false);
+      expect(mockStore.get(created.id).usesCount).toBe(1);
+      // Once completed, the use can't be given back
+      expect(await completePromoCodeUse(created.id, R1, 'tx-1')).toBe(true);
+      expect(await cancelPromoCodeUse(created.id, R1, 'tx-1', 'state/cancelled')).toBe(false);
+      expect(mockStore.get(created.id).usesCount).toBe(1);
     });
 
     it('keeps a ledger of uses and returned uses, newest first, for the owner only', async () => {
       const created = await createMerchantPromoCode('provider-1', percentageCode);
       const details = { discount: 2500, currency: 'SGD' };
-      await reservePromoCodeUse({ promoCodeId: created.id, redemptionId: 'r1', details });
-      await confirmPromoCodeUse(created.id, 'r1', 'tx-1');
+      await reservePromoCodeUse({ promoCodeId: created.id, redemptionId: R1, details });
+      await confirmPromoCodeUse(created.id, R1, 'tx-1');
       // Confirming again doesn't add a second use
-      await confirmPromoCodeUse(created.id, 'r1', 'tx-1');
-      await cancelPromoCodeUse(created.id, 'r1', 'state/expired');
-      await cancelPromoCodeUse(created.id, 'r1', 'state/expired');
+      await confirmPromoCodeUse(created.id, R1, 'tx-1');
+      await cancelPromoCodeUse(created.id, R1, 'tx-1', 'state/expired');
+      await cancelPromoCodeUse(created.id, R1, 'tx-1', 'state/expired');
 
       const ledger = await listMerchantPromoCodeLedger('provider-1', created.id);
       expect(ledger.map(e => [e.type, e.transactionId, e.transactionState])).toEqual([
@@ -270,6 +298,15 @@ describe('promo codes', () => {
         status: 404,
       });
     });
+  });
+
+  it("can't change the currency of a used fixed-amount code", async () => {
+    const fixed = { code: 'FIVE', discountType: 'fixed', amount: 500, currency: 'SGD' };
+    const created = await createMerchantPromoCode('provider-1', fixed);
+    mockStore.set(created.id, { ...mockStore.get(created.id), usesCount: 1 });
+    await expect(
+      updateMerchantPromoCode('provider-1', created.id, { ...fixed, currency: 'USD' })
+    ).rejects.toThrow('code-in-use');
   });
 
   describe('admin codes', () => {
@@ -328,7 +365,7 @@ describe('promo codes', () => {
     it("rejects ids that aren't promo code ids", async () => {
       const created = await createMerchantPromoCode('provider-1', percentageCode);
       await expect(
-        updateMerchantPromoCode('provider-1', `${created.id}/redemptions/r1`, percentageCode)
+        updateMerchantPromoCode('provider-1', `${created.id}/redemptions/${R1}`, percentageCode)
       ).rejects.toMatchObject({ status: 404 });
       await expect(deleteAdminPromoCode('../promoCodes/x')).rejects.toMatchObject({ status: 404 });
     });

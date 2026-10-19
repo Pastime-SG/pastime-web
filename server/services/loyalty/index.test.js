@@ -69,6 +69,10 @@ const {
   confirmSpentCredits,
 } = require('./index');
 
+const R1 = '11111111-1111-4111-8111-111111111111';
+const R2 = '22222222-2222-4222-8222-222222222222';
+const R3 = '33333333-3333-4333-8333-333333333333';
+
 const earn = (transactionId, paidAmount) =>
   earnCredits({ customerId: 'customer-1', transactionId, paidAmount, currency: 'SGD' });
 const spend = (redemptionId, amount) =>
@@ -98,20 +102,20 @@ describe('loyalty credits', () => {
 
   it("can't spend more than the balance", async () => {
     await earn('tx-1', 10000);
-    await expect(spend('r1', 300)).rejects.toMatchObject({
+    await expect(spend(R1, 300)).rejects.toMatchObject({
       status: 400,
       data: { errors: [{ code: 'loyalty-credits-unavailable' }] },
     });
-    await expect(spend('r1', 0)).rejects.toMatchObject({ status: 400 });
-    await spend('r1', 200);
+    await expect(spend(R1, 0)).rejects.toMatchObject({ status: 400 });
+    await spend(R1, 200);
     expect((await getLoyaltyAccount('customer-1')).creditBalance).toBe(0);
-    await expect(spend('r2', 100)).rejects.toMatchObject({ status: 400 });
+    await expect(spend(R2, 100)).rejects.toMatchObject({ status: 400 });
   });
 
   it('gives the credits back if the request fails, removing the spent entry', async () => {
     await earn('tx-1', 10000);
-    await spend('r1', 150);
-    await releaseSpentCredits('customer-1', 'r1');
+    await spend(R1, 150);
+    await releaseSpentCredits('customer-1', R1);
     expect((await getLoyaltyAccount('customer-1')).creditBalance).toBe(200);
     const { ledger } = await getLoyaltySummary('customer-1');
     expect(ledger.map(e => e.type)).toEqual(['earned']);
@@ -119,14 +123,22 @@ describe('loyalty credits', () => {
 
   it('gives the credits back once when the booking does not go ahead', async () => {
     await earn('tx-1', 10000);
-    await spend('r1', 150);
-    await confirmSpentCredits('customer-1', 'r1', 'tx-9');
+    await spend(R1, 150);
+    await confirmSpentCredits('customer-1', R1, 'tx-9');
     // A made booking isn't released by a failed request handler
-    await releaseSpentCredits('customer-1', 'r1');
+    await releaseSpentCredits('customer-1', R1);
     expect((await getLoyaltyAccount('customer-1')).creditBalance).toBe(50);
 
-    expect(await returnCredits('customer-1', 'r1', 'tx-9')).toBe(true);
-    expect(await returnCredits('customer-1', 'r1', 'tx-9')).toBe(false);
+    // Only the booking that used the credits can give them back
+    expect(
+      await returnCredits({ customerId: 'customer-1', redemptionId: R1, transactionId: 'tx-other' })
+    ).toBe(false);
+    expect(
+      await returnCredits({ customerId: 'customer-1', redemptionId: R1, transactionId: 'tx-9' })
+    ).toBe(true);
+    expect(
+      await returnCredits({ customerId: 'customer-1', redemptionId: R1, transactionId: 'tx-9' })
+    ).toBe(false);
     expect((await getLoyaltyAccount('customer-1')).creditBalance).toBe(200);
     const { ledger } = await getLoyaltySummary('customer-1');
     expect(ledger.map(e => [e.type, e.amount, e.transactionId])).toEqual([
@@ -136,7 +148,44 @@ describe('loyalty credits', () => {
     ]);
   });
 
+  it("doesn't throw when a booking names an invalid customer or redemption", async () => {
+    const params = { customerId: 'a/b', redemptionId: R1, transactionId: 'tx-1' };
+    await expect(returnCredits(params)).resolves.toBe(false);
+    await expect(confirmSpentCredits('a/b', R1, 'tx-1')).resolves.toBeUndefined();
+    await expect(
+      returnCredits({ ...params, customerId: 'customer-1', redemptionId: 'x/y' })
+    ).resolves.toBe(false);
+  });
+
   it("rejects customer ids that aren't user ids", async () => {
     await expect(getLoyaltyAccount('a/ledger/b')).rejects.toThrow('Invalid customer id');
+  });
+
+  it('gives back credits in proportion to the refund, rounded down', async () => {
+    await earn('tx-1', 10000);
+    await spend(R1, 150);
+    await confirmSpentCredits('customer-1', R1, 'tx-9');
+    const params = { customerId: 'customer-1', redemptionId: R1, transactionId: 'tx-9' };
+    expect(await returnCredits({ ...params, share: 0 })).toBe(false);
+    expect(await returnCredits({ ...params, share: 0.5 })).toBe(true);
+    expect((await getLoyaltyAccount('customer-1')).creditBalance).toBe(50 + 75);
+    // Once only, and never more than was used
+    expect(await returnCredits({ ...params, share: 1 })).toBe(false);
+  });
+
+  it("links spent credits to one booking only, and can't release them once linked", async () => {
+    await earn('tx-1', 10000);
+    await spend(R1, 100);
+    await confirmSpentCredits('customer-1', R1, 'tx-9');
+    await confirmSpentCredits('customer-1', R1, 'tx-other');
+    const { ledger } = await getLoyaltySummary('customer-1');
+    expect(ledger.find(e => e.type === 'spent').transactionId).toBe('tx-9');
+    await releaseSpentCredits('customer-1', R1);
+    expect((await getLoyaltyAccount('customer-1')).creditBalance).toBe(100);
+  });
+
+  it('only takes credits with a server-made redemption id', async () => {
+    await earn('tx-1', 10000);
+    await expect(spend('r1/../x', 100)).rejects.toThrow('Invalid redemption id');
   });
 });

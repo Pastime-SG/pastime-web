@@ -32,13 +32,18 @@ const LEDGER_EARNED = 'earned';
 const LEDGER_SPENT = 'spent';
 const LEDGER_RETURNED = 'returned';
 
+// Sharetribe user ids: nothing that could point to another document path
+const isCustomerId = id => typeof id === 'string' && /^[A-Za-z0-9-]{1,64}$/.test(id);
 const accountRef = (db, customerId) => {
-  // Sharetribe user ids: nothing that could point to another document path
-  if (typeof customerId !== 'string' || !/^[A-Za-z0-9-]{1,64}$/.test(customerId)) {
+  if (!isCustomerId(customerId)) {
     throw new Error('Invalid customer id');
   }
   return db.collection(ACCOUNTS).doc(customerId);
 };
+// Redemption ids are UUIDs made by the server (see checkout.js)
+const isRedemptionId = id =>
+  typeof id === 'string' &&
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id);
 const ledgerRef = (db, customerId, id) =>
   accountRef(db, customerId)
     .collection(LEDGER)
@@ -121,6 +126,9 @@ const getLoyaltySummary = async customerId => {
  * @param {string} params.currency
  */
 const spendCredits = ({ customerId, redemptionId, amount, currency }) => {
+  if (!isRedemptionId(redemptionId)) {
+    return Promise.reject(new Error('Invalid redemption id'));
+  }
   const db = getFirestore();
   const ref = accountRef(db, customerId);
   const entryRef = ledgerRef(db, customerId, `${redemptionId}_${LEDGER_SPENT}`);
@@ -151,10 +159,20 @@ const spendCredits = ({ customerId, redemptionId, amount, currency }) => {
  * @param {string} redemptionId
  * @param {string} transactionId
  */
-const confirmSpentCredits = (customerId, redemptionId, transactionId) =>
-  ledgerRef(getFirestore(), customerId, `${redemptionId}_${LEDGER_SPENT}`).update({
-    transactionId,
+const confirmSpentCredits = (customerId, redemptionId, transactionId) => {
+  if (!isCustomerId(customerId) || !isRedemptionId(redemptionId) || !transactionId) {
+    return Promise.resolve();
+  }
+  const db = getFirestore();
+  const entryRef = ledgerRef(db, customerId, `${redemptionId}_${LEDGER_SPENT}`);
+  return db.runTransaction(async t => {
+    const entry = await t.get(entryRef);
+    // Linked once: a booking's credits can't be moved to another booking
+    if (entry.exists && !entry.data().transactionId) {
+      t.update(entryRef, { transactionId });
+    }
   });
+};
 
 /**
  * The booking request failed: the credits go back, and the spent entry is removed.
@@ -180,25 +198,41 @@ const releaseSpentCredits = (customerId, redemptionId) => {
 };
 
 /**
- * The booking didn't go ahead (declined, expired or cancelled): the credits it used go back.
- * Calling this again for the same booking does nothing.
+ * The booking didn't go ahead, or was cancelled with a refund: the credits it used go back, in
+ * proportion to the refund (share 1: all of them). Only the booking that used the credits can
+ * give them back, and calling this again for the same booking does nothing.
  *
- * @param {string} customerId
- * @param {string} redemptionId
- * @param {string} [transactionId]
+ * @param {Object} params
+ * @param {string} params.customerId
+ * @param {string} params.redemptionId
+ * @param {string} params.transactionId The booking: must be the one the credits were used for
+ * @param {number} [params.share] 0-1
  * @returns {Promise<boolean>} Whether credits were given back now
  */
-const returnCredits = (customerId, redemptionId, transactionId = null) => {
+const returnCredits = ({ customerId, redemptionId, transactionId, share = 1 }) => {
+  if (
+    !isCustomerId(customerId) ||
+    !isRedemptionId(redemptionId) ||
+    !transactionId ||
+    !(share > 0)
+  ) {
+    return Promise.resolve(false);
+  }
   const db = getFirestore();
   const ref = accountRef(db, customerId);
   const spentRef = ledgerRef(db, customerId, `${redemptionId}_${LEDGER_SPENT}`);
   const returnedRef = ledgerRef(db, customerId, `${redemptionId}_${LEDGER_RETURNED}`);
   return db.runTransaction(async t => {
     const [spent, returned] = [await t.get(spentRef), await t.get(returnedRef)];
-    if (!spent.exists || returned.exists) {
+    if (!spent.exists || returned.exists || spent.data().transactionId !== transactionId) {
       return false;
     }
-    const { amount, currency } = spent.data();
+    const { currency } = spent.data();
+    // Rounded down: never more than the booking used
+    const amount = Math.floor(spent.data().amount * Math.min(share, 1));
+    if (amount <= 0) {
+      return false;
+    }
     t.update(ref, {
       creditBalance: FieldValue.increment(amount),
       updatedAt: FieldValue.serverTimestamp(),
@@ -207,7 +241,7 @@ const returnCredits = (customerId, redemptionId, transactionId = null) => {
       type: LEDGER_RETURNED,
       amount,
       currency,
-      transactionId: transactionId || spent.data().transactionId || null,
+      transactionId,
       createdAt: FieldValue.serverTimestamp(),
     });
     return true;
