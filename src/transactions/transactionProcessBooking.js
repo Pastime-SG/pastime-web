@@ -48,6 +48,23 @@ export const transitions = {
   // Admin can also cancel the transition.
   CANCEL: 'transition/cancel',
 
+  // Rescheduling an accepted booking (one reschedule loop per booking). These are privileged
+  // transitions that go through the server: see server/api/reschedule/reschedule.js
+  REQUEST_RESCHEDULE_BY_CUSTOMER: 'transition/request-reschedule-by-customer',
+  REQUEST_RESCHEDULE_BY_PROVIDER: 'transition/request-reschedule-by-provider',
+  ACCEPT_RESCHEDULE_BY_PROVIDER: 'transition/accept-reschedule-by-provider',
+  ACCEPT_RESCHEDULE_BY_CUSTOMER: 'transition/accept-reschedule-by-customer',
+  COUNTER_RESCHEDULE_BY_PROVIDER: 'transition/counter-reschedule-by-provider',
+  COUNTER_RESCHEDULE_BY_CUSTOMER: 'transition/counter-reschedule-by-customer',
+  DECLINE_RESCHEDULE_BY_PROVIDER: 'transition/decline-reschedule-by-provider',
+  DECLINE_RESCHEDULE_BY_CUSTOMER: 'transition/decline-reschedule-by-customer',
+  // The backend expires an unanswered reschedule request when the booking starts.
+  EXPIRE_RESCHEDULE_REQUESTED_BY_CUSTOMER: 'transition/expire-reschedule-requested-by-customer',
+  EXPIRE_RESCHEDULE_REQUESTED_BY_PROVIDER: 'transition/expire-reschedule-requested-by-provider',
+  // Admin can cancel the booking while a reschedule request is pending.
+  CANCEL_RESCHEDULE_REQUESTED_BY_CUSTOMER: 'transition/cancel-reschedule-requested-by-customer',
+  CANCEL_RESCHEDULE_REQUESTED_BY_PROVIDER: 'transition/cancel-reschedule-requested-by-provider',
+
   // The backend will mark the transaction completed.
   COMPLETE: 'transition/complete',
   OPERATOR_COMPLETE: 'transition/operator-complete',
@@ -81,6 +98,8 @@ export const states = {
   PREAUTHORIZED: 'preauthorized',
   DECLINED: 'declined',
   ACCEPTED: 'accepted',
+  RESCHEDULE_REQUESTED_BY_CUSTOMER: 'reschedule-requested-by-customer',
+  RESCHEDULE_REQUESTED_BY_PROVIDER: 'reschedule-requested-by-provider',
   EXPIRED: 'expired',
   CANCELED: 'canceled',
   DELIVERED: 'delivered',
@@ -146,6 +165,26 @@ export const graph = {
         [transitions.CANCEL]: states.CANCELED,
         [transitions.COMPLETE]: states.DELIVERED,
         [transitions.OPERATOR_COMPLETE]: states.DELIVERED,
+        [transitions.REQUEST_RESCHEDULE_BY_CUSTOMER]: states.RESCHEDULE_REQUESTED_BY_CUSTOMER,
+        [transitions.REQUEST_RESCHEDULE_BY_PROVIDER]: states.RESCHEDULE_REQUESTED_BY_PROVIDER,
+      },
+    },
+    [states.RESCHEDULE_REQUESTED_BY_CUSTOMER]: {
+      on: {
+        [transitions.ACCEPT_RESCHEDULE_BY_PROVIDER]: states.ACCEPTED,
+        [transitions.DECLINE_RESCHEDULE_BY_PROVIDER]: states.ACCEPTED,
+        [transitions.COUNTER_RESCHEDULE_BY_PROVIDER]: states.RESCHEDULE_REQUESTED_BY_PROVIDER,
+        [transitions.EXPIRE_RESCHEDULE_REQUESTED_BY_CUSTOMER]: states.ACCEPTED,
+        [transitions.CANCEL_RESCHEDULE_REQUESTED_BY_CUSTOMER]: states.CANCELED,
+      },
+    },
+    [states.RESCHEDULE_REQUESTED_BY_PROVIDER]: {
+      on: {
+        [transitions.ACCEPT_RESCHEDULE_BY_CUSTOMER]: states.ACCEPTED,
+        [transitions.DECLINE_RESCHEDULE_BY_CUSTOMER]: states.ACCEPTED,
+        [transitions.COUNTER_RESCHEDULE_BY_CUSTOMER]: states.RESCHEDULE_REQUESTED_BY_CUSTOMER,
+        [transitions.EXPIRE_RESCHEDULE_REQUESTED_BY_PROVIDER]: states.ACCEPTED,
+        [transitions.CANCEL_RESCHEDULE_REQUESTED_BY_PROVIDER]: states.CANCELED,
       },
     },
 
@@ -174,6 +213,21 @@ export const graph = {
   },
 };
 
+// Transitions of the reschedule loop. They're shown in the activity feed with their own
+// messages, because most of them lead back to the accepted state.
+export const rescheduleTransitions = [
+  transitions.REQUEST_RESCHEDULE_BY_CUSTOMER,
+  transitions.REQUEST_RESCHEDULE_BY_PROVIDER,
+  transitions.ACCEPT_RESCHEDULE_BY_PROVIDER,
+  transitions.ACCEPT_RESCHEDULE_BY_CUSTOMER,
+  transitions.COUNTER_RESCHEDULE_BY_PROVIDER,
+  transitions.COUNTER_RESCHEDULE_BY_CUSTOMER,
+  transitions.DECLINE_RESCHEDULE_BY_PROVIDER,
+  transitions.DECLINE_RESCHEDULE_BY_CUSTOMER,
+  transitions.EXPIRE_RESCHEDULE_REQUESTED_BY_CUSTOMER,
+  transitions.EXPIRE_RESCHEDULE_REQUESTED_BY_PROVIDER,
+];
+
 // Check if a transition is the kind that should be rendered
 // when showing transition history (e.g. ActivityFeed)
 // The first transition and most of the expiration transitions made by system are not relevant
@@ -192,6 +246,9 @@ export const isRelevantPastTransition = transition => {
     transitions.REVIEW_1_BY_PROVIDER,
     transitions.REVIEW_2_BY_CUSTOMER,
     transitions.REVIEW_2_BY_PROVIDER,
+    transitions.CANCEL_RESCHEDULE_REQUESTED_BY_CUSTOMER,
+    transitions.CANCEL_RESCHEDULE_REQUESTED_BY_PROVIDER,
+    ...rescheduleTransitions,
   ].includes(transition);
 };
 
@@ -214,9 +271,18 @@ export const isProviderReview = transition => {
 // should go through the local API endpoints, or if using JS SDK is
 // enough.
 export const isPrivileged = transition => {
-  return [transitions.REQUEST_PAYMENT, transitions.REQUEST_PAYMENT_AFTER_INQUIRY].includes(
-    transition
-  );
+  return [
+    transitions.REQUEST_PAYMENT,
+    transitions.REQUEST_PAYMENT_AFTER_INQUIRY,
+    transitions.REQUEST_RESCHEDULE_BY_CUSTOMER,
+    transitions.REQUEST_RESCHEDULE_BY_PROVIDER,
+    transitions.ACCEPT_RESCHEDULE_BY_PROVIDER,
+    transitions.ACCEPT_RESCHEDULE_BY_CUSTOMER,
+    transitions.COUNTER_RESCHEDULE_BY_PROVIDER,
+    transitions.COUNTER_RESCHEDULE_BY_CUSTOMER,
+    transitions.DECLINE_RESCHEDULE_BY_PROVIDER,
+    transitions.DECLINE_RESCHEDULE_BY_CUSTOMER,
+  ].includes(transition);
 };
 
 // Check when transaction is completed (booking over)
@@ -242,9 +308,17 @@ export const isRefunded = transition => {
     transitions.EXPIRE_PAYMENT,
     transitions.EXPIRE,
     transitions.CANCEL,
+    transitions.CANCEL_RESCHEDULE_REQUESTED_BY_CUSTOMER,
+    transitions.CANCEL_RESCHEDULE_REQUESTED_BY_PROVIDER,
     transitions.DECLINE,
   ];
   return txRefundedTransitions.includes(transition);
 };
 
-export const statesNeedingProviderAttention = [states.PREAUTHORIZED];
+export const statesNeedingProviderAttention = [
+  states.PREAUTHORIZED,
+  states.RESCHEDULE_REQUESTED_BY_CUSTOMER,
+];
+
+// The customer needs to answer the provider's reschedule request
+export const statesNeedingCustomerAttention = [states.RESCHEDULE_REQUESTED_BY_PROVIDER];

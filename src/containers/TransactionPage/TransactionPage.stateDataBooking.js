@@ -5,6 +5,26 @@ import {
   ConditionalResolver,
 } from '../../transactions/transaction';
 
+// Activity feed messages for the reschedule transitions. Most of them lead back to the accepted
+// state, so the default (state based) message would be wrong.
+const getRescheduleTransitionMessages = transitions => {
+  const messageId = key => `TransactionPage.ActivityFeed.default-booking.${key}`;
+  return [
+    [transitions.REQUEST_RESCHEDULE_BY_CUSTOMER, 'rescheduleRequested'],
+    [transitions.REQUEST_RESCHEDULE_BY_PROVIDER, 'rescheduleRequested'],
+    [transitions.COUNTER_RESCHEDULE_BY_CUSTOMER, 'rescheduleCountered'],
+    [transitions.COUNTER_RESCHEDULE_BY_PROVIDER, 'rescheduleCountered'],
+    [transitions.ACCEPT_RESCHEDULE_BY_CUSTOMER, 'rescheduleAccepted'],
+    [transitions.ACCEPT_RESCHEDULE_BY_PROVIDER, 'rescheduleAccepted'],
+    [transitions.DECLINE_RESCHEDULE_BY_CUSTOMER, 'rescheduleDeclined'],
+    [transitions.DECLINE_RESCHEDULE_BY_PROVIDER, 'rescheduleDeclined'],
+    [transitions.EXPIRE_RESCHEDULE_REQUESTED_BY_CUSTOMER, 'rescheduleExpired'],
+    [transitions.EXPIRE_RESCHEDULE_REQUESTED_BY_PROVIDER, 'rescheduleExpired'],
+  ]
+    .filter(([transition]) => !!transition)
+    .map(([transition, key]) => ({ transition, translationId: messageId(key) }));
+};
+
 /**
  * Get state data against booking process for TransactionPage's UI.
  * I.e. info about showing action buttons, current state etc.
@@ -13,6 +33,14 @@ import {
  * @param {*} processInfo  details about process
  */
 export const getStateDataForBookingProcess = (txInfo, processInfo) => {
+  const stateData = getBookingStateData(txInfo, processInfo);
+  return {
+    ...stateData,
+    transitionMessages: getRescheduleTransitionMessages(processInfo.transitions),
+  };
+};
+
+const getBookingStateData = (txInfo, processInfo) => {
   const { transaction, transactionRole, nextTransitions } = txInfo;
   const isProviderBanned = transaction?.provider?.attributes?.banned;
   const isCustomerBanned = transaction?.provider?.attributes?.banned;

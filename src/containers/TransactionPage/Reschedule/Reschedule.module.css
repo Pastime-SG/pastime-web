@@ -1,0 +1,268 @@
+@import '../../../styles/customMediaQueries.css';
+
+/* ================ Card on the transaction page ================ */
+
+/* Same spacing as the other sections of the transaction panel (e.g. location, activity feed) */
+.card {
+  margin: 24px 24px 0 24px;
+  padding: 18px;
+  background-color: var(--colorWhite);
+  border: 1px solid var(--colorGrey100);
+  border-radius: 12px;
+
+  @media (--viewportMedium) {
+    padding: 24px;
+  }
+
+  @media (--viewportLarge) {
+    margin: 24px 0 0 0;
+  }
+}
+
+.attention {
+  border-color: #f6c7b4;
+  background-color: #fff8f5;
+}
+
+.success {
+  border-color: #c6ecd4;
+  background-color: #f5fbf7;
+}
+
+.neutral {
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cardIcon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  color: var(--marketplaceColor);
+  background-color: #fff1ec;
+  border-radius: 50%;
+
+  .success & {
+    color: #1a7f45;
+    background-color: #e6f6ec;
+  }
+}
+
+.cardIconSvg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+}
+
+.cardTitle {
+  margin: 0;
+  padding: 0;
+  font-size: 18px;
+  font-weight: var(--fontWeightBold);
+  line-height: 24px;
+  color: var(--colorGrey900);
+}
+
+.times {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 16px;
+  margin: 16px 0 0 0;
+  font-size: 15px;
+  line-height: 22px;
+}
+
+.timeLabel {
+  color: var(--colorGrey600);
+}
+
+.timeValue {
+  margin: 0;
+  color: var(--colorGrey900);
+}
+
+.suggestedTime {
+  font-weight: var(--fontWeightSemiBold);
+}
+
+.note {
+  margin: 12px 0 0 0;
+  padding: 0;
+  font-size: 15px;
+  line-height: 22px;
+  color: var(--colorGrey700);
+}
+
+.warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 16px 0 0 0;
+  padding: 12px 14px;
+  font-size: 14px;
+  line-height: 20px;
+  color: #9a3412;
+  background-color: #fff1ec;
+  border-radius: 8px;
+}
+
+.warningIcon {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  fill: none;
+}
+
+.error {
+  margin: 12px 0 0 0;
+  padding: 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--colorFail);
+}
+
+.confirm {
+  margin-top: 4px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.primaryButton,
+.secondaryButton {
+  width: auto;
+  min-width: 180px;
+  min-height: 48px;
+  padding: 0 24px;
+  border-radius: 8px;
+}
+
+.primaryButton {
+  background-color: var(--marketplaceColor);
+
+  &:hover,
+  &:focus {
+    background-color: var(--marketplaceColorDark);
+  }
+}
+
+.card > .secondaryButton {
+  margin-top: 16px;
+}
+
+.declineLink {
+  margin-top: 14px;
+  font-size: 14px;
+  color: var(--colorGrey700);
+  text-decoration: underline;
+
+  &:hover {
+    color: var(--colorGrey900);
+  }
+}
+
+/* ================ Modal ================ */
+
+.modalContainer {
+  composes: marketplaceModalBaseStyles from global;
+  padding-top: 70px;
+
+  @media (--viewportMedium) {
+    flex-basis: 567px;
+  }
+}
+
+.modalTitle {
+  composes: marketplaceModalTitleStyles from global;
+}
+
+.modalDescription {
+  composes: marketplaceModalParagraphStyles from global;
+}
+
+.currentTime {
+  margin: 12px 0 0 0;
+  padding: 10px 14px;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--colorGrey700);
+  background-color: var(--colorGrey50);
+  border-radius: 8px;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  margin-top: 24px;
+}
+
+.field {
+  margin-bottom: 20px;
+}
+
+.dateInput {
+  width: 100%;
+}
+
+.datePopup {
+  position: absolute;
+  z-index: 1;
+  width: 100%;
+}
+
+.endTime {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin-bottom: 8px;
+}
+
+.endTimeLabel {
+  font-size: 14px;
+  font-weight: var(--fontWeightSemiBold);
+  color: var(--colorGrey700);
+}
+
+.endTimeValue {
+  font-size: 16px;
+  font-weight: var(--fontWeightSemiBold);
+  color: var(--colorGrey900);
+}
+
+.endTimeNote {
+  flex-basis: 100%;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--colorGrey500);
+}
+
+.newTime {
+  margin: 12px 0 0 0;
+  font-size: 15px;
+  line-height: 22px;
+  color: var(--colorGrey900);
+}
+
+.submitButton {
+  margin-top: 24px;
+  border-radius: 8px;
+  background-color: var(--marketplaceColor);
+
+  &:hover,
+  &:focus {
+    background-color: var(--marketplaceColorDark);
+  }
+}

@@ -11,7 +11,7 @@ import {
   stringifyDateToISO8601,
 } from '../../util/dates';
 import { isTransactionsTransitionInvalidTransition, storableError } from '../../util/errors';
-import { transactionLineItems, transitionPrivileged } from '../../util/api';
+import { rescheduleBooking, transactionLineItems, transitionPrivileged } from '../../util/api';
 import * as log from '../../util/log';
 import {
   updatedEntities,
@@ -19,6 +19,7 @@ import {
   denormalisedResponseEntities,
 } from '../../util/data';
 import {
+  BOOKING_PROCESS_NAME,
   resolveLatestProcessName,
   getProcess,
   isBookingProcess,
@@ -155,12 +156,19 @@ export const fetchTimeSlots = (listingId, start, end, timeZone, options) => disp
   return dispatch(fetchTimeSlotsThunk({ listingId, start, end, timeZone, options }));
 };
 
+// Time slots for rescheduling a booking: the next two months, counting only the days that have a
+// free time long enough for the booking.
+export const fetchRescheduleTimeSlots = (listing, durationMinutes) => dispatch =>
+  fetchMonthlyTimeSlots(dispatch, listing, durationMinutes);
+
 //////////////////////
 // fetchTransaction //
 //////////////////////
 
 // Helper function for loadData call.
-const fetchMonthlyTimeSlots = (dispatch, listing) => {
+// minDurationMinutes: only days with a free time of at least this length count as available
+// (e.g. the duration of a booking that is rescheduled).
+const fetchMonthlyTimeSlots = (dispatch, listing, minDurationMinutes) => {
   const hasWindow = typeof window !== 'undefined';
   const { availabilityPlan, publicData } = listing?.attributes || {};
   const tz = availabilityPlan?.timezone;
@@ -187,14 +195,17 @@ const fetchMonthlyTimeSlots = (dispatch, listing) => {
       return Math.min(min, priceVariant.bookingLengthInMinutes);
     }, Number.MAX_SAFE_INTEGER);
 
+    // A rescheduled booking keeps its own duration (e.g. the session length it was booked with)
+    const sessionLengthInMinutes = minDurationMinutes || bookingLengthInMinutes;
     const nextMonthEnd = isFixed
-      ? getStartOf(nextMonth, 'minute', tz, bookingLengthInMinutes, 'minutes')
+      ? getStartOf(nextMonth, 'minute', tz, sessionLengthInMinutes, 'minutes')
       : nextMonth;
     const followingMonthEnd = isFixed
-      ? getStartOf(nextAfterNextMonth, 'minute', tz, bookingLengthInMinutes, 'minutes')
+      ? getStartOf(nextAfterNextMonth, 'minute', tz, sessionLengthInMinutes, 'minutes')
       : nextAfterNextMonth;
 
-    const minDurationStartingInInterval = isFixed ? bookingLengthInMinutes : 60;
+    const minDurationStartingInInterval =
+      minDurationMinutes || (isFixed ? bookingLengthInMinutes : 60);
 
     const options = intervalAlign => {
       return ['fixed', 'hour'].includes(unitType)
@@ -377,6 +388,12 @@ const makeTransitionPayloadCreator = (
     .then(response => {
       dispatch(addMarketplaceEntities(response));
       dispatch(fetchCurrentUserNotifications());
+      // After the provider accepts a booking, they can request a reschedule. Whether the
+      // transaction's process version supports it comes from its next transitions, which were
+      // fetched when the booking wasn't accepted yet. Other transitions don't need them again.
+      if (processName === BOOKING_PROCESS_NAME && transitionName === process.transitions.ACCEPT) {
+        dispatch(fetchTransitionsThunk({ id: txId }));
+      }
 
       // There could be automatic transitions after this transition
       // For example mark-received-from-purchased > auto-complete.
@@ -788,6 +805,41 @@ export const fetchNextTransitions = id => dispatch => {
   return dispatch(fetchTransitionsThunk({ id }));
 };
 
+///////////////////////
+// rescheduleBooking //
+///////////////////////
+
+// Request a new time, suggest another time, accept or decline (see server/api/reschedule/reschedule.js).
+// The endpoint returns the updated transaction and its booking, so nothing is fetched again. The
+// next transitions aren't needed: they only tell if the first request can be made.
+const rescheduleBookingPayloadCreator = (
+  { txId, action, bookingStart },
+  { dispatch, rejectWithValue }
+) => {
+  const bookingStartMaybe = bookingStart ? { bookingStart } : {};
+  return rescheduleBooking({ transactionId: txId, action, ...bookingStartMaybe })
+    .then(response => {
+      dispatch(addMarketplaceEntities(response));
+      // Answering a request clears it from the user's notifications. A new request doesn't
+      // change the requester's notifications.
+      if (action !== 'request') {
+        dispatch(fetchCurrentUserNotifications());
+      }
+      return response;
+    })
+    .catch(e => rejectWithValue({ ...storableError(e), code: e?.code || null }));
+};
+
+export const rescheduleBookingThunk = createAsyncThunk(
+  'TransactionPage/rescheduleBooking',
+  rescheduleBookingPayloadCreator
+);
+
+// Backward compatible wrapper for rescheduleBooking
+export const rescheduleBookingAction = params => dispatch => {
+  return dispatch(rescheduleBookingThunk(params)).unwrap();
+};
+
 ////////////////////
 // FetchLineItems //
 ////////////////////
@@ -856,6 +908,8 @@ const initialState = {
   fetchTransitionsInProgress: false,
   fetchTransitionsError: null,
   processTransitions: null,
+  rescheduleInProgress: null,
+  rescheduleError: null,
   lineItems: null,
   fetchLineItemsInProgress: false,
   fetchLineItemsError: null,
@@ -957,6 +1011,18 @@ const transactionPageSlice = createSlice({
         state.fetchTransitionsError = action.payload;
       })
       // makeTransition cases
+      // rescheduleBooking cases
+      .addCase(rescheduleBookingThunk.pending, (state, action) => {
+        state.rescheduleInProgress = action.meta.arg.action;
+        state.rescheduleError = null;
+      })
+      .addCase(rescheduleBookingThunk.fulfilled, state => {
+        state.rescheduleInProgress = null;
+      })
+      .addCase(rescheduleBookingThunk.rejected, (state, action) => {
+        state.rescheduleInProgress = null;
+        state.rescheduleError = action.payload;
+      })
       .addCase(makeTransitionThunk.pending, (state, action) => {
         state.transitionInProgress = action.meta.arg.transitionName;
         state.transitionError = null;

@@ -151,3 +151,10 @@ export const createUserWithIdp = body => {
 export const deleteUserAccount = body => {
   return post('/api/delete-account', body);
 };
+
+// Reschedule an accepted booking: request a new time, suggest another time, accept or decline.
+//
+// See `server/api/reschedule/reschedule.js` to see what data should be sent in the body.
+export const rescheduleBooking = body => {
+  return post('/api/reschedule', body);
+};

@@ -74,6 +74,8 @@ import RequestChangesModal from './RequestChangesModal/RequestChangesModal';
 import MakeCounterOfferModal from './MakeCounterOfferModal/MakeCounterOfferModal';
 import SendMessageForm from './SendMessageForm/SendMessageForm';
 import TransactionPanel from './TransactionPanel/TransactionPanel';
+import Reschedule from './Reschedule/Reschedule';
+import { getRescheduleInfo } from './Reschedule/Reschedule.helpers';
 
 import {
   makeTransition,
@@ -81,6 +83,8 @@ import {
   sendReview,
   fetchMoreMessages,
   fetchTimeSlots,
+  fetchRescheduleTimeSlots,
+  rescheduleBookingAction,
   fetchTransactionLineItems,
   uploadFile,
   clearUploadedFiles,
@@ -379,6 +383,10 @@ export const TransactionPageComponent = props => {
     onDownloadFile,
     fileDownloads,
     fileUploadsDisabled,
+    onReschedule,
+    onFetchRescheduleTimeSlots,
+    rescheduleInProgress,
+    rescheduleError,
     ...restOfProps
   } = props;
 
@@ -900,6 +908,28 @@ export const TransactionPageComponent = props => {
           isCounterpartyInactive={isCounterpartyInactive}
         />
       )}
+      reschedule={
+        <Reschedule
+          info={getRescheduleInfo({ transaction, transactionRole, nextTransitions })}
+          listing={listing}
+          timeZone={listing?.attributes?.availabilityPlan?.timezone || 'Etc/UTC'}
+          otherUserDisplayName={otherUserDisplayNameString}
+          monthlyTimeSlots={props.monthlyTimeSlots}
+          timeSlotsForDate={props.timeSlotsForDate}
+          onFetchTimeSlots={props.onFetchTimeSlots}
+          onFetchRescheduleTimeSlots={onFetchRescheduleTimeSlots}
+          onReschedule={(action, bookingStart) =>
+            onReschedule({
+              txId: transaction.id,
+              action,
+              bookingStart,
+            })
+          }
+          rescheduleInProgress={rescheduleInProgress}
+          rescheduleError={rescheduleError}
+          onManageDisableScrolling={onManageDisableScrolling}
+        />
+      }
       fileAttachments={
         <FileAttachments
           isDownloadProcess={isDownloadProcess(processName)}
@@ -1175,6 +1205,8 @@ const TransactionPage = props => {
     fetchLineItemsError,
     fileUploadsDisabled,
     fileDownloads,
+    rescheduleInProgress,
+    rescheduleError,
   } = useSelector(state => state.TransactionPage, shallowEqual);
 
   const currentUser = useSelector(state => state.user?.currentUser);
@@ -1237,6 +1269,11 @@ const TransactionPage = props => {
     (fileAttachmentId, isOwnFile) => dispatch(downloadFile(fileAttachmentId, isOwnFile)),
     [dispatch]
   );
+  const onReschedule = useCallback(params => dispatch(rescheduleBookingAction(params)), [dispatch]);
+  const onFetchRescheduleTimeSlots = useCallback(
+    (listing, durationMinutes) => dispatch(fetchRescheduleTimeSlots(listing, durationMinutes)),
+    [dispatch]
+  );
 
   return (
     <TransactionPageComponent
@@ -1279,6 +1316,10 @@ const TransactionPage = props => {
       onDownloadFile={onDownloadFile}
       fileDownloads={fileDownloads}
       history={history}
+      onReschedule={onReschedule}
+      onFetchRescheduleTimeSlots={onFetchRescheduleTimeSlots}
+      rescheduleInProgress={rescheduleInProgress}
+      rescheduleError={rescheduleError}
     />
   );
 };
