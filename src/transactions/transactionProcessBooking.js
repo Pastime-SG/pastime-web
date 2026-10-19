@@ -69,9 +69,12 @@ export const transitions = {
   COMPLETE: 'transition/complete',
   OPERATOR_COMPLETE: 'transition/operator-complete',
 
-  // Reviews are given through transaction transitions. Review 1 can be
-  // by provider or customer, and review 2 will be the other party of
-  // the transaction.
+  // Reviews are given through transaction transitions. Only the customer reviews the provider:
+  // the review is published right away.
+  REVIEW_BY_CUSTOMER: 'transition/review-by-customer',
+
+  // Older process versions: review 1 can be by provider or customer, and review 2 will be the
+  // other party of the transaction. Kept for transactions made with those versions.
   REVIEW_1_BY_PROVIDER: 'transition/review-1-by-provider',
   REVIEW_2_BY_PROVIDER: 'transition/review-2-by-provider',
   REVIEW_1_BY_CUSTOMER: 'transition/review-1-by-customer',
@@ -192,6 +195,7 @@ export const graph = {
     [states.DELIVERED]: {
       on: {
         [transitions.EXPIRE_REVIEW_PERIOD]: states.REVIEWED,
+        [transitions.REVIEW_BY_CUSTOMER]: states.REVIEWED,
         [transitions.REVIEW_1_BY_CUSTOMER]: states.REVIEWED_BY_CUSTOMER,
         [transitions.REVIEW_1_BY_PROVIDER]: states.REVIEWED_BY_PROVIDER,
       },
@@ -242,6 +246,7 @@ export const isRelevantPastTransition = transition => {
     transitions.DECLINE,
     transitions.OPERATOR_DECLINE,
     transitions.EXPIRE,
+    transitions.REVIEW_BY_CUSTOMER,
     transitions.REVIEW_1_BY_CUSTOMER,
     transitions.REVIEW_1_BY_PROVIDER,
     transitions.REVIEW_2_BY_CUSTOMER,
@@ -255,7 +260,11 @@ export const isRelevantPastTransition = transition => {
 // Processes might be different on how reviews are handled.
 // Default processes use two-sided diamond shape, where either party can make the review first
 export const isCustomerReview = transition => {
-  return [transitions.REVIEW_1_BY_CUSTOMER, transitions.REVIEW_2_BY_CUSTOMER].includes(transition);
+  return [
+    transitions.REVIEW_BY_CUSTOMER,
+    transitions.REVIEW_1_BY_CUSTOMER,
+    transitions.REVIEW_2_BY_CUSTOMER,
+  ].includes(transition);
 };
 
 // Processes might be different on how reviews are handled.
@@ -290,6 +299,7 @@ export const isCompleted = transition => {
   const txCompletedTransitions = [
     transitions.COMPLETE,
     transitions.OPERATOR_COMPLETE,
+    transitions.REVIEW_BY_CUSTOMER,
     transitions.REVIEW_1_BY_CUSTOMER,
     transitions.REVIEW_1_BY_PROVIDER,
     transitions.REVIEW_2_BY_CUSTOMER,

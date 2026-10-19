@@ -47,14 +47,18 @@ export const getStateDataForBookingProcess = (txInfo, processInfo) => {
       .cond([states.EXPIRED, _], () => {
         return { processName, processState, isFinal: true };
       })
-      .cond([states.DELIVERED, _], () => {
+      // Only the customer reviews the provider: for the provider, the booking is completed
+      .cond([states.DELIVERED, CUSTOMER], () => {
         return { processName, processState, actionNeeded: true };
+      })
+      .cond([states.DELIVERED, PROVIDER], () => {
+        return { processName, processState, isFinal: true };
       })
       .cond([states.REVIEWED_BY_PROVIDER, CUSTOMER], () => {
         return { processName, processState, actionNeeded: true };
       })
-      .cond([states.REVIEWED_BY_CUSTOMER, PROVIDER], () => {
-        return { processName, processState, actionNeeded: true };
+      .cond([states.REVIEWED_BY_CUSTOMER, _], () => {
+        return { processName, processState, isFinal: true };
       })
       .cond([states.REVIEWED, _], () => {
         return { processName, processState, isFinal: true };

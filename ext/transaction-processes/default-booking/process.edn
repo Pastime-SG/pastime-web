@@ -202,29 +202,15 @@
     {:name :action/cancel-booking}],
    :from :state/reschedule-requested-by-provider,
    :to :state/cancelled}
-  {:name :transition/review-1-by-provider,
-   :actor :actor.role/provider,
-   :actions [{:name :action/post-review-by-provider}],
-   :from :state/delivered,
-   :to :state/reviewed-by-provider}
-  {:name :transition/review-2-by-provider,
-   :actor :actor.role/provider,
-   :actions
-   [{:name :action/post-review-by-provider}
-    {:name :action/publish-reviews}],
-   :from :state/reviewed-by-customer,
-   :to :state/reviewed}
-  {:name :transition/review-1-by-customer,
-   :actor :actor.role/customer,
-   :actions [{:name :action/post-review-by-customer}],
-   :from :state/delivered,
-   :to :state/reviewed-by-customer}
-  {:name :transition/review-2-by-customer,
+  ;; Reviews: only the customer can review the provider. Providers don't review customers.
+  ;; The customer's review is published right away. The review period ends 7 days after the
+  ;; booking.
+  {:name :transition/review-by-customer,
    :actor :actor.role/customer,
    :actions
    [{:name :action/post-review-by-customer}
     {:name :action/publish-reviews}],
-   :from :state/reviewed-by-provider,
+   :from :state/delivered,
    :to :state/reviewed}
   {:name :transition/expire-review-period,
    :at
@@ -232,20 +218,6 @@
     [{:fn/timepoint [:time/booking-end]} {:fn/period ["P7D"]}]},
    :actions [],
    :from :state/delivered,
-   :to :state/reviewed}
-  {:name :transition/expire-provider-review-period,
-   :at
-   {:fn/plus
-    [{:fn/timepoint [:time/booking-end]} {:fn/period ["P7D"]}]},
-   :actions [{:name :action/publish-reviews}],
-   :from :state/reviewed-by-customer,
-   :to :state/reviewed}
-  {:name :transition/expire-customer-review-period,
-   :at
-   {:fn/plus
-    [{:fn/timepoint [:time/booking-end]} {:fn/period ["P7D"]}]},
-   :actions [{:name :action/publish-reviews}],
-   :from :state/reviewed-by-provider,
    :to :state/reviewed}],
  :notifications
  [{:name :notification/booking-new-request,
@@ -284,10 +256,6 @@
    :on :transition/complete,
    :to :actor.role/provider,
    :template :booking-money-paid}
-  {:name :notification/review-period-start-provider,
-   :on :transition/complete,
-   :to :actor.role/provider,
-   :template :booking-review-by-provider-wanted}
   {:name :notification/review-period-start-customer,
    :on :transition/complete,
    :to :actor.role/customer,
@@ -296,10 +264,6 @@
    :on :transition/operator-complete,
    :to :actor.role/provider,
    :template :booking-money-paid}
-  {:name :notification/review-period-start-provider-operator-complete,
-   :on :transition/operator-complete,
-   :to :actor.role/provider,
-   :template :booking-review-by-provider-wanted}
   {:name :notification/review-period-start-customer-operator-complete,
    :on :transition/operator-complete,
    :to :actor.role/customer,
@@ -336,19 +300,7 @@
    :on :transition/decline-reschedule-by-customer,
    :to :actor.role/provider,
    :template :booking-reschedule-declined-by-customer}
-  {:name :notification/review-by-provider-first,
-   :on :transition/review-1-by-provider,
-   :to :actor.role/customer,
-   :template :booking-review-by-other-party-unpublished}
-  {:name :notification/review-by-customer-first,
-   :on :transition/review-1-by-customer,
-   :to :actor.role/provider,
-   :template :booking-review-by-other-party-unpublished}
-  {:name :notification/review-by-provider-second,
-   :on :transition/review-2-by-provider,
-   :to :actor.role/customer,
-   :template :booking-review-by-other-party-published}
-  {:name :notification/review-by-customer-second,
-   :on :transition/review-2-by-customer,
+  {:name :notification/review-by-customer,
+   :on :transition/review-by-customer,
    :to :actor.role/provider,
    :template :booking-review-by-other-party-published}]}

@@ -531,12 +531,22 @@ export const TransactionPageComponent = props => {
     const { reviewRating, reviewContent } = values;
     const rating = Number.parseInt(reviewRating, 10);
     const { states, transitions } = process;
+    // The transaction's process version tells which review transitions exist. The next
+    // transitions are already loaded with the page.
+    const hasNextTransition = transitionName =>
+      !!transitionName && (nextTransitions || []).some(t => t?.attributes?.name === transitionName);
 
     // The download process only supports a single customer-side review transition.
     // Bidirectional review transitions (REVIEW_1/REVIEW_2) don't exist in that process.
     const transitionOptions = isDownloadProcess(processName)
       ? {
           reviewAsFirst: transitions.REVIEW,
+          hasOtherPartyReviewedFirst: false,
+        }
+      : transactionRole === CUSTOMER && hasNextTransition(transitions.REVIEW_BY_CUSTOMER)
+      ? {
+          // Booking process: only the customer reviews (older process versions have 2 reviews)
+          reviewAsFirst: transitions.REVIEW_BY_CUSTOMER,
           hasOtherPartyReviewedFirst: false,
         }
       : transactionRole === CUSTOMER
