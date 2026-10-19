@@ -12,6 +12,7 @@ const {
   getMaxStart,
   getNewBookingTimes,
   getNewTimeError,
+  getRequestDeadline,
   getRequestError,
   getRescheduleStage,
   getStartTimeIntervalMinutes,
@@ -127,7 +128,15 @@ module.exports = async (req, res) => {
     if (action === 'request' || action === 'counter') {
       const permissionError =
         action === 'request'
-          ? getRequestError({ stage, transitions, bookingStart: ownBooking.start, now })
+          ? getRequestError({
+              stage,
+              transitions,
+              requestDeadline: getRequestDeadline({
+                protectedData,
+                bookingStart: ownBooking.start,
+              }),
+              now,
+            })
           : !isResponder || ownBooking.start <= now
           ? 'not-allowed'
           : null;

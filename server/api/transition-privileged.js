@@ -19,6 +19,8 @@ const {
   fetchCommission,
 } = require('../api-util/sdk');
 const { RESCHEDULE_USER_TRANSITIONS } = require('../services/reschedule');
+const { getPoliciesProtectedData } = require('../services/policies');
+const { CANCEL_PRIVILEGED_TRANSITIONS } = require('../services/cancellation');
 
 const { Money } = sharetribeSdk.types;
 
@@ -124,6 +126,10 @@ module.exports = (req, res) => {
   if (RESCHEDULE_USER_TRANSITIONS.includes(bodyParams?.transition)) {
     return res.status(403).json({ status: 403, code: 'use-reschedule-endpoint' });
   }
+  // Cancel transitions refund the payment: see server/api/cancel
+  if (CANCEL_PRIVILEGED_TRANSITIONS.includes(bodyParams?.transition)) {
+    return res.status(403).json({ status: 403, code: 'use-cancel-endpoint' });
+  }
 
   // Share one cookie token store so a refresh during transactions.show is reused for exchangeToken.
   const tokenStore = createCookieTokenStore(req, res);
@@ -131,6 +137,7 @@ module.exports = (req, res) => {
   const transitionName = bodyParams.transition;
   let lineItems = null;
   let metadataMaybe = {};
+  let policiesMaybe = {};
 
   Promise.all([transactionPromise(sdk, bodyParams?.id), fetchCommission(sdk)])
     .then(responses => {
@@ -164,6 +171,8 @@ module.exports = (req, res) => {
       assertExpectedPayinTotal(lineItems, orderData?.expectedPayinTotal);
 
       metadataMaybe = getUpdatedMetadata(orderData, transitionName, existingMetadata);
+      // A booking keeps the cancellation and rescheduling policies it was made with
+      policiesMaybe = getPoliciesProtectedData(listing, transitionName);
 
       return getTrustedSdk(req, res, tokenStore);
     })
@@ -177,12 +186,19 @@ module.exports = (req, res) => {
       const roleBasedBodyParams = getRoleBasedBodyParams(orderData, bodyParams);
       // Omit listingId from params (transition/request-payment-after-inquiry does not need it)
       const { listingId, ...restParams } = roleBasedBodyParams?.params || {};
+      // Policies are only set here, from the listing: never from the client
+      const { policies, ...protectedData } = restParams.protectedData || {};
+      const hasProtectedData = !!restParams.protectedData || !!policiesMaybe.policies;
+      const protectedDataMaybe = hasProtectedData
+        ? { protectedData: { ...protectedData, ...policiesMaybe } }
+        : {};
 
       // Add lineItems to the body params
       const body = {
         ...bodyParams,
         params: {
           ...restParams,
+          ...protectedDataMaybe,
           lineItems,
           ...metadataMaybe,
         },

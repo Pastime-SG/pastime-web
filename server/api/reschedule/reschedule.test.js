@@ -89,10 +89,7 @@ const createResponse = () => {
 const call = async (userId, body) => {
   const res = createResponse();
   // middleware.auth sets the signed-in user's id
-  await reschedule(
-    { tokenUserId: userId, body: { transactionId: 'tx-1', ...body } },
-    res
-  );
+  await reschedule({ tokenUserId: userId, body: { transactionId: 'tx-1', ...body } }, res);
   return res;
 };
 

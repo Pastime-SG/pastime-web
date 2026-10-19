@@ -36,6 +36,7 @@ const passport = require('passport');
 
 const auth = require('./auth');
 const apiRouter = require('./apiRouter');
+const { startPendingPayoutsJob } = require('./services/cancellation/payouts');
 const wellKnownRouter = require('./wellKnownRouter');
 const webmanifestResourceRoute = require('./resources/webmanifest');
 const robotsTxtRoute = require('./resources/robotsTxt');
@@ -343,11 +344,18 @@ if (cspEnabled) {
   });
 }
 
+// Payouts of cancelled bookings that wait for the funds to be available (partial refunds).
+// Started once the server is listening, stopped on shutdown.
+let pendingPayoutsJob = null;
+
 const server = app.listen(PORT, () => {
   const mode = dev ? 'development' : 'production';
   console.log(`Listening to port ${PORT} in ${mode} mode`); // eslint-disable-line no-console
   if (dev) {
     console.log(`Open http://localhost:${PORT}/ and start hacking!\n`); // eslint-disable-line no-console
+  }
+  if (process.env.STRIPE_SECRET_KEY) {
+    pendingPayoutsJob = startPendingPayoutsJob();
   }
 });
 
@@ -356,6 +364,7 @@ const server = app.listen(PORT, () => {
 ['SIGINT', 'SIGTERM'].forEach(signal => {
   process.on(signal, () => {
     console.log('Shutting down...'); // eslint-disable-line no-console
+    clearInterval(pendingPayoutsJob);
     server.close(() => {
       console.log('Server shut down.'); // eslint-disable-line no-console
     });

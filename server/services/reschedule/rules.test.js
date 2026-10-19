@@ -5,6 +5,7 @@ const {
   getMaxStart,
   getNewBookingTimes,
   getNewTimeError,
+  getRequestDeadline,
   getRequestError,
   getRescheduleStage,
   getStartTimeIntervalMinutes,
@@ -35,7 +36,7 @@ describe('reschedule', () => {
         getRequestError({
           stage: 'accepted',
           transitions: accepted,
-          bookingStart: inEightDays,
+          requestDeadline: getRequestDeadline({ bookingStart: inEightDays }),
           now: NOW,
         })
       ).toBe(null);
@@ -47,7 +48,7 @@ describe('reschedule', () => {
         getRequestError({
           stage: 'accepted',
           transitions: accepted,
-          bookingStart: inSixDays,
+          requestDeadline: getRequestDeadline({ bookingStart: inSixDays }),
           now: NOW,
         })
       ).toBe('too-late');
@@ -60,14 +61,42 @@ describe('reschedule', () => {
         { transition: TRANSITIONS.DECLINE_BY_PROVIDER },
       ];
       expect(
-        getRequestError({ stage: 'accepted', transitions, bookingStart: inEightDays, now: NOW })
+        getRequestError({
+          stage: 'accepted',
+          transitions,
+          requestDeadline: getRequestDeadline({ bookingStart: inEightDays }),
+          now: NOW,
+        })
       ).toBe('already-rescheduled');
     });
 
     it('rejects a request when the booking is not accepted', () => {
       expect(
-        getRequestError({ stage: null, transitions: [], bookingStart: inEightDays, now: NOW })
+        getRequestError({
+          stage: null,
+          transitions: [],
+          requestDeadline: getRequestDeadline({ bookingStart: inEightDays }),
+          now: NOW,
+        })
       ).toBe('not-allowed');
+    });
+
+    it('follows the reschedule policy copied to the booking', () => {
+      const inThreeDays = new Date(NOW.getTime() + 3 * DAY_MS);
+      const policies = allowed => ({
+        reschedule: { allowed, minNoticeAmount: 48, minNoticeUnit: 'hours' },
+      });
+      const errorWith = protectedData =>
+        getRequestError({
+          stage: 'accepted',
+          transitions: accepted,
+          requestDeadline: getRequestDeadline({ protectedData, bookingStart: inThreeDays }),
+          now: NOW,
+        });
+      expect(errorWith({ policies: policies(true) })).toBe(null);
+      expect(errorWith({ policies: policies(false) })).toBe('not-allowed');
+      // Bookings without the policies: 7 days before the start
+      expect(errorWith({})).toBe('too-late');
     });
   });
 

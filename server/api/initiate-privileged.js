@@ -10,6 +10,7 @@ const {
   serialize,
   fetchCommission,
 } = require('../api-util/sdk');
+const { getPoliciesProtectedData } = require('../services/policies');
 
 const { Money } = sharetribeSdk.types;
 
@@ -58,6 +59,7 @@ module.exports = (req, res) => {
   const sdk = getSdk(req, res, tokenStore);
   let lineItems = null;
   let metadataMaybe = {};
+  let policiesMaybe = {};
 
   Promise.all([listingPromise(sdk, bodyParams?.params?.listingId), fetchCommission(sdk)])
     .then(([showListingResponse, fetchAssetsResponse]) => {
@@ -79,17 +81,26 @@ module.exports = (req, res) => {
       assertExpectedPayinTotal(lineItems, orderData?.expectedPayinTotal);
 
       metadataMaybe = getMetadata(orderData, transitionName);
+      // A booking keeps the cancellation and rescheduling policies it was made with
+      policiesMaybe = getPoliciesProtectedData(listing, transitionName);
 
       return getTrustedSdk(req, res, tokenStore);
     })
     .then(trustedSdk => {
       const { params } = bodyParams;
+      // Policies are only set here, from the listing: never from the client
+      const { policies, ...protectedData } = params?.protectedData || {};
+      const hasProtectedData = !!params?.protectedData || !!policiesMaybe.policies;
+      const protectedDataMaybe = hasProtectedData
+        ? { protectedData: { ...protectedData, ...policiesMaybe } }
+        : {};
 
       // Add lineItems to the body params
       const body = {
         ...bodyParams,
         params: {
           ...params,
+          ...protectedDataMaybe,
           lineItems,
           ...metadataMaybe,
         },

@@ -15,10 +15,14 @@
  *  - The booking keeps its seats: the new time needs that many free seats.
  */
 
+const { getPolicies, getRescheduleDeadline } = require('../policies');
+
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
 
-// The first reschedule request can be made until this many days before the booking starts.
+// Bookings made before the listing policies existed: the first reschedule request can be made
+// until this many days before the booking starts. Newer bookings follow the reschedule policy
+// copied to the booking (protectedData.policies).
 const MIN_DAYS_BEFORE_START_TO_REQUEST = 7;
 
 // A booking can't be moved further than this from the payment. This keeps the same limit as
@@ -115,23 +119,37 @@ const hasRescheduleHistory = transitions =>
   );
 
 /**
+ * The latest moment the first reschedule request can be made, from the reschedule policy copied
+ * to the booking. Null if the policy doesn't allow rescheduling.
+ *
+ * @param {Object} params
+ * @param {Object} [params.protectedData] Transaction's protected data
+ * @param {Date} params.bookingStart Current start of the booking
+ * @returns {Date|null}
+ */
+const getRequestDeadline = ({ protectedData, bookingStart }) =>
+  protectedData?.policies
+    ? getRescheduleDeadline(getPolicies(protectedData.policies).reschedule, bookingStart)
+    : new Date(bookingStart.getTime() - MIN_DAYS_BEFORE_START_TO_REQUEST * DAY_MS);
+
+/**
  * Why a reschedule can't be requested, or null if it can.
  *
  * @param {Object} params
  * @param {string|null} params.stage
  * @param {Array<Object>} params.transitions
- * @param {Date} params.bookingStart Current start of the booking
+ * @param {Date|null} params.requestDeadline See getRequestDeadline
  * @param {Date} params.now
  * @returns {string|null} 'not-allowed', 'already-rescheduled', 'too-late' or null
  */
-const getRequestError = ({ stage, transitions, bookingStart, now }) => {
-  if (stage !== STAGE_ACCEPTED) {
+const getRequestError = ({ stage, transitions, requestDeadline, now }) => {
+  if (stage !== STAGE_ACCEPTED || !requestDeadline) {
     return 'not-allowed';
   }
   if (hasRescheduleHistory(transitions)) {
     return 'already-rescheduled';
   }
-  if (bookingStart.getTime() - now.getTime() < MIN_DAYS_BEFORE_START_TO_REQUEST * DAY_MS) {
+  if (now.getTime() > requestDeadline.getTime()) {
     return 'too-late';
   }
   return null;
@@ -302,6 +320,7 @@ module.exports = {
   getMaxStart,
   getNewBookingTimes,
   getNewTimeError,
+  getRequestDeadline,
   getRequestError,
   getRescheduleStage,
   getStartTimeIntervalMinutes,

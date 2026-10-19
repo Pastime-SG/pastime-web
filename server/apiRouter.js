@@ -17,6 +17,7 @@ const initiatePrivileged = require('./api/initiate-privileged');
 const transitionPrivileged = require('./api/transition-privileged');
 const deleteAccount = require('./api/delete-account');
 const rescheduleRouter = require('./api/reschedule');
+const cancelRouter = require('./api/cancel');
 
 const createUserWithIdp = require('./api/auth/createUserWithIdp');
 
@@ -60,6 +61,9 @@ router.post('/delete-account', deleteAccount);
 
 // Rescheduling an accepted booking (privileged transitions of the booking process)
 router.use('/reschedule', rescheduleRouter);
+
+// Customer cancellations of accepted bookings (privileged transitions, refunds with Stripe)
+router.use('/cancel', cancelRouter);
 
 // Create user with identity provider (e.g. Facebook or Google)
 // This endpoint is called to create a new user after user has confirmed
