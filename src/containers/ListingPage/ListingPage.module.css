@@ -725,7 +725,7 @@
   left: 0;
   right: 0;
   padding: 24px;
-  background-color: var(--colorWhite);
+  background-color: var(--colorPageBackground);
 
   @media (--viewportMedium) {
     position: static;

@@ -4,7 +4,7 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  background-color: var(--colorGrey50);
+  background-color: var(--colorPageBackground);
 
   /* sticky result summary in mobile */
   position: sticky;
@@ -19,7 +19,7 @@
   display: flex;
   justify-content: space-between;
 
-  background-color: var(--colorGrey50);
+  background-color: var(--colorPageBackground);
 
   @media (--viewportMedium) {
     margin-top: 8px;

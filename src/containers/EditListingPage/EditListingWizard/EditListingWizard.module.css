@@ -32,7 +32,7 @@
   flex-direction: row;
   padding: 0;
   flex-shrink: 0;
-  background-color: var(--colorWhite);
+  background-color: var(--colorPageBackground);
   box-shadow: var(--boxShadowLight);
   border-top: 1px solid var(--colorGrey100);
   overflow-x: scroll;
@@ -41,7 +41,7 @@
     padding: 72px 0 82px 36px;
     flex-direction: column;
     overflow-x: auto;
-    background-color: var(--colorGrey50);
+    background-color: var(--colorPageBackground);
     box-shadow: none;
     border-top: none;
   }

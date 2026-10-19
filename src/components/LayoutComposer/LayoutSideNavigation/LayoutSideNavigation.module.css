@@ -48,7 +48,7 @@
      * and left padding together with border should be 60px.
      */
     padding: 48px 36px 82px 59px;
-    background-color: var(--colorWhite);
+    background-color: var(--colorPageBackground);
     border-left-width: 1px;
     border-left-style: solid;
     border-left-color: var(--colorGrey100);
@@ -72,7 +72,7 @@
   border-top-width: 1px;
   border-top-color: var(--colorGrey100);
   border-top-style: solid;
-  background-color: var(--colorWhite);
+  background-color: var(--colorPageBackground);
   box-shadow: var(--boxShadow);
 
   @media (--viewportLarge) {

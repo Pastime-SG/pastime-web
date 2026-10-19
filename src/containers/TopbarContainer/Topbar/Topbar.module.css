@@ -2,6 +2,9 @@
 
 .root {
   width: 100%;
+  /* Header text font (the logo is an image) */
+  --fontFamily: var(--fontFamilyInstrumentSans);
+  font-family: var(--fontFamily);
 
   /* Top Bar's drop shadow should always be visible */
   z-index: var(--zIndexTopbar);
@@ -50,7 +53,7 @@
   align-items: center;
 
   /* fill */
-  background-color: var(--colorWhite);
+  background-color: var(--colorPageBackground);
 
   /* shadows */
   box-shadow: var(--boxShadow);
