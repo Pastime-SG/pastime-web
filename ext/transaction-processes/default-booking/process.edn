@@ -75,12 +75,14 @@
     {:name :action/decline-booking}],
    :from :state/preauthorized,
    :to :state/declined}
+  ;; The provider has 24 hours to accept or decline a booking request (or until the booking
+  ;; ends, if that's sooner). Otherwise the request expires and the payment is refunded.
   {:name :transition/expire,
    :at
    {:fn/min
     [{:fn/plus
       [{:fn/timepoint [:time/first-entered-state :state/preauthorized]}
-       {:fn/period ["P6D"]}]}
+       {:fn/period ["PT24H"]}]}
      {:fn/plus
       [{:fn/timepoint [:time/booking-start]} {:fn/period ["P1D"]}]}
      {:fn/timepoint [:time/booking-end]}]},
