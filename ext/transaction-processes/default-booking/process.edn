@@ -114,6 +114,94 @@
     {:name :action/cancel-booking}],
    :from :state/accepted,
    :to :state/cancelled}
+  ;; Rescheduling an accepted booking. One reschedule loop per booking: the first request can
+  ;; be made until 7 days before the booking start, and the loop ends when the new time is
+  ;; accepted or declined (or the request expires when the booking starts).
+  ;; The suggested time is kept in protected data; the booking is updated only when the other
+  ;; party accepts it. User transitions are privileged: they go through the server, which
+  ;; validates them (see server/api/transaction-reschedule.js).
+  {:name :transition/request-reschedule-by-customer,
+   :actor :actor.role/customer,
+   :actions [{:name :action/update-protected-data}],
+   :from :state/accepted,
+   :to :state/reschedule-requested-by-customer,
+   :privileged? true}
+  {:name :transition/request-reschedule-by-provider,
+   :actor :actor.role/provider,
+   :actions [{:name :action/update-protected-data}],
+   :from :state/accepted,
+   :to :state/reschedule-requested-by-provider,
+   :privileged? true}
+  {:name :transition/accept-reschedule-by-provider,
+   :actor :actor.role/provider,
+   :actions
+   [{:name :action/update-booking, :config {:type :time}}
+    {:name :action/update-protected-data}],
+   :from :state/reschedule-requested-by-customer,
+   :to :state/accepted,
+   :privileged? true}
+  {:name :transition/accept-reschedule-by-customer,
+   :actor :actor.role/customer,
+   :actions
+   [{:name :action/update-booking, :config {:type :time}}
+    {:name :action/update-protected-data}],
+   :from :state/reschedule-requested-by-provider,
+   :to :state/accepted,
+   :privileged? true}
+  {:name :transition/counter-reschedule-by-provider,
+   :actor :actor.role/provider,
+   :actions [{:name :action/update-protected-data}],
+   :from :state/reschedule-requested-by-customer,
+   :to :state/reschedule-requested-by-provider,
+   :privileged? true}
+  {:name :transition/counter-reschedule-by-customer,
+   :actor :actor.role/customer,
+   :actions [{:name :action/update-protected-data}],
+   :from :state/reschedule-requested-by-provider,
+   :to :state/reschedule-requested-by-customer,
+   :privileged? true}
+  {:name :transition/decline-reschedule-by-provider,
+   :actor :actor.role/provider,
+   :actions [{:name :action/update-protected-data}],
+   :from :state/reschedule-requested-by-customer,
+   :to :state/accepted,
+   :privileged? true}
+  {:name :transition/decline-reschedule-by-customer,
+   :actor :actor.role/customer,
+   :actions [{:name :action/update-protected-data}],
+   :from :state/reschedule-requested-by-provider,
+   :to :state/accepted,
+   :privileged? true}
+  {:name :transition/expire-reschedule-requested-by-customer,
+   :at {:fn/timepoint [:time/booking-start]},
+   :actions [],
+   :from :state/reschedule-requested-by-customer,
+   :to :state/accepted}
+  {:name :transition/expire-reschedule-requested-by-provider,
+   :at {:fn/timepoint [:time/booking-start]},
+   :actions [],
+   :from :state/reschedule-requested-by-provider,
+   :to :state/accepted}
+  {:name :transition/cancel-reschedule-requested-by-customer,
+   :actor :actor.role/operator,
+   :actions
+   [{:name :action/calculate-full-refund}
+    {:name :action/stripe-refund-payment}
+    ;; Keep this action last in the list of actions for
+    ;; the transition
+    {:name :action/cancel-booking}],
+   :from :state/reschedule-requested-by-customer,
+   :to :state/cancelled}
+  {:name :transition/cancel-reschedule-requested-by-provider,
+   :actor :actor.role/operator,
+   :actions
+   [{:name :action/calculate-full-refund}
+    {:name :action/stripe-refund-payment}
+    ;; Keep this action last in the list of actions for
+    ;; the transition
+    {:name :action/cancel-booking}],
+   :from :state/reschedule-requested-by-provider,
+   :to :state/cancelled}
   {:name :transition/review-1-by-provider,
    :actor :actor.role/provider,
    :actions [{:name :action/post-review-by-provider}],
@@ -216,6 +304,38 @@
    :on :transition/operator-complete,
    :to :actor.role/customer,
    :template :booking-review-by-customer-wanted}
+  {:name :notification/booking-reschedule-requested-by-customer,
+   :on :transition/request-reschedule-by-customer,
+   :to :actor.role/provider,
+   :template :booking-reschedule-requested-by-customer}
+  {:name :notification/booking-reschedule-countered-by-customer,
+   :on :transition/counter-reschedule-by-customer,
+   :to :actor.role/provider,
+   :template :booking-reschedule-requested-by-customer}
+  {:name :notification/booking-reschedule-requested-by-provider,
+   :on :transition/request-reschedule-by-provider,
+   :to :actor.role/customer,
+   :template :booking-reschedule-requested-by-provider}
+  {:name :notification/booking-reschedule-countered-by-provider,
+   :on :transition/counter-reschedule-by-provider,
+   :to :actor.role/customer,
+   :template :booking-reschedule-requested-by-provider}
+  {:name :notification/booking-reschedule-accepted-by-provider,
+   :on :transition/accept-reschedule-by-provider,
+   :to :actor.role/customer,
+   :template :booking-reschedule-accepted-by-provider}
+  {:name :notification/booking-reschedule-accepted-by-customer,
+   :on :transition/accept-reschedule-by-customer,
+   :to :actor.role/provider,
+   :template :booking-reschedule-accepted-by-customer}
+  {:name :notification/booking-reschedule-declined-by-provider,
+   :on :transition/decline-reschedule-by-provider,
+   :to :actor.role/customer,
+   :template :booking-reschedule-declined-by-provider}
+  {:name :notification/booking-reschedule-declined-by-customer,
+   :on :transition/decline-reschedule-by-customer,
+   :to :actor.role/provider,
+   :template :booking-reschedule-declined-by-customer}
   {:name :notification/review-by-provider-first,
    :on :transition/review-1-by-provider,
    :to :actor.role/customer,
