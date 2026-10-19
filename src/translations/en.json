@@ -1680,5 +1680,7 @@
   "TransactionPage.ActivityFeed.default-booking.cancelled-without-refund": "The booking was cancelled.",
   "InboxPage.default-booking.cancelled-without-refund.status": "Canceled",
   "TransactionPage.default-booking.customer.cancelled-without-refund.title": "Your booking was canceled.",
-  "TransactionPage.default-booking.provider.cancelled-without-refund.title": "The booking from {customerName} was canceled."
+  "TransactionPage.default-booking.provider.cancelled-without-refund.title": "The booking from {customerName} was canceled.",
+  "SectionBrowseTiles.eyebrow": "Browse",
+  "SectionLandingHero.showImage": "Show image {number} of {count}"
 }

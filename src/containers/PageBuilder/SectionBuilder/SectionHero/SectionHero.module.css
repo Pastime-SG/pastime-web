@@ -1,3 +1,5 @@
+@import '../../../../styles/customMediaQueries.css';
+
 .root {
   /* SectionContainer defaults */
   background-size: cover;
@@ -11,4 +13,45 @@
   display: flex;
   justify-content: center;
   align-items: center;
+}
+
+/* Pastime hero: Instrument Sans for the hero text and its search bar, Fraunces for the title */
+.heroDetails {
+  --fontFamily: var(--fontFamilyInstrumentSans);
+  font-family: var(--fontFamily);
+}
+
+/* Nested so that they apply over the section's light/dark theme text colours */
+.heroDetails .heroTitle {
+  font-family: var(--fontFamilyFraunces);
+  font-size: 40px;
+  line-height: 1.15;
+  color: var(--colorHeroText);
+
+  @media (--viewportMedium) {
+    font-size: 64px;
+    line-height: 1.1;
+  }
+}
+
+.heroDetails .heroDescription {
+  font-family: var(--fontFamilyInstrumentSans);
+  font-size: 20px;
+  line-height: 1.5;
+  color: var(--colorHeroText);
+}
+
+/* Heroes further down the page (e.g. "Run a workshop? Fill your seats.") */
+.heroDetails .heroTitleSmall {
+  font-family: var(--fontFamilyFraunces);
+  font-size: 30px;
+  line-height: 36px;
+  color: var(--colorHeroText);
+}
+
+.heroDetails .heroDescriptionSmall {
+  font-family: var(--fontFamilyInstrumentSans);
+  font-size: 16px;
+  line-height: 24px;
+  color: var(--colorHeroText);
 }

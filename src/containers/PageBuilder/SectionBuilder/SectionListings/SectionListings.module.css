@@ -103,15 +103,13 @@
   display: contents;
 }
 
+/* Room after the last card (the cards are shifted by 32px). A margin instead of padding, so that
+   the last card is as wide as the others and its box doesn't get extra space inside. */
 .listItem:last-of-type > * {
-  padding-right: 32px;
-  width: calc(min(var(--contentMaxWidthPages), var(--carouselWidth)) - 32px);
-}
+  margin-right: calc(16px + 32px);
 
-@media (min-width: 1200px) {
-  .listItem:last-of-type > * {
-    padding-right: 32px;
-    width: calc(min(var(--contentMaxWidthPages), var(--carouselWidth)) - 32px);
+  @media (--viewportMedium) {
+    margin-right: calc(32px + 32px);
   }
 }
 
@@ -152,22 +150,10 @@
   }
 }
 
-.threeColumns .listItem:last-of-type > *:not(.isInsideContainer) {
-  @media (--viewportMedium) {
-    width: calc((min(var(--contentMaxWidthPages), var(--carouselWidth)) - 32px) / 3);
-  }
-}
-
 .fourColumns .card:not(.isInsideContainer) {
   @media (--viewportMedium) {
     /* 64px (horizontal layout paddings) - 96px (three gutters á 32px) / 4 (number of columns) */
     width: calc((min(var(--contentMaxWidthPages), var(--carouselWidth)) - 64px - 96px) / 4);
-  }
-}
-
-.fourColumns .listItem:last-of-type > *:not(.isInsideContainer) {
-  @media (--viewportMedium) {
-    width: calc((min(var(--contentMaxWidthPages), var(--carouselWidth)) - 32px) / 4);
   }
 }
 
@@ -217,4 +203,44 @@
     background-color: var(--marketplaceColorDark);
     text-decoration: none;
   }
+}
+
+/* ================ Trending section heading ================ */
+
+.trendingHeader {
+  max-width: var(--contentMaxWidthPages);
+  margin: 0 auto;
+  padding: 0 24px;
+
+  @media (--viewportMedium) {
+    padding: 0 32px;
+  }
+}
+
+.trendingLabel {
+  margin: 0 0 6px 0;
+  padding: 0;
+  font-family: var(--fontFamilyInstrumentSans);
+  font-size: 11px;
+  font-weight: var(--fontWeightSemiBold);
+  line-height: 18px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #c0532f;
+
+  @media (--viewportMedium) {
+    margin: 0 0 8px 0;
+  }
+}
+
+.trendingHeading {
+  margin: 0;
+  padding: 0;
+  font-family: var(--fontFamilyFraunces);
+  font-size: 30px;
+  font-weight: var(--fontWeightSemiBold);
+  line-height: 36px;
+  letter-spacing: -0.01em;
+  color: #16231f;
+  text-align: left;
 }

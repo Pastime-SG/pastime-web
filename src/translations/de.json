@@ -1680,5 +1680,7 @@
   "TransactionPage.ActivityFeed.default-booking.cancelled-without-refund": "Die Buchung wurde storniert.",
   "InboxPage.default-booking.cancelled-without-refund.status": "Storniert",
   "TransactionPage.default-booking.customer.cancelled-without-refund.title": "Deine Buchung wurde storniert.",
-  "TransactionPage.default-booking.provider.cancelled-without-refund.title": "Die Buchung von {customerName} wurde storniert."
+  "TransactionPage.default-booking.provider.cancelled-without-refund.title": "Die Buchung von {customerName} wurde storniert.",
+  "SectionBrowseTiles.eyebrow": "Entdecken",
+  "SectionLandingHero.showImage": "Bild {number} von {count} anzeigen"
 }

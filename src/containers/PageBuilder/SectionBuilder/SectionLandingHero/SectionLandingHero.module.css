@@ -1,0 +1,86 @@
+@import '../../../../styles/customMediaQueries.css';
+
+/* Layout (height, centering) comes from SectionHero's root */
+.root {
+  overflow: hidden;
+}
+
+/* ================ Background images ================ */
+
+.slides {
+  position: absolute;
+  inset: 0;
+}
+
+/* The images are stacked: the active one fades in over the others */
+.slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 1s ease-in-out;
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+.slideActive {
+  opacity: 1;
+}
+
+.slideImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+}
+
+/* ================ Content ================ */
+
+/* Over the images */
+.content {
+  position: relative;
+}
+
+/* ================ Image indicators ================ */
+
+.dots {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+
+  @media (--viewportMedium) {
+    bottom: 24px;
+    gap: 8px;
+  }
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background-color: var(--colorHeroText);
+  opacity: 0.5;
+  cursor: pointer;
+  transition: opacity 0.2s ease-in-out, width 0.2s ease-in-out;
+
+  &:hover,
+  &:focus-visible {
+    opacity: 0.9;
+  }
+}
+
+.dotActive {
+  width: 20px;
+  border-radius: 4px;
+  opacity: 1;
+}

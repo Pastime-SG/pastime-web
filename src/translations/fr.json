@@ -1680,5 +1680,7 @@
   "TransactionPage.ActivityFeed.default-booking.cancelled-without-refund": "La réservation a été annulée.",
   "InboxPage.default-booking.cancelled-without-refund.status": "Annulée",
   "TransactionPage.default-booking.customer.cancelled-without-refund.title": "Votre réservation a été annulée.",
-  "TransactionPage.default-booking.provider.cancelled-without-refund.title": "La réservation de {customerName} a été annulée."
+  "TransactionPage.default-booking.provider.cancelled-without-refund.title": "La réservation de {customerName} a été annulée.",
+  "SectionBrowseTiles.eyebrow": "Explorer",
+  "SectionLandingHero.showImage": "Afficher l'image {number} sur {count}"
 }

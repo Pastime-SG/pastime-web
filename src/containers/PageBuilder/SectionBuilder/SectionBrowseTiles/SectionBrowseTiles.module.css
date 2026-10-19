@@ -1,0 +1,174 @@
+@import '../../../../styles/customMediaQueries.css';
+
+.root {
+  --browseHeadingColor: #16231f;
+  --browseTextColor: #6b6156;
+  --browseEyebrowColor: #c0532f;
+  /* Wider than the default page content, so that the 6 tiles get more room */
+  --browseMaxWidth: 1440px;
+
+  padding: 48px 0;
+
+  @media (--viewportMedium) {
+    padding: 64px 0;
+  }
+}
+
+/* ================ Heading ================ */
+
+.header {
+  max-width: var(--browseMaxWidth);
+  margin: 0 auto 24px auto;
+  padding: 0 24px;
+
+  @media (--viewportMedium) {
+    margin: 0 auto 32px auto;
+    padding: 0 32px;
+  }
+}
+
+.eyebrow {
+  margin: 0 0 6px 0;
+  padding: 0;
+  font-family: var(--fontFamilyInstrumentSans);
+  font-size: 11px;
+  font-weight: var(--fontWeightSemiBold);
+  line-height: 18px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--browseEyebrowColor);
+
+  @media (--viewportMedium) {
+    margin: 0 0 8px 0;
+  }
+}
+
+.title {
+  margin: 0;
+  padding: 0;
+  font-family: var(--fontFamilyFraunces);
+  font-size: 30px;
+  font-weight: var(--fontWeightSemiBold);
+  line-height: 36px;
+  letter-spacing: -0.01em;
+  color: var(--browseHeadingColor);
+  text-align: left;
+}
+
+.description {
+  margin: 12px 0 0 0;
+  max-width: 65ch;
+  font-family: var(--fontFamilyInstrumentSans);
+  color: var(--browseTextColor);
+
+  @media (--viewportMedium) {
+    margin: 16px 0 0 0;
+  }
+}
+
+/* ================ Tiles ================ */
+
+/* One row of tiles: 6 on wide screens. Tiles are at least 200px wide on desktop: when they don't
+   fit, the row scrolls sideways. */
+.tiles {
+  --tileGap: 12px;
+
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: calc((100% - var(--tileGap)) / 2.2);
+  gap: var(--tileGap);
+
+  max-width: var(--browseMaxWidth);
+  margin: 0 auto;
+  padding: 6px 24px 12px 24px;
+
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-padding: 0 24px;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  @media (--viewportMedium) {
+    --tileGap: 16px;
+    grid-auto-columns: calc((100% - 3 * var(--tileGap)) / 3.5);
+    padding: 8px 32px 16px 32px;
+    scroll-padding: 0 32px;
+  }
+
+  @media (--viewportLarge) {
+    --tileGap: 20px;
+    grid-auto-columns: max(200px, calc((100% - 5 * var(--tileGap)) / 6));
+  }
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  scroll-snap-align: start;
+
+  background-color: var(--colorWhite);
+  border: 1px solid #efe6d8;
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(22, 35, 31, 0.06);
+  transition: box-shadow ease-in-out 150ms, translate ease-in-out 150ms;
+
+  @media (--viewportMedium) {
+    &:hover {
+      translate: 0 -2px;
+      box-shadow: 0 6px 16px rgba(22, 35, 31, 0.1);
+    }
+  }
+}
+
+/* The image (set in Console) fills the coloured top part of the tile */
+.tileMedia {
+  width: 100%;
+  background: linear-gradient(135deg, #e07a3f 0%, #c0532f 100%);
+}
+
+.tileBody {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+
+  @media (--viewportMedium) {
+    padding: 12px 12px 16px 12px;
+  }
+}
+
+.tileTitle {
+  margin: 0;
+  padding: 0;
+  font-family: var(--fontFamilyFraunces);
+  font-size: 14px;
+  font-weight: var(--fontWeightSemiBold);
+  line-height: 20px;
+  color: var(--browseHeadingColor);
+}
+
+/* Two lines, then "…" */
+.tileText {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+
+  margin: 0;
+  padding: 0;
+  font-family: var(--fontFamilyInstrumentSans);
+  font-size: 12px;
+  font-weight: var(--fontWeightRegular);
+  line-height: 18px;
+  color: var(--browseTextColor);
+}
+
+.tileLink {
+  margin-top: 6px;
+  font-family: var(--fontFamilyInstrumentSans);
+  font-size: 12px;
+}

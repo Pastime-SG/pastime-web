@@ -13,6 +13,7 @@ import { ListingCard, IconSpinner, ErrorMessage, NamedLink } from '../../../../c
 import Field, { hasDataInFields } from '../../Field';
 
 import SectionContainer from '../SectionContainer';
+import { getPlainText } from '../SectionBuilder.helpers';
 
 import css from './SectionListings.module.css';
 
@@ -73,6 +74,36 @@ const isMobileViewport = () => {
  * @param {boolean} isMobileBreakpoint - Whether the viewport is mobile
  * @returns {number} Calculated height in pixels
  */
+// The Console section (anchor link ID) whose heading uses the Pastime style: the section's title
+// as a small label ("Trending") and its description as the heading ("Popular this week")
+const TRENDING_SECTION_ID = 'trending';
+
+/**
+ * Heading of the trending section: label and heading from the Console title and description.
+ * Without a description, the title is the heading.
+ *
+ * @param {Object} props
+ * @param {Object} props.title Title field
+ * @param {Object} props.description Description field
+ * @param {Object} props.callToAction Call to action field
+ * @param {Object} props.fieldOptions
+ * @returns {JSX.Element}
+ */
+const TrendingHeader = props => {
+  const { title, description, callToAction, fieldOptions } = props;
+  const titleText = getPlainText(title);
+  const descriptionText = getPlainText(description);
+  const label = descriptionText ? titleText : null;
+  const heading = descriptionText || titleText;
+  return (
+    <header className={css.trendingHeader}>
+      {label ? <p className={css.trendingLabel}>{label}</p> : null}
+      {heading ? <h2 className={css.trendingHeading}>{heading}</h2> : null}
+      <Field data={callToAction} options={fieldOptions} />
+    </header>
+  );
+};
+
 const calculateCarouselHeight = (
   numColumns,
   config,
@@ -94,20 +125,15 @@ const calculateCarouselHeight = (
 
   const thumbnailAspectRatio = config.layout.listingImage.aspectRatio;
   const paddingHorizontal = 2 * 32; // 2x32px
-  const titleHeightSingleLine = 16;
-  const titleHeightDoubleLine = titleHeightSingleLine * 2;
-  const cardInfoPadding = 14 + 2; // padding-top + padding-bottom
-  const priceHeight = 16 + 4; // height + margin-bottom
-  const authorInfoHeight = 24;
+  // Listing card body (see ListingCard.module.css): the same on mobile and desktop
+  const cardInfoPadding = 12 + 12; // padding-top + padding-bottom
+  const authorInfoHeight = 18 + 2; // line height + gap
+  const titleHeight = 22 * 2; // always 2 lines
+  const priceHeight = 8 + 28; // padding-top + price pill
+  const cardBorder = 1 + 1;
   const contentMaxWidthPages = 1120;
   const containerPaddingTop = 32;
   const containerPaddingBottom = 24;
-
-  const priceHeightMobile = 18 + 4; // 18 + margin bottom
-  const authorInfoHeightMobile = 18 + 4 + 4; // 18 + padding top + padding bottom
-  const titleHeightSingleLineMobile = 18;
-  const cardInfoHeightMobile =
-    priceHeightMobile + authorInfoHeightMobile + titleHeightSingleLineMobile + cardInfoPadding;
 
   const parsedAspectRatio = parseAspectRatio(thumbnailAspectRatio);
 
@@ -117,10 +143,10 @@ const calculateCarouselHeight = (
   const cardWidth =
     (mainColumnWidth - paddingHorizontal - gutters) / (isMobileBreakpoint ? 1 : numColumns);
   const cardImageHeight = cardWidth / parsedAspectRatio;
-  const cardInfoHeight = priceHeight + titleHeightSingleLine + authorInfoHeight + cardInfoPadding;
+  const cardInfoHeight =
+    cardInfoPadding + authorInfoHeight + titleHeight + priceHeight + cardBorder;
 
-  const totalCardHeight =
-    cardImageHeight + (isMobileBreakpoint ? cardInfoHeightMobile : cardInfoHeight);
+  const totalCardHeight = cardImageHeight + cardInfoHeight;
   const totalWithPaddings = totalCardHeight + containerPaddingTop + containerPaddingBottom;
 
   return Math.ceil(totalWithPaddings);
@@ -340,7 +366,14 @@ const SectionListings = props => {
       appearance={appearance}
       options={fieldOptions}
     >
-      {hasHeaderFields ? (
+      {hasHeaderFields && sectionId === TRENDING_SECTION_ID ? (
+        <TrendingHeader
+          title={title}
+          description={description}
+          callToAction={callToAction}
+          fieldOptions={fieldOptions}
+        />
+      ) : hasHeaderFields ? (
         <header className={defaultClasses.sectionDetails}>
           <Field data={title} className={defaultClasses.title} options={fieldOptions} />
           <Field data={description} className={defaultClasses.description} options={fieldOptions} />
