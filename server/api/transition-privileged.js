@@ -18,6 +18,7 @@ const {
   serialize,
   fetchCommission,
 } = require('../api-util/sdk');
+const { RESCHEDULE_USER_TRANSITIONS } = require('../services/reschedule');
 
 const { Money } = sharetribeSdk.types;
 
@@ -117,6 +118,12 @@ const getUpdatedMetadata = (orderData, transition, existingMetadata) => {
 
 module.exports = (req, res) => {
   const { isSpeculative, orderData, bodyParams, queryParams } = req.body || {};
+
+  // Reschedule transitions are validated in server/api/reschedule/reschedule.js: they can't be
+  // made through this generic endpoint, which passes the params through.
+  if (RESCHEDULE_USER_TRANSITIONS.includes(bodyParams?.transition)) {
+    return res.status(403).json({ status: 403, code: 'use-reschedule-endpoint' });
+  }
 
   // Share one cookie token store so a refresh during transactions.show is reused for exchangeToken.
   const tokenStore = createCookieTokenStore(req, res);
