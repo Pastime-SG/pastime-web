@@ -5,7 +5,11 @@ import {
   stringifyDateToISO8601,
 } from '../../../util/dates';
 import { timeSlotsPerDate } from '../../../util/generators';
-import { getPolicies, getRescheduleDeadline } from '../../../util/policies';
+import {
+  getEarliestBookingStart,
+  getPolicies,
+  getRescheduleDeadline,
+} from '../../../util/policies';
 import {
   BOOKING_PROCESS_NAME,
   getProcess,
@@ -176,6 +180,11 @@ export const getRescheduleInfo = ({ transaction, transactionRole, nextTransition
     seats: seats || 1,
     // New start times follow the listing's start time interval, like in the booking form
     timeUnit: bookingTimeUnits[startTimeInterval]?.timeUnit || 'hour',
+    // New times can't be within the listing's booking cutoff (e.g. 24 hours before the start)
+    earliestStart: getEarliestBookingStart(
+      transaction?.listing?.attributes?.publicData?.policies,
+      currentTime
+    ),
     maxStart,
   };
 };
@@ -251,6 +260,7 @@ export const getDayQueryRange = (dayStart, timeZone, now, minEnd, timeUnit = 'ho
  * @param {number} [params.seats] Seats of the booking
  * @param {string} [params.timeUnit] Start time interval: 'hour', 'halfHour' or 'quarterHour'
  * @param {Date} params.maxStart
+ * @param {Date|null} [params.earliestStart] Booking cutoff: no start times before this
  * @param {Date} [params.now]
  * @returns {Array<{start: Date, end: Date}>}
  */
@@ -263,6 +273,7 @@ export const getStartTimeOptions = ({
   seats = 1,
   timeUnit = 'hour',
   maxStart,
+  earliestStart,
   now,
 }) => {
   const dayEnd = getStartOf(dayStart, 'day', timeZone, 1, 'days');
@@ -273,7 +284,12 @@ export const getStartTimeOptions = ({
   while (start < dayEnd && start <= maxStart) {
     const end = new Date(start.getTime() + durationMs);
     const isCurrentTime = start.getTime() === ownBooking.start.getTime();
-    if (!isCurrentTime && isTimeAvailable({ timeSlots, start, end, ownBooking, seats })) {
+    const isWithinCutoff = !!earliestStart && start.getTime() < earliestStart.getTime();
+    if (
+      !isCurrentTime &&
+      !isWithinCutoff &&
+      isTimeAvailable({ timeSlots, start, end, ownBooking, seats })
+    ) {
       options.push({ start, end });
     }
     start = findNextBoundary(start, 1, timeUnit, timeZone);

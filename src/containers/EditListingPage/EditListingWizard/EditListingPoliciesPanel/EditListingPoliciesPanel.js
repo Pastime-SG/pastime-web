@@ -17,11 +17,16 @@ import EditListingPoliciesForm, {
 import css from './EditListingPoliciesPanel.module.css';
 
 const getInitialValues = listing => {
-  const { reschedule, cancellation } = getPolicies(listing?.attributes?.publicData?.policies);
+  const { reschedule, cancellation, bookingCutoff } = getPolicies(
+    listing?.attributes?.publicData?.policies
+  );
   return {
     rescheduleAllowed: reschedule.allowed ? RESCHEDULE_ALLOWED : RESCHEDULE_NOT_ALLOWED,
     rescheduleNoticeAmount: reschedule.allowed ? `${reschedule.minNoticeAmount}` : '',
     rescheduleNoticeUnit: reschedule.allowed ? reschedule.minNoticeUnit : UNIT_HOURS,
+    // No cutoff by default
+    bookingCutoffAmount: bookingCutoff ? `${bookingCutoff.amount}` : '',
+    bookingCutoffUnit: bookingCutoff ? bookingCutoff.unit : UNIT_HOURS,
     cancellationRules: cancellation.rules.map(rule => ({
       ...rule,
       amount: `${rule.amount}`,
@@ -36,8 +41,11 @@ const toPolicies = values => {
     rescheduleAllowed,
     rescheduleNoticeAmount,
     rescheduleNoticeUnit,
+    bookingCutoffAmount,
+    bookingCutoffUnit,
     cancellationRules = [],
   } = values;
+  const hasBookingCutoff = bookingCutoffAmount != null && `${bookingCutoffAmount}`.trim() !== '';
   const allowsReschedule = rescheduleAllowed === RESCHEDULE_ALLOWED;
   return {
     reschedule: allowsReschedule
@@ -47,6 +55,9 @@ const toPolicies = values => {
           minNoticeUnit: rescheduleNoticeUnit,
         }
       : { allowed: false },
+    bookingCutoff: hasBookingCutoff
+      ? { amount: Number(bookingCutoffAmount), unit: bookingCutoffUnit }
+      : null,
     cancellation: {
       rules: cancellationRules.map(({ heading, comparison, amount, unit, refundPercentage }) => ({
         heading: heading.trim(),

@@ -1683,5 +1683,13 @@
   "TransactionPage.default-booking.provider.cancelled-without-refund.title": "La réservation de {customerName} a été annulée.",
   "SectionBrowseTiles.eyebrow": "Explorer",
   "SectionLandingHero.showImage": "Afficher l'image {number} sur {count}",
-  "EditListingPricingForm.priceInclusiveOfGst": "{priceLabel} (GST incluse)"
+  "EditListingPricingForm.priceInclusiveOfGst": "{priceLabel} (GST incluse)",
+  "EditListingPoliciesForm.bookingCutoffTitle": "Clôture des réservations",
+  "EditListingPoliciesForm.bookingCutoffDescription": "Arrêtez les nouvelles réservations peu avant le début d'une session. Les créneaux dans ce délai sont grisés sur votre annonce. Laissez vide pour accepter les réservations jusqu'au début.",
+  "EditListingPoliciesForm.bookingCutoffLabel": "Pas de réservation dans les (avant le début)",
+  "EditListingPoliciesForm.bookingCutoffPlaceholder": "Ex. 24",
+  "EditListingPoliciesForm.bookingCutoffInvalid": "Saisissez un nombre entier, 1 ou plus, ou laissez vide",
+  "ListingPolicies.bookingCutoff": "Les réservations ferment {amount} {unit, select, days {{amount, plural, one {jour} other {jours}}} other {{amount, plural, one {heure} other {heures}}}} avant le début.",
+  "TransactionPage.Reschedule.error.withinCutoff": "Ce créneau est trop proche du début : l'hôte n'accepte pas de réservation aussi tard.",
+  "CheckoutPage.bookingCutoffError": "Ce créneau est trop proche du début : l'hôte n'accepte pas de réservation aussi tard. Choisissez un créneau plus tardif."
 }

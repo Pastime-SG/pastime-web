@@ -52,6 +52,10 @@ const wholeNumberBetween = (message, min, max) => value => {
   return isValid ? undefined : message;
 };
 
+// Empty (no cutoff) or a whole number of at least 1
+const optionalWholeNumberAtLeastOne = message => value =>
+  value === '' || value == null ? undefined : wholeNumberBetween(message, 1)(value);
+
 const UnitSelect = props => {
   const intl = useIntl();
   const { id, name, label, className } = props;
@@ -272,7 +276,9 @@ const EditListingPoliciesForm = props => (
                   type="number"
                   min="0"
                   step="1"
-                  label={intl.formatMessage({ id: 'EditListingPoliciesForm.rescheduleNoticeLabel' })}
+                  label={intl.formatMessage({
+                    id: 'EditListingPoliciesForm.rescheduleNoticeLabel',
+                  })}
                   validate={wholeNumberBetween(
                     intl.formatMessage({ id: 'EditListingPoliciesForm.rescheduleNoticeInvalid' }),
                     0
@@ -286,6 +292,38 @@ const EditListingPoliciesForm = props => (
                 />
               </div>
             ) : null}
+          </section>
+
+          <section className={css.section}>
+            <H4 as="h2" className={css.sectionTitle}>
+              <FormattedMessage id="EditListingPoliciesForm.bookingCutoffTitle" />
+            </H4>
+            <p className={css.note}>
+              <FormattedMessage id="EditListingPoliciesForm.bookingCutoffDescription" />
+            </p>
+            <div className={css.row}>
+              <FieldTextInput
+                className={css.rowField}
+                id={`${formId}.bookingCutoffAmount`}
+                name="bookingCutoffAmount"
+                type="number"
+                min="1"
+                step="1"
+                label={intl.formatMessage({ id: 'EditListingPoliciesForm.bookingCutoffLabel' })}
+                placeholder={intl.formatMessage({
+                  id: 'EditListingPoliciesForm.bookingCutoffPlaceholder',
+                })}
+                validate={optionalWholeNumberAtLeastOne(
+                  intl.formatMessage({ id: 'EditListingPoliciesForm.bookingCutoffInvalid' })
+                )}
+              />
+              <UnitSelect
+                className={css.rowField}
+                id={`${formId}.bookingCutoffUnit`}
+                name="bookingCutoffUnit"
+                label={intl.formatMessage({ id: 'EditListingPoliciesForm.ruleUnitLabel' })}
+              />
+            </div>
           </section>
 
           <section className={css.section}>

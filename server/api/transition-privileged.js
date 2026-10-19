@@ -18,7 +18,7 @@ const {
   fetchCommission,
 } = require('../api-util/sdk');
 const { RESCHEDULE_USER_TRANSITIONS } = require('../services/reschedule');
-const { getPoliciesProtectedData } = require('../services/policies');
+const { assertBookingStartAfterCutoff, getPoliciesProtectedData } = require('../services/policies');
 const { CANCEL_PRIVILEGED_TRANSITIONS } = require('../services/cancellation');
 const { getIncludedRelationship, getTransactionLineItems } = require('../services/commission');
 
@@ -175,6 +175,12 @@ module.exports = (req, res) => {
       assertExpectedPayinTotal(lineItems, orderData?.expectedPayinTotal);
 
       metadataMaybe = getUpdatedMetadata(orderData, transitionName, existingMetadata);
+      // Bookings can't start within the listing's booking cutoff (e.g. 24 hours)
+      assertBookingStartAfterCutoff({
+        listing,
+        transitionName,
+        bookingStart: bodyParams?.params?.bookingStart,
+      });
       // A booking keeps the cancellation and rescheduling policies it was made with
       policiesMaybe = getPoliciesProtectedData(listing, transitionName);
 

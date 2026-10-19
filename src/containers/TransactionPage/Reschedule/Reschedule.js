@@ -24,6 +24,7 @@ const AVAILABILITY_UNAVAILABLE = 'unavailable';
 
 const ERROR_MESSAGE_IDS = {
   'time-unavailable': 'TransactionPage.Reschedule.error.timeUnavailable',
+  'within-cutoff': 'TransactionPage.Reschedule.error.withinCutoff',
   'too-late': 'TransactionPage.Reschedule.error.tooLate',
   'already-rescheduled': 'TransactionPage.Reschedule.error.alreadyRescheduled',
 };
@@ -193,7 +194,7 @@ const Reschedule = props => {
         end: suggestion.end,
         ownBooking: info.booking,
         seats: info.seats,
-      }) && suggestion.start > new Date()
+      }) && suggestion.start > (info.earliestStart || new Date())
     ? AVAILABILITY_AVAILABLE
     : AVAILABILITY_UNAVAILABLE;
 

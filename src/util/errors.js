@@ -139,6 +139,14 @@ export const isTransactionInitiateBookingTimeNotAvailableError = error =>
   hasErrorWithCode(error, ERROR_CODE_TRANSACTION_BOOKING_TIME_NOT_AVAILABLE);
 
 /**
+ * Check if the given API error (from the local API's initiate-privileged or
+ * transition-privileged) is due to the booking starting within the listing's booking cutoff
+ * (see server/services/policies).
+ */
+export const isTransactionInitiateBookingCutoffError = error =>
+  hasErrorWithCode(error, 'booking-cutoff');
+
+/**
  * Check if the given API error (from `sdk.transaction.initiate()` or
  * `sdk.transaction.initiateSpeculative()`) is due to insufficient stock.
  */

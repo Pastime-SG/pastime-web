@@ -59,7 +59,7 @@ const RescheduleForm = props => {
     errorMessage,
     onSubmit,
   } = props;
-  const { booking, durationMs, seats, timeUnit, maxStart } = info;
+  const { booking, durationMs, seats, timeUnit, maxStart, earliestStart } = info;
   const durationMinutes = Math.round(durationMs / MINUTE_MS);
   const today = getStartOf(new Date(), 'day', timeZone);
   const [currentMonth, setCurrentMonth] = useState(getStartOf(today, 'month', timeZone));
@@ -127,6 +127,7 @@ const RescheduleForm = props => {
               seats,
               timeUnit,
               maxStart,
+              earliestStart,
             })
           : [];
         const isLoadingTimes = selectedDay && (!dayData || dayData.fetchTimeSlotsInProgress);

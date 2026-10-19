@@ -9,7 +9,7 @@ const {
   serialize,
   fetchCommission,
 } = require('../api-util/sdk');
-const { getPoliciesProtectedData } = require('../services/policies');
+const { assertBookingStartAfterCutoff, getPoliciesProtectedData } = require('../services/policies');
 const { getIncludedRelationship, getTransactionLineItems } = require('../services/commission');
 
 const { Money } = sharetribeSdk.types;
@@ -84,6 +84,12 @@ module.exports = (req, res) => {
       assertExpectedPayinTotal(lineItems, orderData?.expectedPayinTotal);
 
       metadataMaybe = getMetadata(orderData, transitionName);
+      // Bookings can't start within the listing's booking cutoff (e.g. 24 hours)
+      assertBookingStartAfterCutoff({
+        listing,
+        transitionName,
+        bookingStart: bodyParams?.params?.bookingStart,
+      });
       // A booking keeps the cancellation and rescheduling policies it was made with
       policiesMaybe = getPoliciesProtectedData(listing, transitionName);
 

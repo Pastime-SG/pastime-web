@@ -18,6 +18,7 @@ const {
   getStartTimeIntervalMinutes,
   isTimeAvailable,
 } = require('../../services/reschedule');
+const { getEarliestBookingStart } = require('../../services/policies');
 
 /**
  * Reschedule an accepted booking (see server/services/reschedule/rules.js for the rules).
@@ -160,6 +161,11 @@ module.exports = async (req, res) => {
       if (timeError) {
         return fail(res, 400, timeError);
       }
+      // New times can't be within the listing's booking cutoff (e.g. 24 hours before the start)
+      const earliestStart = getEarliestBookingStart(listing, now);
+      if (earliestStart && start < earliestStart) {
+        return fail(res, 400, 'within-cutoff');
+      }
       if (!(await checkAvailability(start, end))) {
         return fail(res, 409, 'time-unavailable');
       }
@@ -210,6 +216,11 @@ module.exports = async (req, res) => {
       end.getTime() - start.getTime() === ownBooking.end.getTime() - ownBooking.start.getTime();
     if (!isSameDuration || start <= now || !(await checkAvailability(start, end))) {
       return fail(res, 409, 'time-unavailable');
+    }
+    // The suggested time may have come within the booking cutoff since it was suggested
+    const earliestStart = getEarliestBookingStart(listing, now);
+    if (earliestStart && start < earliestStart) {
+      return fail(res, 409, 'within-cutoff');
     }
 
     const reschedule = { ...pending, status: 'accepted', respondedBy: role, respondedAt };

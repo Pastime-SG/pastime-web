@@ -11,6 +11,7 @@ import {
   stringifyDateToISO8601,
 } from '../../util/dates';
 import { isTransactionsTransitionInvalidTransition, storableError } from '../../util/errors';
+import { getEarliestBookingStart, getTimeSlotQueryAfterCutoff } from '../../util/policies';
 import {
   cancelBooking,
   rescheduleBooking,
@@ -112,10 +113,23 @@ const fetchTimeSlotsPayloadCreator = (
   const { extraQueryParams = null, useFetchTimeSlotsForDate = false } = options || {};
 
   // The maximum pagination page size for timeSlots is 500
-  const extraParams = extraQueryParams || {
+  const defaultExtraParams = extraQueryParams || {
     perPage: 500,
     page: 1,
   };
+
+  // The listing's booking cutoff (e.g. 24 hours): times within it can't be booked (or
+  // rescheduled to), so they are left out of the query. If the whole range is within the cutoff,
+  // nothing is fetched.
+  const listing = getState().marketplaceData?.entities?.listing?.[listingId?.uuid];
+  const query = getTimeSlotQueryAfterCutoff({
+    start,
+    end,
+    timeZone,
+    extraParams: defaultExtraParams,
+    earliestStart: getEarliestBookingStart(listing?.attributes?.publicData?.policies),
+  });
+  const { start: queryStart, extraParams } = query || {};
 
   // For small time units, we fetch the data per date.
   // This is to avoid fetching too much data (with 15 minute intervals, there can be 24*4*31 = 2928 time slots)
@@ -128,8 +142,11 @@ const fetchTimeSlotsPayloadCreator = (
       return Promise.resolve({ timeSlots: dateData?.timeSlots || [], dateId, type: 'date' });
     }
 
+    if (!query) {
+      return Promise.resolve({ timeSlots: [], dateId, type: 'date' });
+    }
     return sdk.timeslots
-      .query({ listingId, start, end, ...extraParams })
+      .query({ listingId, start: queryStart, end, ...extraParams })
       .then(response => {
         const timeSlots = denormalisedResponseEntities(response);
         return { timeSlots, dateId, type: 'date' };
@@ -139,8 +156,11 @@ const fetchTimeSlotsPayloadCreator = (
       });
   } else {
     const monthId = monthIdString(start, timeZone);
+    if (!query) {
+      return Promise.resolve({ timeSlots: [], monthId, type: 'month' });
+    }
     return sdk.timeslots
-      .query({ listingId, start, end, ...extraParams })
+      .query({ listingId, start: queryStart, end, ...extraParams })
       .then(response => {
         const timeSlots = denormalisedResponseEntities(response);
         return { timeSlots, monthId, type: 'month' };

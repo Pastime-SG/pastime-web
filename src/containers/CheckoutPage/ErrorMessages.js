@@ -5,6 +5,7 @@ import {
   isTransactionInitiateAmountTooLowError,
   isTransactionInitiateMissingStripeAccountError,
   isTransactionInitiateBookingTimeNotAvailableError,
+  isTransactionInitiateBookingCutoffError,
   isTransactionInitiateListingInsufficientStockError,
   isTransactionChargeDisabledError,
   isTransactionZeroPaymentError,
@@ -38,6 +39,8 @@ export const getErrorMessages = (
     listingNotFoundErrorMessage = <FormattedMessage id="CheckoutPage.listingNotFoundError" />;
   } else if (isAmountTooLowError) {
     initiateOrderErrorMessage = <FormattedMessage id="CheckoutPage.initiateOrderAmountTooLow" />;
+  } else if (isTransactionInitiateBookingCutoffError(initiateOrderError)) {
+    initiateOrderErrorMessage = <FormattedMessage id="CheckoutPage.bookingCutoffError" />;
   } else if (isTransactionInitiateBookingTimeNotAvailableError(initiateOrderError)) {
     // If bookings are used, there could be error related to those
     initiateOrderErrorMessage = (
@@ -89,6 +92,8 @@ export const getErrorMessages = (
     speculateErrorMessage = (
       <FormattedMessage id="CheckoutPage.providerStripeAccountMissingError" />
     );
+  } else if (isTransactionInitiateBookingCutoffError(speculateTransactionError)) {
+    speculateErrorMessage = <FormattedMessage id="CheckoutPage.bookingCutoffError" />;
   } else if (isTransactionInitiateBookingTimeNotAvailableError(speculateTransactionError)) {
     speculateErrorMessage = <FormattedMessage id="CheckoutPage.bookingTimeNotAvailableMessage" />;
   } else if (isTransactionInitiateListingInsufficientStockError(speculateTransactionError)) {

@@ -1683,5 +1683,13 @@
   "TransactionPage.default-booking.provider.cancelled-without-refund.title": "The booking from {customerName} was canceled.",
   "SectionBrowseTiles.eyebrow": "Browse",
   "SectionLandingHero.showImage": "Show image {number} of {count}",
-  "EditListingPricingForm.priceInclusiveOfGst": "{priceLabel} (inclusive of GST)"
+  "EditListingPricingForm.priceInclusiveOfGst": "{priceLabel} (inclusive of GST)",
+  "EditListingPoliciesForm.bookingCutoffTitle": "Booking cutoff",
+  "EditListingPoliciesForm.bookingCutoffDescription": "Stop new bookings shortly before a session starts. Times within the cutoff are greyed out on your listing. Leave it empty to accept bookings until the start.",
+  "EditListingPoliciesForm.bookingCutoffLabel": "No bookings within (before the start)",
+  "EditListingPoliciesForm.bookingCutoffPlaceholder": "E.g. 24",
+  "EditListingPoliciesForm.bookingCutoffInvalid": "Enter a whole number, 1 or more, or leave it empty",
+  "ListingPolicies.bookingCutoff": "Bookings close {amount} {unit, select, days {{amount, plural, one {day} other {days}}} other {{amount, plural, one {hour} other {hours}}}} before the start.",
+  "TransactionPage.Reschedule.error.withinCutoff": "This time is too close to the start: the host doesn't take bookings that late.",
+  "CheckoutPage.bookingCutoffError": "This time is too close to the start: the host doesn't take bookings that late. Please pick a later time."
 }

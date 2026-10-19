@@ -1683,5 +1683,13 @@
   "TransactionPage.default-booking.provider.cancelled-without-refund.title": "La reserva de {customerName} fue cancelada.",
   "SectionBrowseTiles.eyebrow": "Explorar",
   "SectionLandingHero.showImage": "Mostrar imagen {number} de {count}",
-  "EditListingPricingForm.priceInclusiveOfGst": "{priceLabel} (GST incluido)"
+  "EditListingPricingForm.priceInclusiveOfGst": "{priceLabel} (GST incluido)",
+  "EditListingPoliciesForm.bookingCutoffTitle": "Cierre de reservas",
+  "EditListingPoliciesForm.bookingCutoffDescription": "Deja de aceptar reservas poco antes de que empiece una sesión. Los horarios dentro de este plazo aparecen en gris en tu anuncio. Déjalo vacío para aceptar reservas hasta el inicio.",
+  "EditListingPoliciesForm.bookingCutoffLabel": "Sin reservas en las últimas (antes del inicio)",
+  "EditListingPoliciesForm.bookingCutoffPlaceholder": "P. ej. 24",
+  "EditListingPoliciesForm.bookingCutoffInvalid": "Introduce un número entero, 1 o más, o déjalo vacío",
+  "ListingPolicies.bookingCutoff": "Las reservas se cierran {amount} {unit, select, days {{amount, plural, one {día} other {días}}} other {{amount, plural, one {hora} other {horas}}}} antes del inicio.",
+  "TransactionPage.Reschedule.error.withinCutoff": "Este horario está demasiado cerca del inicio: el anfitrión no acepta reservas tan tarde.",
+  "CheckoutPage.bookingCutoffError": "Este horario está demasiado cerca del inicio: el anfitrión no acepta reservas tan tarde. Elige un horario posterior."
 }

@@ -44,15 +44,22 @@ const sanitizeRule = rule => {
     : null;
 };
 
+const sanitizeDuration = duration => {
+  const { amount, unit } = duration || {};
+  return isValidAmount(amount) && Number(amount) > 0 && UNITS.includes(unit)
+    ? { amount: Number(amount), unit }
+    : null;
+};
+
 /**
  * Policies with only valid values. Without policies, rescheduling is off and there are no
- * cancellation rules.
+ * cancellation rules and no booking cutoff.
  *
  * @param {Object} [policies]
  * @returns {{reschedule: Object, cancellation: {rules: Array<Object>}}}
  */
 const getPolicies = policies => {
-  const { reschedule, cancellation } = policies || {};
+  const { reschedule, cancellation, bookingCutoff } = policies || {};
   const allowsReschedule =
     reschedule?.allowed === true &&
     isValidAmount(reschedule?.minNoticeAmount) &&
@@ -70,7 +77,50 @@ const getPolicies = policies => {
         }
       : { allowed: false },
     cancellation: { rules },
+    bookingCutoff: sanitizeDuration(bookingCutoff),
   };
+};
+
+/**
+ * The earliest start of a new booking (or a new time for a booking): bookings can't start
+ * within the listing's current booking cutoff (e.g. 24 hours). Null if there's no cutoff.
+ *
+ * @param {Object} listing Listing entity (attributes.publicData.policies)
+ * @param {Date} [now]
+ * @returns {Date|null}
+ */
+const getEarliestBookingStart = (listing, now = new Date()) => {
+  const { bookingCutoff } = getPolicies(listing?.attributes?.publicData?.policies);
+  return bookingCutoff
+    ? new Date(now.getTime() + durationInMs(bookingCutoff.amount, bookingCutoff.unit))
+    : null;
+};
+
+/**
+ * Throws a 400 error (like an SDK error, see handleError) if a booking request starts within
+ * the listing's booking cutoff. Other transitions aren't checked.
+ *
+ * @param {Object} params
+ * @param {Object} params.listing
+ * @param {string} params.transitionName
+ * @param {Date|string} [params.bookingStart]
+ * @param {Date} [params.now]
+ */
+const assertBookingStartAfterCutoff = ({ listing, transitionName, bookingStart, now }) => {
+  const earliestStart = getEarliestBookingStart(listing, now);
+  const isBookingRequest = BOOKING_REQUEST_TRANSITIONS.includes(transitionName);
+  if (
+    isBookingRequest &&
+    earliestStart &&
+    bookingStart &&
+    new Date(bookingStart).getTime() < earliestStart.getTime()
+  ) {
+    const error = new Error('The booking starts within the booking cutoff');
+    error.status = 400;
+    error.statusText = 'booking-cutoff';
+    error.data = { errors: [{ status: 400, code: 'booking-cutoff' }] };
+    throw error;
+  }
 };
 
 /**
@@ -136,6 +186,8 @@ const getRescheduleDeadline = (reschedulePolicy, bookingStart) =>
 
 module.exports = {
   BOOKING_REQUEST_TRANSITIONS,
+  assertBookingStartAfterCutoff,
+  getEarliestBookingStart,
   DAY_MS,
   HOUR_MS,
   getMatchingCancellationRule,

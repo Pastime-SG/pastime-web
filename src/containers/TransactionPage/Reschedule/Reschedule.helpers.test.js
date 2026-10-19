@@ -234,3 +234,23 @@ describe('getStartTimeOptions for fixed sessions', () => {
     expect(starts).toEqual(['10:00', '10:30']);
   });
 });
+
+describe('getStartTimeOptions with a booking cutoff', () => {
+  it('leaves out start times within the cutoff', () => {
+    const slot = (start, end) => ({
+      attributes: { start: new Date(start), end: new Date(end), seats: 1 },
+    });
+    const starts = getStartTimeOptions({
+      dayStart: new Date('2026-10-20T00:00:00.000Z'),
+      timeZone: TIME_ZONE,
+      timeSlots: [slot('2026-10-20T08:00:00.000Z', '2026-10-20T14:00:00.000Z')],
+      ownBooking: { start: bookingStart, end: bookingEnd },
+      durationMs: HOUR_MS,
+      maxStart: new Date('2026-12-01T00:00:00.000Z'),
+      earliestStart: new Date('2026-10-20T11:00:00.000Z'),
+      now: NOW,
+    }).map(o => o.start.toISOString().slice(11, 16));
+    // 15:00 and 16:00 are within the booking's own time (14:00-17:00), which counts as free
+    expect(starts).toEqual(['11:00', '12:00', '13:00', '15:00', '16:00']);
+  });
+});

@@ -1683,5 +1683,13 @@
   "TransactionPage.default-booking.provider.cancelled-without-refund.title": "Die Buchung von {customerName} wurde storniert.",
   "SectionBrowseTiles.eyebrow": "Entdecken",
   "SectionLandingHero.showImage": "Bild {number} von {count} anzeigen",
-  "EditListingPricingForm.priceInclusiveOfGst": "{priceLabel} (inkl. GST)"
+  "EditListingPricingForm.priceInclusiveOfGst": "{priceLabel} (inkl. GST)",
+  "EditListingPoliciesForm.bookingCutoffTitle": "Buchungsschluss",
+  "EditListingPoliciesForm.bookingCutoffDescription": "Neue Buchungen kurz vor Beginn einer Sitzung stoppen. Zeiten innerhalb dieser Frist sind in deinem Eintrag ausgegraut. Leer lassen, um Buchungen bis zum Beginn anzunehmen.",
+  "EditListingPoliciesForm.bookingCutoffLabel": "Keine Buchungen innerhalb von (vor Beginn)",
+  "EditListingPoliciesForm.bookingCutoffPlaceholder": "z. B. 24",
+  "EditListingPoliciesForm.bookingCutoffInvalid": "Gib eine ganze Zahl ab 1 ein oder lass das Feld leer",
+  "ListingPolicies.bookingCutoff": "Buchungen schließen {amount} {unit, select, days {{amount, plural, one {Tag} other {Tage}}} other {{amount, plural, one {Stunde} other {Stunden}}}} vor Beginn.",
+  "TransactionPage.Reschedule.error.withinCutoff": "Diese Zeit ist zu kurz vor Beginn: So spät werden keine Buchungen angenommen.",
+  "CheckoutPage.bookingCutoffError": "Diese Zeit ist zu kurz vor Beginn: So spät werden keine Buchungen angenommen. Bitte wähle eine spätere Zeit."
 }

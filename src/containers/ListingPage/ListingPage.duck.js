@@ -13,6 +13,7 @@ import {
   monthIdString,
   stringifyDateToISO8601,
 } from '../../util/dates';
+import { getEarliestBookingStart, getTimeSlotQueryAfterCutoff } from '../../util/policies';
 import {
   hasPermissionToInitiateTransactions,
   hasPermissionToViewData,
@@ -204,10 +205,25 @@ const fetchTimeSlotsPayloadCreator = ({ listingId, start, end, timeZone, options
   const { extraQueryParams = null, useFetchTimeSlotsForDate = false } = options || {};
 
   // The maximum pagination page size for timeSlots is 500
-  const extraParams = extraQueryParams || {
+  const defaultExtraParams = extraQueryParams || {
     perPage: 500,
     page: 1,
   };
+
+  // The listing's booking cutoff (e.g. 24 hours): times within it can't be booked, so they are
+  // left out of the query. If the whole range is within the cutoff, nothing is fetched.
+  const listing = getState().marketplaceData?.entities?.listing?.[listingId?.uuid];
+  const query = getTimeSlotQueryAfterCutoff({
+    start,
+    end,
+    timeZone,
+    extraParams: defaultExtraParams,
+    earliestStart: getEarliestBookingStart(listing?.attributes?.publicData?.policies),
+  });
+  if (!query) {
+    return Promise.resolve([]);
+  }
+  const { start: queryStart, extraParams } = query;
 
   // For small time units, we fetch the data per date.
   // This is to avoid fetching too much data (with 15 minute intervals, there can be 24*4*31 = 2928 time slots)
@@ -220,7 +236,7 @@ const fetchTimeSlotsPayloadCreator = ({ listingId, start, end, timeZone, options
       return Promise.resolve(dateData?.timeSlots || []);
     }
 
-    return dispatch(timeSlotsRequest({ listingId, start, end, ...extraParams }))
+    return dispatch(timeSlotsRequest({ listingId, start: queryStart, end, ...extraParams }))
       .then(response => {
         return response.payload;
       })
@@ -228,7 +244,7 @@ const fetchTimeSlotsPayloadCreator = ({ listingId, start, end, timeZone, options
         return [];
       });
   } else {
-    return dispatch(timeSlotsRequest({ listingId, start, end, ...extraParams }))
+    return dispatch(timeSlotsRequest({ listingId, start: queryStart, end, ...extraParams }))
       .then(response => {
         return response.payload;
       })

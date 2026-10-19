@@ -35,7 +35,7 @@ export const formatRuleCondition = (intl, rule) =>
 const ListingPolicies = props => {
   const intl = useIntl();
   const { className, policies, showReschedule = true, highlightedRuleHeading } = props;
-  const { reschedule, cancellation } = getPolicies(policies);
+  const { reschedule, cancellation, bookingCutoff } = getPolicies(policies);
   const hasRules = cancellation.rules.length > 0;
 
   return (
@@ -71,6 +71,14 @@ const ListingPolicies = props => {
       {hasRules ? (
         <p className={css.note}>
           <FormattedMessage id="ListingPolicies.stripeFeeNonRefundable" />
+        </p>
+      ) : null}
+      {showReschedule && bookingCutoff ? (
+        <p className={css.reschedule}>
+          <FormattedMessage
+            id="ListingPolicies.bookingCutoff"
+            values={{ amount: bookingCutoff.amount, unit: bookingCutoff.unit }}
+          />
         </p>
       ) : null}
       {showReschedule ? (
