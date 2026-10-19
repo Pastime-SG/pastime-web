@@ -22,6 +22,9 @@ export const getStateDataForBookingProcess = (txInfo, processInfo) => {
       .cond([states.CANCELED, _], () => {
         return { processName, processState, isFinal: true };
       })
+      .cond([states.CANCELLED_WITHOUT_REFUND, _], () => {
+        return { processName, processState, isFinal: true };
+      })
       .cond([states.PREAUTHORIZED, PROVIDER], () => {
         return { processName, processState, actionNeeded: true, isSaleNotification: true };
       })

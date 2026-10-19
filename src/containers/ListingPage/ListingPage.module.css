@@ -645,6 +645,17 @@
   }
 }
 
+.sectionPolicies {
+  padding: 0 24px;
+  margin-bottom: 36px;
+  scroll-margin-top: calc(var(--topbarHeight) + 24px);
+
+  @media (--viewportMedium) {
+    padding: 0;
+    margin-bottom: 40px;
+  }
+}
+
 .sectionReviews,
 .sectionAuthor {
   padding: 0 24px;

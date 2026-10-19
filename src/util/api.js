@@ -158,3 +158,11 @@ export const deleteUserAccount = body => {
 export const rescheduleBooking = body => {
   return post('/api/reschedule', body);
 };
+
+// Customer cancellation of an accepted booking: 'preview' returns the refund the customer would
+// get now, 'cancel' refunds and cancels the booking (by the cancellation policy of the booking).
+//
+// See `server/api/cancel/cancel.js` to see what data should be sent in the body.
+export const cancelBooking = body => {
+  return post('/api/cancel', body);
+};

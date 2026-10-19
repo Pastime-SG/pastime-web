@@ -5,8 +5,8 @@ import {
   ConditionalResolver,
 } from '../../transactions/transaction';
 
-// Activity feed messages for the reschedule transitions. Most of them lead back to the accepted
-// state, so the default (state based) message would be wrong.
+// Activity feed messages for the reschedule and customer cancel transitions. Most reschedule
+// transitions lead back to the accepted state, so the default (state based) message would be wrong.
 const getRescheduleTransitionMessages = transitions => {
   const messageId = key => `TransactionPage.ActivityFeed.default-booking.${key}`;
   return [
@@ -20,6 +20,13 @@ const getRescheduleTransitionMessages = transitions => {
     [transitions.DECLINE_RESCHEDULE_BY_PROVIDER, 'rescheduleDeclined'],
     [transitions.EXPIRE_RESCHEDULE_REQUESTED_BY_CUSTOMER, 'rescheduleExpired'],
     [transitions.EXPIRE_RESCHEDULE_REQUESTED_BY_PROVIDER, 'rescheduleExpired'],
+    [transitions.CUSTOMER_CANCEL_REQUEST, 'customerCancelledRequest'],
+    [transitions.CUSTOMER_CANCEL, 'customerCancelled'],
+    [transitions.CUSTOMER_CANCEL_RESCHEDULE_REQUESTED_BY_CUSTOMER, 'customerCancelled'],
+    [transitions.CUSTOMER_CANCEL_RESCHEDULE_REQUESTED_BY_PROVIDER, 'customerCancelled'],
+    [transitions.CUSTOMER_CANCEL_NO_REFUND, 'customerCancelled'],
+    [transitions.CUSTOMER_CANCEL_NO_REFUND_RESCHEDULE_REQUESTED_BY_CUSTOMER, 'customerCancelled'],
+    [transitions.CUSTOMER_CANCEL_NO_REFUND_RESCHEDULE_REQUESTED_BY_PROVIDER, 'customerCancelled'],
   ]
     .filter(([transition]) => !!transition)
     .map(([transition, key]) => ({ transition, translationId: messageId(key) }));
@@ -108,7 +115,18 @@ const getBookingStateData = (txInfo, processInfo) => {
           primaryButtonProps: leaveReviewProps,
         };
       })
-      .cond([states.REVIEWED, _], () => {
+      .cond([states.CANCELED, PROVIDER], () => {
+      // After a cancellation with a refund, the line items still show the full payout: the
+      // provider's actual payout is shown with the cancellation details instead.
+      const hasRefund = transaction?.attributes?.metadata?.cancellation?.refund > 0;
+      return {
+        processName,
+        processState,
+        showDetailCardHeadings: true,
+        showBreakDown: !hasRefund,
+      };
+    })
+    .cond([states.REVIEWED, _], () => {
         return { processName, processState, showDetailCardHeadings: true, showReviews: true };
       })
       .default(() => {

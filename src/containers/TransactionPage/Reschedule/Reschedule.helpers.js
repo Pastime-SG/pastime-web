@@ -5,6 +5,7 @@ import {
   stringifyDateToISO8601,
 } from '../../../util/dates';
 import { timeSlotsPerDate } from '../../../util/generators';
+import { getPolicies, getRescheduleDeadline } from '../../../util/policies';
 import {
   BOOKING_PROCESS_NAME,
   getProcess,
@@ -16,7 +17,9 @@ import {
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
 
-// The first reschedule request can be made until this many days before the booking starts.
+// Bookings made before the listing policies existed: the first reschedule request can be made
+// until this many days before the booking starts. Newer bookings follow the reschedule policy
+// copied to the booking (protectedData.policies).
 export const MIN_DAYS_BEFORE_START_TO_REQUEST = 7;
 // A booking can't be moved further than this from the payment.
 export const MAX_DAYS_FROM_PAYMENT = 90;
@@ -121,12 +124,15 @@ export const getRescheduleInfo = ({ transaction, transactionRole, nextTransition
       ? t.REQUEST_RESCHEDULE_BY_CUSTOMER
       : t.REQUEST_RESCHEDULE_BY_PROVIDER;
   const nextTransitionNames = (nextTransitions || []).map(nt => nt?.attributes?.name);
-  const requestDeadline = new Date(start.getTime() - MIN_DAYS_BEFORE_START_TO_REQUEST * DAY_MS);
+  const requestDeadline = protectedData.policies
+    ? getRescheduleDeadline(getPolicies(protectedData.policies).reschedule, start)
+    : new Date(start.getTime() - MIN_DAYS_BEFORE_START_TO_REQUEST * DAY_MS);
   const canRequest =
     stage === STAGE_ACCEPTED &&
+    !!requestDeadline &&
     !hasRescheduleHistory &&
     nextTransitionNames.includes(ownRequestTransition) &&
-    currentTime.getTime() < requestDeadline.getTime();
+    currentTime.getTime() <= requestDeadline.getTime();
 
   const request = protectedData.reschedule || null;
   const isPending = stage !== STAGE_ACCEPTED;

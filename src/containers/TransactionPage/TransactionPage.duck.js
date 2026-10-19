@@ -11,7 +11,12 @@ import {
   stringifyDateToISO8601,
 } from '../../util/dates';
 import { isTransactionsTransitionInvalidTransition, storableError } from '../../util/errors';
-import { rescheduleBooking, transactionLineItems, transitionPrivileged } from '../../util/api';
+import {
+  cancelBooking,
+  rescheduleBooking,
+  transactionLineItems,
+  transitionPrivileged,
+} from '../../util/api';
 import * as log from '../../util/log';
 import {
   updatedEntities,
@@ -840,6 +845,42 @@ export const rescheduleBookingAction = params => dispatch => {
   return dispatch(rescheduleBookingThunk(params)).unwrap();
 };
 
+///////////////////
+// cancelBooking //
+///////////////////
+
+// The refund the customer would get when cancelling an accepted booking now (see
+// server/api/cancel/cancel.js): { ruleHeading, refundPercentage, currency, paid, stripeFee, refund }
+export const fetchCancelPreviewThunk = createAsyncThunk(
+  'TransactionPage/fetchCancelPreview',
+  ({ txId }, { rejectWithValue }) =>
+    cancelBooking({ transactionId: txId, action: 'preview' }).catch(e =>
+      rejectWithValue({ ...storableError(e), code: e?.code || null })
+    )
+);
+
+// Cancel an accepted booking. The endpoint returns the updated transaction, so nothing is fetched
+// again, except the notifications if the booking needed the customer's attention.
+export const cancelBookingThunk = createAsyncThunk(
+  'TransactionPage/cancelBooking',
+  ({ txId, refreshNotifications }, { dispatch, rejectWithValue }) =>
+    cancelBooking({ transactionId: txId, action: 'cancel' })
+      .then(response => {
+        dispatch(addMarketplaceEntities(response));
+        if (refreshNotifications) {
+          dispatch(fetchCurrentUserNotifications());
+        }
+        return response;
+      })
+      .catch(e => rejectWithValue({ ...storableError(e), code: e?.code || null }))
+);
+
+// Backward compatible wrappers
+export const fetchCancelPreview = params => dispatch =>
+  dispatch(fetchCancelPreviewThunk(params)).unwrap();
+export const cancelBookingAction = params => dispatch =>
+  dispatch(cancelBookingThunk(params)).unwrap();
+
 ////////////////////
 // FetchLineItems //
 ////////////////////
@@ -910,6 +951,11 @@ const initialState = {
   processTransitions: null,
   rescheduleInProgress: null,
   rescheduleError: null,
+  cancelPreview: null,
+  cancelPreviewInProgress: false,
+  cancelPreviewError: null,
+  cancelInProgress: false,
+  cancelError: null,
   lineItems: null,
   fetchLineItemsInProgress: false,
   fetchLineItemsError: null,
@@ -1011,6 +1057,31 @@ const transactionPageSlice = createSlice({
         state.fetchTransitionsError = action.payload;
       })
       // makeTransition cases
+      // cancelBooking cases
+      .addCase(fetchCancelPreviewThunk.pending, state => {
+        state.cancelPreview = null;
+        state.cancelPreviewInProgress = true;
+        state.cancelPreviewError = null;
+      })
+      .addCase(fetchCancelPreviewThunk.fulfilled, (state, action) => {
+        state.cancelPreview = action.payload;
+        state.cancelPreviewInProgress = false;
+      })
+      .addCase(fetchCancelPreviewThunk.rejected, (state, action) => {
+        state.cancelPreviewInProgress = false;
+        state.cancelPreviewError = action.payload;
+      })
+      .addCase(cancelBookingThunk.pending, state => {
+        state.cancelInProgress = true;
+        state.cancelError = null;
+      })
+      .addCase(cancelBookingThunk.fulfilled, state => {
+        state.cancelInProgress = false;
+      })
+      .addCase(cancelBookingThunk.rejected, (state, action) => {
+        state.cancelInProgress = false;
+        state.cancelError = action.payload;
+      })
       // rescheduleBooking cases
       .addCase(rescheduleBookingThunk.pending, (state, action) => {
         state.rescheduleInProgress = action.meta.arg.action;

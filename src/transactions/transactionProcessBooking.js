@@ -65,6 +65,23 @@ export const transitions = {
   CANCEL_RESCHEDULE_REQUESTED_BY_CUSTOMER: 'transition/cancel-reschedule-requested-by-customer',
   CANCEL_RESCHEDULE_REQUESTED_BY_PROVIDER: 'transition/cancel-reschedule-requested-by-provider',
 
+  // Customer cancellations. Before the booking is accepted: free.
+  CUSTOMER_CANCEL_REQUEST: 'transition/customer-cancel-request',
+  // After it's accepted, by the cancellation rules copied to the booking. These are privileged
+  // transitions that go through the server: see server/api/cancel
+  CUSTOMER_CANCEL: 'transition/customer-cancel',
+  CUSTOMER_CANCEL_RESCHEDULE_REQUESTED_BY_CUSTOMER:
+    'transition/customer-cancel-reschedule-requested-by-customer',
+  CUSTOMER_CANCEL_RESCHEDULE_REQUESTED_BY_PROVIDER:
+    'transition/customer-cancel-reschedule-requested-by-provider',
+  CUSTOMER_CANCEL_NO_REFUND: 'transition/customer-cancel-no-refund',
+  CUSTOMER_CANCEL_NO_REFUND_RESCHEDULE_REQUESTED_BY_CUSTOMER:
+    'transition/customer-cancel-no-refund-reschedule-requested-by-customer',
+  CUSTOMER_CANCEL_NO_REFUND_RESCHEDULE_REQUESTED_BY_PROVIDER:
+    'transition/customer-cancel-no-refund-reschedule-requested-by-provider',
+  // The backend pays out the provider of a booking cancelled without a refund at the booking end
+  PAYOUT_CANCELLED_WITHOUT_REFUND: 'transition/payout-cancelled-without-refund',
+
   // The backend will mark the transaction completed.
   COMPLETE: 'transition/complete',
   OPERATOR_COMPLETE: 'transition/operator-complete',
@@ -105,6 +122,7 @@ export const states = {
   RESCHEDULE_REQUESTED_BY_PROVIDER: 'reschedule-requested-by-provider',
   EXPIRED: 'expired',
   CANCELED: 'canceled',
+  CANCELLED_WITHOUT_REFUND: 'cancelled-without-refund',
   DELIVERED: 'delivered',
   REVIEWED: 'reviewed',
   REVIEWED_BY_CUSTOMER: 'reviewed-by-customer',
@@ -158,6 +176,7 @@ export const graph = {
         [transitions.EXPIRE]: states.EXPIRED,
         [transitions.ACCEPT]: states.ACCEPTED,
         [transitions.OPERATOR_ACCEPT]: states.ACCEPTED,
+        [transitions.CUSTOMER_CANCEL_REQUEST]: states.CANCELED,
       },
     },
 
@@ -170,6 +189,8 @@ export const graph = {
         [transitions.OPERATOR_COMPLETE]: states.DELIVERED,
         [transitions.REQUEST_RESCHEDULE_BY_CUSTOMER]: states.RESCHEDULE_REQUESTED_BY_CUSTOMER,
         [transitions.REQUEST_RESCHEDULE_BY_PROVIDER]: states.RESCHEDULE_REQUESTED_BY_PROVIDER,
+        [transitions.CUSTOMER_CANCEL]: states.CANCELED,
+        [transitions.CUSTOMER_CANCEL_NO_REFUND]: states.CANCELLED_WITHOUT_REFUND,
       },
     },
     [states.RESCHEDULE_REQUESTED_BY_CUSTOMER]: {
@@ -179,6 +200,9 @@ export const graph = {
         [transitions.COUNTER_RESCHEDULE_BY_PROVIDER]: states.RESCHEDULE_REQUESTED_BY_PROVIDER,
         [transitions.EXPIRE_RESCHEDULE_REQUESTED_BY_CUSTOMER]: states.ACCEPTED,
         [transitions.CANCEL_RESCHEDULE_REQUESTED_BY_CUSTOMER]: states.CANCELED,
+        [transitions.CUSTOMER_CANCEL_RESCHEDULE_REQUESTED_BY_CUSTOMER]: states.CANCELED,
+        [transitions.CUSTOMER_CANCEL_NO_REFUND_RESCHEDULE_REQUESTED_BY_CUSTOMER]:
+          states.CANCELLED_WITHOUT_REFUND,
       },
     },
     [states.RESCHEDULE_REQUESTED_BY_PROVIDER]: {
@@ -188,9 +212,17 @@ export const graph = {
         [transitions.COUNTER_RESCHEDULE_BY_CUSTOMER]: states.RESCHEDULE_REQUESTED_BY_CUSTOMER,
         [transitions.EXPIRE_RESCHEDULE_REQUESTED_BY_PROVIDER]: states.ACCEPTED,
         [transitions.CANCEL_RESCHEDULE_REQUESTED_BY_PROVIDER]: states.CANCELED,
+        [transitions.CUSTOMER_CANCEL_RESCHEDULE_REQUESTED_BY_PROVIDER]: states.CANCELED,
+        [transitions.CUSTOMER_CANCEL_NO_REFUND_RESCHEDULE_REQUESTED_BY_PROVIDER]:
+          states.CANCELLED_WITHOUT_REFUND,
       },
     },
 
+    [states.CANCELLED_WITHOUT_REFUND]: {
+      on: {
+        [transitions.PAYOUT_CANCELLED_WITHOUT_REFUND]: states.CANCELED,
+      },
+    },
     [states.CANCELED]: {},
     [states.DELIVERED]: {
       on: {
@@ -232,6 +264,17 @@ export const rescheduleTransitions = [
   transitions.EXPIRE_RESCHEDULE_REQUESTED_BY_PROVIDER,
 ];
 
+// Customer cancellations. They're shown in the activity feed with their own messages.
+export const customerCancelTransitions = [
+  transitions.CUSTOMER_CANCEL_REQUEST,
+  transitions.CUSTOMER_CANCEL,
+  transitions.CUSTOMER_CANCEL_RESCHEDULE_REQUESTED_BY_CUSTOMER,
+  transitions.CUSTOMER_CANCEL_RESCHEDULE_REQUESTED_BY_PROVIDER,
+  transitions.CUSTOMER_CANCEL_NO_REFUND,
+  transitions.CUSTOMER_CANCEL_NO_REFUND_RESCHEDULE_REQUESTED_BY_CUSTOMER,
+  transitions.CUSTOMER_CANCEL_NO_REFUND_RESCHEDULE_REQUESTED_BY_PROVIDER,
+];
+
 // Check if a transition is the kind that should be rendered
 // when showing transition history (e.g. ActivityFeed)
 // The first transition and most of the expiration transitions made by system are not relevant
@@ -254,6 +297,7 @@ export const isRelevantPastTransition = transition => {
     transitions.CANCEL_RESCHEDULE_REQUESTED_BY_CUSTOMER,
     transitions.CANCEL_RESCHEDULE_REQUESTED_BY_PROVIDER,
     ...rescheduleTransitions,
+    ...customerCancelTransitions,
   ].includes(transition);
 };
 
@@ -291,6 +335,12 @@ export const isPrivileged = transition => {
     transitions.COUNTER_RESCHEDULE_BY_CUSTOMER,
     transitions.DECLINE_RESCHEDULE_BY_PROVIDER,
     transitions.DECLINE_RESCHEDULE_BY_CUSTOMER,
+    transitions.CUSTOMER_CANCEL,
+    transitions.CUSTOMER_CANCEL_RESCHEDULE_REQUESTED_BY_CUSTOMER,
+    transitions.CUSTOMER_CANCEL_RESCHEDULE_REQUESTED_BY_PROVIDER,
+    transitions.CUSTOMER_CANCEL_NO_REFUND,
+    transitions.CUSTOMER_CANCEL_NO_REFUND_RESCHEDULE_REQUESTED_BY_CUSTOMER,
+    transitions.CUSTOMER_CANCEL_NO_REFUND_RESCHEDULE_REQUESTED_BY_PROVIDER,
   ].includes(transition);
 };
 
@@ -320,6 +370,7 @@ export const isRefunded = transition => {
     transitions.CANCEL,
     transitions.CANCEL_RESCHEDULE_REQUESTED_BY_CUSTOMER,
     transitions.CANCEL_RESCHEDULE_REQUESTED_BY_PROVIDER,
+    transitions.CUSTOMER_CANCEL_REQUEST,
     transitions.DECLINE,
   ];
   return txRefundedTransitions.includes(transition);

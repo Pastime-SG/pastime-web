@@ -16,6 +16,7 @@ import EditListingDeliveryPanel from './EditListingDeliveryPanel/EditListingDeli
 import EditListingFilesPanel from './EditListingFilesPanel/EditListingFilesPanel';
 import EditListingLocationPanel from './EditListingLocationPanel/EditListingLocationPanel';
 import EditListingPhotosPanel from './EditListingPhotosPanel/EditListingPhotosPanel';
+import EditListingPoliciesPanel from './EditListingPoliciesPanel/EditListingPoliciesPanel';
 import EditListingPricingPanel from './EditListingPricingPanel/EditListingPricingPanel';
 import EditListingPricingAndStockPanel from './EditListingPricingAndStockPanel/EditListingPricingAndStockPanel';
 import EditListingStylePanel from './EditListingStylePanel/EditListingStylePanel';
@@ -31,6 +32,7 @@ export const LOCATION = 'location';
 export const AVAILABILITY = 'availability';
 export const PHOTOS = 'photos';
 export const STYLE = 'style';
+export const POLICIES = 'policies';
 
 // EditListingWizardTab component supports these tabs
 export const SUPPORTED_TABS = [
@@ -43,6 +45,7 @@ export const SUPPORTED_TABS = [
   AVAILABILITY,
   PHOTOS,
   STYLE,
+  POLICIES,
 ];
 
 const pathParamsToNextTab = (params, tab, marketplaceTabs) => {
@@ -312,6 +315,9 @@ const EditListingWizardTab = props => {
           filesRequired={filesRequired}
         />
       );
+    }
+    case POLICIES: {
+      return <EditListingPoliciesPanel {...panelProps(POLICIES)} />;
     }
     default:
       return null;

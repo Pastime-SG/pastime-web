@@ -1,0 +1,126 @@
+@import '../../../../styles/customMediaQueries.css';
+
+.root {
+  width: 100%;
+  height: auto;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+
+  @media (--viewportMedium) {
+    padding-top: 2px;
+  }
+}
+
+.error {
+  color: var(--colorFail);
+}
+
+.section {
+  margin-bottom: 36px;
+
+  @media (--viewportMedium) {
+    margin-bottom: 48px;
+  }
+}
+
+.sectionTitle {
+  margin: 0 0 12px 0;
+  padding: 0;
+
+  @media (--viewportMedium) {
+    margin: 0 0 8px 0;
+  }
+}
+
+.note {
+  margin: 0 0 18px 0;
+  color: var(--colorGrey700);
+
+  @media (--viewportMedium) {
+    margin: 0 0 16px 0;
+  }
+}
+
+.facts {
+  margin: 0 0 18px 0;
+  padding-left: 18px;
+  list-style: disc;
+  color: var(--colorGrey700);
+
+  @media (--viewportMedium) {
+    margin: 0 0 24px 0;
+  }
+}
+
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 18px;
+
+  @media (--viewportMedium) {
+    flex-direction: row;
+    gap: 16px;
+    margin-top: 16px;
+  }
+}
+
+.rowField {
+  flex: 1;
+}
+
+.field {
+  margin-top: 18px;
+
+  @media (--viewportMedium) {
+    margin-top: 16px;
+  }
+}
+
+.rules {
+  display: flex;
+  flex-direction: column;
+}
+
+.rule {
+  margin: 0 0 18px 0;
+  padding: 18px;
+  border: 1px solid var(--colorGrey100);
+  border-radius: var(--borderRadiusMedium);
+
+  @media (--viewportMedium) {
+    margin: 0 0 24px 0;
+    padding: 24px;
+  }
+}
+
+.ruleHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.ruleLegend {
+  padding: 0;
+  font-weight: var(--fontWeightSemiBold);
+}
+
+.removeRule {
+  color: var(--colorGrey700);
+}
+
+.addRule {
+  align-self: flex-start;
+}
+
+.submitButton {
+  margin-top: auto;
+  margin-bottom: 24px;
+
+  @media (--viewportLarge) {
+    display: inline-block;
+    width: 241px;
+    margin-top: 56px;
+  }
+}

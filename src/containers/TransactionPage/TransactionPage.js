@@ -75,6 +75,8 @@ import MakeCounterOfferModal from './MakeCounterOfferModal/MakeCounterOfferModal
 import SendMessageForm from './SendMessageForm/SendMessageForm';
 import TransactionPanel from './TransactionPanel/TransactionPanel';
 import Reschedule from './Reschedule/Reschedule';
+import Cancellation from './Cancellation/Cancellation';
+import { getCancellationInfo } from './Cancellation/Cancellation.helpers';
 import { getRescheduleInfo } from './Reschedule/Reschedule.helpers';
 
 import {
@@ -85,6 +87,8 @@ import {
   fetchTimeSlots,
   fetchRescheduleTimeSlots,
   rescheduleBookingAction,
+  fetchCancelPreview,
+  cancelBookingAction,
   fetchTransactionLineItems,
   uploadFile,
   clearUploadedFiles,
@@ -387,6 +391,13 @@ export const TransactionPageComponent = props => {
     onFetchRescheduleTimeSlots,
     rescheduleInProgress,
     rescheduleError,
+    onFetchCancelPreview,
+    onCancelBooking,
+    cancelPreview,
+    cancelPreviewInProgress,
+    cancelPreviewError,
+    cancelInProgress,
+    cancelError,
     ...restOfProps
   } = props;
 
@@ -772,6 +783,9 @@ export const TransactionPageComponent = props => {
         process
       )
     : {};
+  const cancellationInfo = isDataAvailable
+    ? getCancellationInfo({ transaction, transactionRole, nextTransitions })
+    : null;
 
   const hasLineItems = transaction?.attributes?.lineItems?.length > 0;
   const unitLineItem = hasLineItems
@@ -937,6 +951,43 @@ export const TransactionPageComponent = props => {
           }
           rescheduleInProgress={rescheduleInProgress}
           rescheduleError={rescheduleError}
+          onManageDisableScrolling={onManageDisableScrolling}
+        />
+      }
+      cancellation={
+        <Cancellation
+          info={cancellationInfo}
+          transactionRole={transactionRole}
+          otherUserDisplayName={otherUserDisplayNameString}
+          timeZone={listing?.attributes?.availabilityPlan?.timezone || 'Etc/UTC'}
+          onCancelRequest={() =>
+            // makeTransition resolves with the rejected action when the transition fails
+            onTransition(transaction.id, process?.transitions?.CUSTOMER_CANCEL_REQUEST, {}).then(
+              result => {
+                if (result?.error) {
+                  throw result.payload || result.error;
+                }
+                return result;
+              }
+            )
+          }
+          cancelRequestInProgress={
+            !!transitionInProgress &&
+            transitionInProgress === process?.transitions?.CUSTOMER_CANCEL_REQUEST
+          }
+          cancelRequestError={transitionError}
+          onFetchCancelPreview={() => onFetchCancelPreview({ txId: transaction.id })}
+          cancelPreview={cancelPreview}
+          cancelPreviewInProgress={cancelPreviewInProgress}
+          cancelPreviewError={cancelPreviewError}
+          onCancel={() =>
+            onCancelBooking({
+              txId: transaction.id,
+              refreshNotifications: cancellationInfo?.refreshNotifications,
+            })
+          }
+          cancelInProgress={cancelInProgress}
+          cancelError={cancelError}
           onManageDisableScrolling={onManageDisableScrolling}
         />
       }
@@ -1217,6 +1268,11 @@ const TransactionPage = props => {
     fileDownloads,
     rescheduleInProgress,
     rescheduleError,
+    cancelPreview,
+    cancelPreviewInProgress,
+    cancelPreviewError,
+    cancelInProgress,
+    cancelError,
   } = useSelector(state => state.TransactionPage, shallowEqual);
 
   const currentUser = useSelector(state => state.user?.currentUser);
@@ -1280,6 +1336,10 @@ const TransactionPage = props => {
     [dispatch]
   );
   const onReschedule = useCallback(params => dispatch(rescheduleBookingAction(params)), [dispatch]);
+  const onFetchCancelPreview = useCallback(params => dispatch(fetchCancelPreview(params)), [
+    dispatch,
+  ]);
+  const onCancelBooking = useCallback(params => dispatch(cancelBookingAction(params)), [dispatch]);
   const onFetchRescheduleTimeSlots = useCallback(
     (listing, durationMinutes) => dispatch(fetchRescheduleTimeSlots(listing, durationMinutes)),
     [dispatch]
@@ -1327,6 +1387,13 @@ const TransactionPage = props => {
       fileDownloads={fileDownloads}
       history={history}
       onReschedule={onReschedule}
+      onFetchCancelPreview={onFetchCancelPreview}
+      onCancelBooking={onCancelBooking}
+      cancelPreview={cancelPreview}
+      cancelPreviewInProgress={cancelPreviewInProgress}
+      cancelPreviewError={cancelPreviewError}
+      cancelInProgress={cancelInProgress}
+      cancelError={cancelError}
       onFetchRescheduleTimeSlots={onFetchRescheduleTimeSlots}
       rescheduleInProgress={rescheduleInProgress}
       rescheduleError={rescheduleError}

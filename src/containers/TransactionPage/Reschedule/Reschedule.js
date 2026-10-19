@@ -418,6 +418,8 @@ const Reschedule = props => {
                 deadline: intl.formatDate(info.requestDeadline, {
                   month: 'short',
                   day: 'numeric',
+                  hour: 'numeric',
+                  minute: '2-digit',
                   timeZone,
                 }),
               }}

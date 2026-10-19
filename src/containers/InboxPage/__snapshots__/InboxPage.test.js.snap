@@ -688,6 +688,482 @@ exports[`InboxPage InboxItem: default-booking process with "day" check booking: 
 </div>
 `;
 
+exports[`InboxPage InboxItem: default-booking process with "day" check booking: transition/customer-cancel 1`] = `
+<div
+  class="item"
+>
+  <div
+    class="itemAvatar"
+  >
+    <a
+      class="root"
+      href="/u/customer"
+      title="customer display name"
+    >
+      <span
+        class="initials"
+      >
+        TT
+      </span>
+    </a>
+  </div>
+  <a
+    class="itemLink"
+    href="/sale/id-booking-CUSTOMER_CANCEL-sale"
+  >
+    <div
+      class="rowNotificationDot"
+    />
+    <div
+      class="itemUsername"
+    >
+      <span
+        class=""
+      >
+        customer display name
+      </span>
+    </div>
+    <div
+      class="itemTitle"
+    >
+      listing-day title
+    </div>
+    <div
+      class="itemDetails"
+    >
+      <div
+        class="root"
+      >
+        <span
+          class="dateSection"
+        >
+          Jun 14, 2022
+        </span>
+      </div>
+    </div>
+    <div
+      class="itemState"
+    >
+      <div
+        class="stateName stateConcluded stateNoActionNeeded"
+      >
+        <span>
+          InboxPage.default-booking.canceled.status
+        </span>
+      </div>
+    </div>
+  </a>
+</div>
+`;
+
+exports[`InboxPage InboxItem: default-booking process with "day" check booking: transition/customer-cancel-no-refund 1`] = `
+<div
+  class="item"
+>
+  <div
+    class="itemAvatar"
+  >
+    <a
+      class="root"
+      href="/u/customer"
+      title="customer display name"
+    >
+      <span
+        class="initials"
+      >
+        TT
+      </span>
+    </a>
+  </div>
+  <a
+    class="itemLink"
+    href="/sale/id-booking-CUSTOMER_CANCEL_NO_REFUND-sale"
+  >
+    <div
+      class="rowNotificationDot"
+    />
+    <div
+      class="itemUsername"
+    >
+      <span
+        class=""
+      >
+        customer display name
+      </span>
+    </div>
+    <div
+      class="itemTitle"
+    >
+      listing-day title
+    </div>
+    <div
+      class="itemDetails"
+    >
+      <div
+        class="root"
+      >
+        <span
+          class="dateSection"
+        >
+          Jun 14, 2022
+        </span>
+      </div>
+    </div>
+    <div
+      class="itemState"
+    >
+      <div
+        class="stateName stateConcluded stateNoActionNeeded"
+      >
+        <span>
+          InboxPage.default-booking.cancelled-without-refund.status
+        </span>
+      </div>
+    </div>
+  </a>
+</div>
+`;
+
+exports[`InboxPage InboxItem: default-booking process with "day" check booking: transition/customer-cancel-no-refund-reschedule-requested-by-customer 1`] = `
+<div
+  class="item"
+>
+  <div
+    class="itemAvatar"
+  >
+    <a
+      class="root"
+      href="/u/customer"
+      title="customer display name"
+    >
+      <span
+        class="initials"
+      >
+        TT
+      </span>
+    </a>
+  </div>
+  <a
+    class="itemLink"
+    href="/sale/id-booking-CUSTOMER_CANCEL_NO_REFUND_RESCHEDULE_REQUESTED_BY_CUSTOMER-sale"
+  >
+    <div
+      class="rowNotificationDot"
+    />
+    <div
+      class="itemUsername"
+    >
+      <span
+        class=""
+      >
+        customer display name
+      </span>
+    </div>
+    <div
+      class="itemTitle"
+    >
+      listing-day title
+    </div>
+    <div
+      class="itemDetails"
+    >
+      <div
+        class="root"
+      >
+        <span
+          class="dateSection"
+        >
+          Jun 14, 2022
+        </span>
+      </div>
+    </div>
+    <div
+      class="itemState"
+    >
+      <div
+        class="stateName stateConcluded stateNoActionNeeded"
+      >
+        <span>
+          InboxPage.default-booking.cancelled-without-refund.status
+        </span>
+      </div>
+    </div>
+  </a>
+</div>
+`;
+
+exports[`InboxPage InboxItem: default-booking process with "day" check booking: transition/customer-cancel-no-refund-reschedule-requested-by-provider 1`] = `
+<div
+  class="item"
+>
+  <div
+    class="itemAvatar"
+  >
+    <a
+      class="root"
+      href="/u/customer"
+      title="customer display name"
+    >
+      <span
+        class="initials"
+      >
+        TT
+      </span>
+    </a>
+  </div>
+  <a
+    class="itemLink"
+    href="/sale/id-booking-CUSTOMER_CANCEL_NO_REFUND_RESCHEDULE_REQUESTED_BY_PROVIDER-sale"
+  >
+    <div
+      class="rowNotificationDot"
+    />
+    <div
+      class="itemUsername"
+    >
+      <span
+        class=""
+      >
+        customer display name
+      </span>
+    </div>
+    <div
+      class="itemTitle"
+    >
+      listing-day title
+    </div>
+    <div
+      class="itemDetails"
+    >
+      <div
+        class="root"
+      >
+        <span
+          class="dateSection"
+        >
+          Jun 14, 2022
+        </span>
+      </div>
+    </div>
+    <div
+      class="itemState"
+    >
+      <div
+        class="stateName stateConcluded stateNoActionNeeded"
+      >
+        <span>
+          InboxPage.default-booking.cancelled-without-refund.status
+        </span>
+      </div>
+    </div>
+  </a>
+</div>
+`;
+
+exports[`InboxPage InboxItem: default-booking process with "day" check booking: transition/customer-cancel-request 1`] = `
+<div
+  class="item"
+>
+  <div
+    class="itemAvatar"
+  >
+    <a
+      class="root"
+      href="/u/customer"
+      title="customer display name"
+    >
+      <span
+        class="initials"
+      >
+        TT
+      </span>
+    </a>
+  </div>
+  <a
+    class="itemLink"
+    href="/sale/id-booking-CUSTOMER_CANCEL_REQUEST-sale"
+  >
+    <div
+      class="rowNotificationDot"
+    />
+    <div
+      class="itemUsername"
+    >
+      <span
+        class=""
+      >
+        customer display name
+      </span>
+    </div>
+    <div
+      class="itemTitle"
+    >
+      listing-day title
+    </div>
+    <div
+      class="itemDetails"
+    >
+      <div
+        class="root"
+      >
+        <span
+          class="dateSection"
+        >
+          Jun 14, 2022
+        </span>
+      </div>
+    </div>
+    <div
+      class="itemState"
+    >
+      <div
+        class="stateName stateConcluded stateNoActionNeeded"
+      >
+        <span>
+          InboxPage.default-booking.canceled.status
+        </span>
+      </div>
+    </div>
+  </a>
+</div>
+`;
+
+exports[`InboxPage InboxItem: default-booking process with "day" check booking: transition/customer-cancel-reschedule-requested-by-customer 1`] = `
+<div
+  class="item"
+>
+  <div
+    class="itemAvatar"
+  >
+    <a
+      class="root"
+      href="/u/customer"
+      title="customer display name"
+    >
+      <span
+        class="initials"
+      >
+        TT
+      </span>
+    </a>
+  </div>
+  <a
+    class="itemLink"
+    href="/sale/id-booking-CUSTOMER_CANCEL_RESCHEDULE_REQUESTED_BY_CUSTOMER-sale"
+  >
+    <div
+      class="rowNotificationDot"
+    />
+    <div
+      class="itemUsername"
+    >
+      <span
+        class=""
+      >
+        customer display name
+      </span>
+    </div>
+    <div
+      class="itemTitle"
+    >
+      listing-day title
+    </div>
+    <div
+      class="itemDetails"
+    >
+      <div
+        class="root"
+      >
+        <span
+          class="dateSection"
+        >
+          Jun 14, 2022
+        </span>
+      </div>
+    </div>
+    <div
+      class="itemState"
+    >
+      <div
+        class="stateName stateConcluded stateNoActionNeeded"
+      >
+        <span>
+          InboxPage.default-booking.canceled.status
+        </span>
+      </div>
+    </div>
+  </a>
+</div>
+`;
+
+exports[`InboxPage InboxItem: default-booking process with "day" check booking: transition/customer-cancel-reschedule-requested-by-provider 1`] = `
+<div
+  class="item"
+>
+  <div
+    class="itemAvatar"
+  >
+    <a
+      class="root"
+      href="/u/customer"
+      title="customer display name"
+    >
+      <span
+        class="initials"
+      >
+        TT
+      </span>
+    </a>
+  </div>
+  <a
+    class="itemLink"
+    href="/sale/id-booking-CUSTOMER_CANCEL_RESCHEDULE_REQUESTED_BY_PROVIDER-sale"
+  >
+    <div
+      class="rowNotificationDot"
+    />
+    <div
+      class="itemUsername"
+    >
+      <span
+        class=""
+      >
+        customer display name
+      </span>
+    </div>
+    <div
+      class="itemTitle"
+    >
+      listing-day title
+    </div>
+    <div
+      class="itemDetails"
+    >
+      <div
+        class="root"
+      >
+        <span
+          class="dateSection"
+        >
+          Jun 14, 2022
+        </span>
+      </div>
+    </div>
+    <div
+      class="itemState"
+    >
+      <div
+        class="stateName stateConcluded stateNoActionNeeded"
+      >
+        <span>
+          InboxPage.default-booking.canceled.status
+        </span>
+      </div>
+    </div>
+  </a>
+</div>
+`;
+
 exports[`InboxPage InboxItem: default-booking process with "day" check booking: transition/decline 1`] = `
 <div
   class="item"
@@ -1623,6 +2099,74 @@ exports[`InboxPage InboxItem: default-booking process with "day" check booking: 
       >
         <span>
           InboxPage.default-booking.declined.status
+        </span>
+      </div>
+    </div>
+  </a>
+</div>
+`;
+
+exports[`InboxPage InboxItem: default-booking process with "day" check booking: transition/payout-cancelled-without-refund 1`] = `
+<div
+  class="item"
+>
+  <div
+    class="itemAvatar"
+  >
+    <a
+      class="root"
+      href="/u/customer"
+      title="customer display name"
+    >
+      <span
+        class="initials"
+      >
+        TT
+      </span>
+    </a>
+  </div>
+  <a
+    class="itemLink"
+    href="/sale/id-booking-PAYOUT_CANCELLED_WITHOUT_REFUND-sale"
+  >
+    <div
+      class="rowNotificationDot"
+    />
+    <div
+      class="itemUsername"
+    >
+      <span
+        class=""
+      >
+        customer display name
+      </span>
+    </div>
+    <div
+      class="itemTitle"
+    >
+      listing-day title
+    </div>
+    <div
+      class="itemDetails"
+    >
+      <div
+        class="root"
+      >
+        <span
+          class="dateSection"
+        >
+          Jun 14, 2022
+        </span>
+      </div>
+    </div>
+    <div
+      class="itemState"
+    >
+      <div
+        class="stateName stateConcluded stateNoActionNeeded"
+      >
+        <span>
+          InboxPage.default-booking.canceled.status
         </span>
       </div>
     </div>
@@ -2930,6 +3474,482 @@ exports[`InboxPage InboxItem: default-booking process with "hour" check booking:
 </div>
 `;
 
+exports[`InboxPage InboxItem: default-booking process with "hour" check booking: transition/customer-cancel 1`] = `
+<div
+  class="item"
+>
+  <div
+    class="itemAvatar"
+  >
+    <a
+      class="root"
+      href="/u/provider"
+      title="provider display name"
+    >
+      <span
+        class="initials"
+      >
+        TT
+      </span>
+    </a>
+  </div>
+  <a
+    class="itemLink"
+    href="/order/id-booking-CUSTOMER_CANCEL-order"
+  >
+    <div
+      class="rowNotificationDot"
+    />
+    <div
+      class="itemUsername"
+    >
+      <span
+        class=""
+      >
+        provider display name
+      </span>
+    </div>
+    <div
+      class="itemTitle"
+    >
+      listing-hour title
+    </div>
+    <div
+      class="itemDetails"
+    >
+      <div
+        class="root"
+      >
+        <span
+          class="dateSection"
+        >
+          Jun 14, 2022, 10:00 AM - 1:00 PM
+        </span>
+      </div>
+    </div>
+    <div
+      class="itemState"
+    >
+      <div
+        class="stateName stateConcluded stateNoActionNeeded"
+      >
+        <span>
+          InboxPage.default-booking.canceled.status
+        </span>
+      </div>
+    </div>
+  </a>
+</div>
+`;
+
+exports[`InboxPage InboxItem: default-booking process with "hour" check booking: transition/customer-cancel-no-refund 1`] = `
+<div
+  class="item"
+>
+  <div
+    class="itemAvatar"
+  >
+    <a
+      class="root"
+      href="/u/provider"
+      title="provider display name"
+    >
+      <span
+        class="initials"
+      >
+        TT
+      </span>
+    </a>
+  </div>
+  <a
+    class="itemLink"
+    href="/order/id-booking-CUSTOMER_CANCEL_NO_REFUND-order"
+  >
+    <div
+      class="rowNotificationDot"
+    />
+    <div
+      class="itemUsername"
+    >
+      <span
+        class=""
+      >
+        provider display name
+      </span>
+    </div>
+    <div
+      class="itemTitle"
+    >
+      listing-hour title
+    </div>
+    <div
+      class="itemDetails"
+    >
+      <div
+        class="root"
+      >
+        <span
+          class="dateSection"
+        >
+          Jun 14, 2022, 10:00 AM - 1:00 PM
+        </span>
+      </div>
+    </div>
+    <div
+      class="itemState"
+    >
+      <div
+        class="stateName stateConcluded stateNoActionNeeded"
+      >
+        <span>
+          InboxPage.default-booking.cancelled-without-refund.status
+        </span>
+      </div>
+    </div>
+  </a>
+</div>
+`;
+
+exports[`InboxPage InboxItem: default-booking process with "hour" check booking: transition/customer-cancel-no-refund-reschedule-requested-by-customer 1`] = `
+<div
+  class="item"
+>
+  <div
+    class="itemAvatar"
+  >
+    <a
+      class="root"
+      href="/u/provider"
+      title="provider display name"
+    >
+      <span
+        class="initials"
+      >
+        TT
+      </span>
+    </a>
+  </div>
+  <a
+    class="itemLink"
+    href="/order/id-booking-CUSTOMER_CANCEL_NO_REFUND_RESCHEDULE_REQUESTED_BY_CUSTOMER-order"
+  >
+    <div
+      class="rowNotificationDot"
+    />
+    <div
+      class="itemUsername"
+    >
+      <span
+        class=""
+      >
+        provider display name
+      </span>
+    </div>
+    <div
+      class="itemTitle"
+    >
+      listing-hour title
+    </div>
+    <div
+      class="itemDetails"
+    >
+      <div
+        class="root"
+      >
+        <span
+          class="dateSection"
+        >
+          Jun 14, 2022, 10:00 AM - 1:00 PM
+        </span>
+      </div>
+    </div>
+    <div
+      class="itemState"
+    >
+      <div
+        class="stateName stateConcluded stateNoActionNeeded"
+      >
+        <span>
+          InboxPage.default-booking.cancelled-without-refund.status
+        </span>
+      </div>
+    </div>
+  </a>
+</div>
+`;
+
+exports[`InboxPage InboxItem: default-booking process with "hour" check booking: transition/customer-cancel-no-refund-reschedule-requested-by-provider 1`] = `
+<div
+  class="item"
+>
+  <div
+    class="itemAvatar"
+  >
+    <a
+      class="root"
+      href="/u/provider"
+      title="provider display name"
+    >
+      <span
+        class="initials"
+      >
+        TT
+      </span>
+    </a>
+  </div>
+  <a
+    class="itemLink"
+    href="/order/id-booking-CUSTOMER_CANCEL_NO_REFUND_RESCHEDULE_REQUESTED_BY_PROVIDER-order"
+  >
+    <div
+      class="rowNotificationDot"
+    />
+    <div
+      class="itemUsername"
+    >
+      <span
+        class=""
+      >
+        provider display name
+      </span>
+    </div>
+    <div
+      class="itemTitle"
+    >
+      listing-hour title
+    </div>
+    <div
+      class="itemDetails"
+    >
+      <div
+        class="root"
+      >
+        <span
+          class="dateSection"
+        >
+          Jun 14, 2022, 10:00 AM - 1:00 PM
+        </span>
+      </div>
+    </div>
+    <div
+      class="itemState"
+    >
+      <div
+        class="stateName stateConcluded stateNoActionNeeded"
+      >
+        <span>
+          InboxPage.default-booking.cancelled-without-refund.status
+        </span>
+      </div>
+    </div>
+  </a>
+</div>
+`;
+
+exports[`InboxPage InboxItem: default-booking process with "hour" check booking: transition/customer-cancel-request 1`] = `
+<div
+  class="item"
+>
+  <div
+    class="itemAvatar"
+  >
+    <a
+      class="root"
+      href="/u/provider"
+      title="provider display name"
+    >
+      <span
+        class="initials"
+      >
+        TT
+      </span>
+    </a>
+  </div>
+  <a
+    class="itemLink"
+    href="/order/id-booking-CUSTOMER_CANCEL_REQUEST-order"
+  >
+    <div
+      class="rowNotificationDot"
+    />
+    <div
+      class="itemUsername"
+    >
+      <span
+        class=""
+      >
+        provider display name
+      </span>
+    </div>
+    <div
+      class="itemTitle"
+    >
+      listing-hour title
+    </div>
+    <div
+      class="itemDetails"
+    >
+      <div
+        class="root"
+      >
+        <span
+          class="dateSection"
+        >
+          Jun 14, 2022, 10:00 AM - 1:00 PM
+        </span>
+      </div>
+    </div>
+    <div
+      class="itemState"
+    >
+      <div
+        class="stateName stateConcluded stateNoActionNeeded"
+      >
+        <span>
+          InboxPage.default-booking.canceled.status
+        </span>
+      </div>
+    </div>
+  </a>
+</div>
+`;
+
+exports[`InboxPage InboxItem: default-booking process with "hour" check booking: transition/customer-cancel-reschedule-requested-by-customer 1`] = `
+<div
+  class="item"
+>
+  <div
+    class="itemAvatar"
+  >
+    <a
+      class="root"
+      href="/u/provider"
+      title="provider display name"
+    >
+      <span
+        class="initials"
+      >
+        TT
+      </span>
+    </a>
+  </div>
+  <a
+    class="itemLink"
+    href="/order/id-booking-CUSTOMER_CANCEL_RESCHEDULE_REQUESTED_BY_CUSTOMER-order"
+  >
+    <div
+      class="rowNotificationDot"
+    />
+    <div
+      class="itemUsername"
+    >
+      <span
+        class=""
+      >
+        provider display name
+      </span>
+    </div>
+    <div
+      class="itemTitle"
+    >
+      listing-hour title
+    </div>
+    <div
+      class="itemDetails"
+    >
+      <div
+        class="root"
+      >
+        <span
+          class="dateSection"
+        >
+          Jun 14, 2022, 10:00 AM - 1:00 PM
+        </span>
+      </div>
+    </div>
+    <div
+      class="itemState"
+    >
+      <div
+        class="stateName stateConcluded stateNoActionNeeded"
+      >
+        <span>
+          InboxPage.default-booking.canceled.status
+        </span>
+      </div>
+    </div>
+  </a>
+</div>
+`;
+
+exports[`InboxPage InboxItem: default-booking process with "hour" check booking: transition/customer-cancel-reschedule-requested-by-provider 1`] = `
+<div
+  class="item"
+>
+  <div
+    class="itemAvatar"
+  >
+    <a
+      class="root"
+      href="/u/provider"
+      title="provider display name"
+    >
+      <span
+        class="initials"
+      >
+        TT
+      </span>
+    </a>
+  </div>
+  <a
+    class="itemLink"
+    href="/order/id-booking-CUSTOMER_CANCEL_RESCHEDULE_REQUESTED_BY_PROVIDER-order"
+  >
+    <div
+      class="rowNotificationDot"
+    />
+    <div
+      class="itemUsername"
+    >
+      <span
+        class=""
+      >
+        provider display name
+      </span>
+    </div>
+    <div
+      class="itemTitle"
+    >
+      listing-hour title
+    </div>
+    <div
+      class="itemDetails"
+    >
+      <div
+        class="root"
+      >
+        <span
+          class="dateSection"
+        >
+          Jun 14, 2022, 10:00 AM - 1:00 PM
+        </span>
+      </div>
+    </div>
+    <div
+      class="itemState"
+    >
+      <div
+        class="stateName stateConcluded stateNoActionNeeded"
+      >
+        <span>
+          InboxPage.default-booking.canceled.status
+        </span>
+      </div>
+    </div>
+  </a>
+</div>
+`;
+
 exports[`InboxPage InboxItem: default-booking process with "hour" check booking: transition/decline 1`] = `
 <div
   class="item"
@@ -3865,6 +4885,74 @@ exports[`InboxPage InboxItem: default-booking process with "hour" check booking:
       >
         <span>
           InboxPage.default-booking.declined.status
+        </span>
+      </div>
+    </div>
+  </a>
+</div>
+`;
+
+exports[`InboxPage InboxItem: default-booking process with "hour" check booking: transition/payout-cancelled-without-refund 1`] = `
+<div
+  class="item"
+>
+  <div
+    class="itemAvatar"
+  >
+    <a
+      class="root"
+      href="/u/provider"
+      title="provider display name"
+    >
+      <span
+        class="initials"
+      >
+        TT
+      </span>
+    </a>
+  </div>
+  <a
+    class="itemLink"
+    href="/order/id-booking-PAYOUT_CANCELLED_WITHOUT_REFUND-order"
+  >
+    <div
+      class="rowNotificationDot"
+    />
+    <div
+      class="itemUsername"
+    >
+      <span
+        class=""
+      >
+        provider display name
+      </span>
+    </div>
+    <div
+      class="itemTitle"
+    >
+      listing-hour title
+    </div>
+    <div
+      class="itemDetails"
+    >
+      <div
+        class="root"
+      >
+        <span
+          class="dateSection"
+        >
+          Jun 14, 2022, 10:00 AM - 1:00 PM
+        </span>
+      </div>
+    </div>
+    <div
+      class="itemState"
+    >
+      <div
+        class="stateName stateConcluded stateNoActionNeeded"
+      >
+        <span>
+          InboxPage.default-booking.canceled.status
         </span>
       </div>
     </div>
