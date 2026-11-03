@@ -16,7 +16,9 @@
               <td>
                 <h1 style="color:#484848;font-size:26px;line-height:1.3;font-weight:700">{{t "BookingExpiredRequest.Title" "Your booking request expired" }}</h1>
                 <p style="font-size:16px;line-height:1.4;margin:16px 0;color:#484848">
-                  {{#eq "hour" protected-data.unitType}}
+                  {{#eq "fixed" protected-data.unitType}}
+                  {{t "BookingExpiredRequest.ContentForFixed" "{providerDisplayName} didn't respond to your booking request for {listingTitle} from {dateStart,date,::jmmyyyyMMMd} to {dateEnd,date,::jmmyyyyMMMd} on time, so your request expired. Your card has not been charged." dateStart=booking.start dateEnd=booking.end listingTitle=listing.title providerDisplayName=provider.display-name}}
+                  {{/eq}}{{#eq "hour" protected-data.unitType}}
                   {{t "BookingExpiredRequest.ContentForHourly" "{providerDisplayName} didn't respond to your booking request for {listingTitle} from {dateStart,date,::jmmyyyyMMMd} to {dateEnd,date,::jmmyyyyMMMd} on time, so your request expired. Your card has not been charged." dateStart=booking.start dateEnd=booking.end listingTitle=listing.title providerDisplayName=provider.display-name}}
                   {{/ eq}}{{#eq "day" protected-data.unitType}}
                   {{t "BookingExpiredRequest.ContentForDaily" "{providerDisplayName} didn't respond to your booking request for {listingTitle} from {dateStart,date,::yyyyMMMd} to {dateEnd,date,::yyyyMMMd} on time, so your request expired. Your card has not been charged." dateStart=booking.start dateEnd=(date-transform booking.end days=-1) listingTitle=listing.title providerDisplayName=provider.display-name}}

@@ -94,10 +94,9 @@
     {:name :action/decline-booking}],
    :from :state/preauthorized,
    :to :state/expired}
+  ;; The booking is completed and the provider paid out as soon as the session ends
   {:name :transition/complete,
-   :at
-   {:fn/plus
-    [{:fn/timepoint [:time/booking-end]} {:fn/period ["P2D"]}]},
+   :at {:fn/timepoint [:time/booking-end]},
    :actions [{:name :action/stripe-create-payout}],
    :from :state/accepted,
    :to :state/delivered}
@@ -328,6 +327,10 @@
    :on :transition/expire,
    :to :actor.role/customer,
    :template :booking-expired-request}
+  {:name :notification/booking-expired-request-to-provider,
+   :on :transition/expire,
+   :to :actor.role/provider,
+   :template :booking-expired-request-to-provider}
   {:name :notification/booking-money-paid,
    :on :transition/complete,
    :to :actor.role/provider,
