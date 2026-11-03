@@ -17,6 +17,7 @@ const toMoney = (amount, currency) => new Money(amount, `${currency}`.toUpperCas
 
 const ERROR_MESSAGE_IDS = {
   'not-cancellable': 'TransactionPage.Cancellation.error.notCancellable',
+  'payment-not-found': 'TransactionPage.Cancellation.error.paymentProcessing',
 };
 
 const getErrorMessage = (intl, error) =>
@@ -120,6 +121,9 @@ const BookingPolicies = ({ policies, applicableRule }) => (
  * @param {Function} props.onCancel Cancels the accepted booking
  * @param {boolean} props.cancelInProgress
  * @param {Object|null} props.cancelError
+ * @param {Function} props.onProviderCancel Provider: cancels the booking with the given transition
+ * @param {boolean} props.providerCancelInProgress
+ * @param {Object|null} props.providerCancelError
  * @param {Function} props.onManageDisableScrolling
  * @returns {JSX.Element|null}
  */
@@ -141,6 +145,9 @@ const Cancellation = props => {
     onCancel,
     cancelInProgress,
     cancelError,
+    onProviderCancel,
+    providerCancelInProgress,
+    providerCancelError,
     onManageDisableScrolling,
   } = props;
 
@@ -164,7 +171,9 @@ const Cancellation = props => {
   // After the cancellation
   if (info.isCancelledRequest) {
     return (
-      <Card title={intl.formatMessage({ id: 'TransactionPage.Cancellation.requestCancelledTitle' })}>
+      <Card
+        title={intl.formatMessage({ id: 'TransactionPage.Cancellation.requestCancelledTitle' })}
+      >
         <p className={css.note}>
           <FormattedMessage
             id={
@@ -173,6 +182,24 @@ const Cancellation = props => {
                 : 'TransactionPage.Cancellation.requestCancelledProvider'
             }
             values={names}
+          />
+        </p>
+      </Card>
+    );
+  }
+
+  // Cancelled by the provider: the customer was refunded in full
+  if (info.isCancelledByProvider) {
+    return (
+      <Card title={intl.formatMessage({ id: 'TransactionPage.Cancellation.cancelledTitle' })}>
+        <p className={css.note}>
+          <FormattedMessage
+            id={
+              isCustomer
+                ? 'TransactionPage.Cancellation.cancelledByProviderCustomer'
+                : 'TransactionPage.Cancellation.cancelledByProviderProvider'
+            }
+            values={{ ...names, time: bookingTime }}
           />
         </p>
       </Card>
@@ -301,6 +328,75 @@ const Cancellation = props => {
               onClick={closeModal}
             >
               <FormattedMessage id="TransactionPage.Cancellation.keepRequest" />
+            </SecondaryButton>
+          </div>
+        </Modal>
+      </>
+    );
+  }
+
+  // The provider, after accepting: the customer is refunded in full
+  if (info.providerCancelTransition) {
+    return (
+      <>
+        <Card title={intl.formatMessage({ id: 'TransactionPage.Cancellation.cancelTitle' })}>
+          <p className={css.note}>
+            <FormattedMessage
+              id="TransactionPage.Cancellation.providerCancelDescription"
+              values={names}
+            />
+          </p>
+          <SecondaryButton
+            className={css.secondaryButton}
+            type="button"
+            onClick={() => setModal('providerCancel')}
+          >
+            <FormattedMessage id="TransactionPage.Cancellation.cancelButton" />
+          </SecondaryButton>
+        </Card>
+        <Modal
+          id="ProviderCancelBookingModal"
+          containerClassName={css.modalContainer}
+          isOpen={modal === 'providerCancel'}
+          onClose={closeModal}
+          onManageDisableScrolling={onManageDisableScrolling}
+          usePortal
+        >
+          <h2 className={css.modalTitle}>
+            <FormattedMessage id="TransactionPage.Cancellation.cancelModalTitle" />
+          </h2>
+          <p className={css.modalDescription}>
+            <FormattedMessage
+              id="TransactionPage.Cancellation.providerCancelModalDescription"
+              values={{ ...names, time: bookingTime }}
+            />
+          </p>
+          {providerCancelError ? (
+            <p className={css.error} role="alert">
+              {getErrorMessage(intl, providerCancelError)}
+            </p>
+          ) : null}
+          <div className={css.modalActions}>
+            <PrimaryButton
+              className={css.dangerButton}
+              type="button"
+              inProgress={providerCancelInProgress}
+              disabled={providerCancelInProgress}
+              onClick={() =>
+                onProviderCancel(info.providerCancelTransition)
+                  .then(closeModal)
+                  .catch(() => {})
+              }
+            >
+              <FormattedMessage id="TransactionPage.Cancellation.cancelConfirm" />
+            </PrimaryButton>
+            <SecondaryButton
+              className={css.secondaryButton}
+              type="button"
+              disabled={providerCancelInProgress}
+              onClick={closeModal}
+            >
+              <FormattedMessage id="TransactionPage.Cancellation.keepBooking" />
             </SecondaryButton>
           </div>
         </Modal>

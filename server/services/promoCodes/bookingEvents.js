@@ -44,6 +44,9 @@ const FULL_REFUND_TRANSITIONS = [
   'transition/cancel-reschedule-requested-by-customer',
   'transition/cancel-reschedule-requested-by-provider',
   'transition/customer-cancel-request',
+  'transition/provider-cancel',
+  'transition/provider-cancel-reschedule-requested-by-customer',
+  'transition/provider-cancel-reschedule-requested-by-provider',
 ];
 // States where the booking is finished: the use is counted for good
 const FINISHED_STATES = [

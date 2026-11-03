@@ -206,6 +206,38 @@
   ;; Customer cancellations. Providers can't cancel bookings for now.
   ;; Before the booking is accepted: always free. The card was only authorized, so the payment
   ;; intent is cancelled (no charge, no Stripe fee).
+  ;; The provider (studio) can cancel an accepted booking, also while a reschedule request is
+  ;; pending. The customer is refunded in full.
+  {:name :transition/provider-cancel,
+   :actor :actor.role/provider,
+   :actions
+   [{:name :action/calculate-full-refund}
+    {:name :action/stripe-refund-payment}
+    ;; Keep this action last in the list of actions for
+    ;; the transition
+    {:name :action/cancel-booking}],
+   :from :state/accepted,
+   :to :state/cancelled}
+  {:name :transition/provider-cancel-reschedule-requested-by-customer,
+   :actor :actor.role/provider,
+   :actions
+   [{:name :action/calculate-full-refund}
+    {:name :action/stripe-refund-payment}
+    ;; Keep this action last in the list of actions for
+    ;; the transition
+    {:name :action/cancel-booking}],
+   :from :state/reschedule-requested-by-customer,
+   :to :state/cancelled}
+  {:name :transition/provider-cancel-reschedule-requested-by-provider,
+   :actor :actor.role/provider,
+   :actions
+   [{:name :action/calculate-full-refund}
+    {:name :action/stripe-refund-payment}
+    ;; Keep this action last in the list of actions for
+    ;; the transition
+    {:name :action/cancel-booking}],
+   :from :state/reschedule-requested-by-provider,
+   :to :state/cancelled}
   {:name :transition/customer-cancel-request,
    :actor :actor.role/customer,
    :actions
@@ -379,6 +411,30 @@
    :on :transition/decline-reschedule-by-customer,
    :to :actor.role/provider,
    :template :booking-reschedule-declined-by-customer}
+  {:name :notification/provider-cancel-to-customer,
+   :on :transition/provider-cancel,
+   :to :actor.role/customer,
+   :template :booking-cancelled-by-provider}
+  {:name :notification/provider-cancel-to-provider,
+   :on :transition/provider-cancel,
+   :to :actor.role/provider,
+   :template :booking-cancelled-by-provider-confirmation}
+  {:name :notification/provider-cancel-reschedule-requested-by-customer-to-customer,
+   :on :transition/provider-cancel-reschedule-requested-by-customer,
+   :to :actor.role/customer,
+   :template :booking-cancelled-by-provider}
+  {:name :notification/provider-cancel-reschedule-requested-by-customer-to-provider,
+   :on :transition/provider-cancel-reschedule-requested-by-customer,
+   :to :actor.role/provider,
+   :template :booking-cancelled-by-provider-confirmation}
+  {:name :notification/provider-cancel-reschedule-requested-by-provider-to-customer,
+   :on :transition/provider-cancel-reschedule-requested-by-provider,
+   :to :actor.role/customer,
+   :template :booking-cancelled-by-provider}
+  {:name :notification/provider-cancel-reschedule-requested-by-provider-to-provider,
+   :on :transition/provider-cancel-reschedule-requested-by-provider,
+   :to :actor.role/provider,
+   :template :booking-cancelled-by-provider-confirmation}
   {:name :notification/customer-cancel-request-to-provider,
    :on :transition/customer-cancel-request,
    :to :actor.role/provider,

@@ -79,6 +79,12 @@ export const transitions = {
     'transition/customer-cancel-no-refund-reschedule-requested-by-customer',
   CUSTOMER_CANCEL_NO_REFUND_RESCHEDULE_REQUESTED_BY_PROVIDER:
     'transition/customer-cancel-no-refund-reschedule-requested-by-provider',
+  // Provider (studio) cancellations of an accepted booking: the customer is refunded in full
+  PROVIDER_CANCEL: 'transition/provider-cancel',
+  PROVIDER_CANCEL_RESCHEDULE_REQUESTED_BY_CUSTOMER:
+    'transition/provider-cancel-reschedule-requested-by-customer',
+  PROVIDER_CANCEL_RESCHEDULE_REQUESTED_BY_PROVIDER:
+    'transition/provider-cancel-reschedule-requested-by-provider',
   // The backend pays out the provider of a booking cancelled without a refund at the booking end
   PAYOUT_CANCELLED_WITHOUT_REFUND: 'transition/payout-cancelled-without-refund',
 
@@ -191,6 +197,7 @@ export const graph = {
         [transitions.REQUEST_RESCHEDULE_BY_PROVIDER]: states.RESCHEDULE_REQUESTED_BY_PROVIDER,
         [transitions.CUSTOMER_CANCEL]: states.CANCELED,
         [transitions.CUSTOMER_CANCEL_NO_REFUND]: states.CANCELLED_WITHOUT_REFUND,
+        [transitions.PROVIDER_CANCEL]: states.CANCELED,
       },
     },
     [states.RESCHEDULE_REQUESTED_BY_CUSTOMER]: {
@@ -203,6 +210,7 @@ export const graph = {
         [transitions.CUSTOMER_CANCEL_RESCHEDULE_REQUESTED_BY_CUSTOMER]: states.CANCELED,
         [transitions.CUSTOMER_CANCEL_NO_REFUND_RESCHEDULE_REQUESTED_BY_CUSTOMER]:
           states.CANCELLED_WITHOUT_REFUND,
+        [transitions.PROVIDER_CANCEL_RESCHEDULE_REQUESTED_BY_CUSTOMER]: states.CANCELED,
       },
     },
     [states.RESCHEDULE_REQUESTED_BY_PROVIDER]: {
@@ -215,6 +223,7 @@ export const graph = {
         [transitions.CUSTOMER_CANCEL_RESCHEDULE_REQUESTED_BY_PROVIDER]: states.CANCELED,
         [transitions.CUSTOMER_CANCEL_NO_REFUND_RESCHEDULE_REQUESTED_BY_PROVIDER]:
           states.CANCELLED_WITHOUT_REFUND,
+        [transitions.PROVIDER_CANCEL_RESCHEDULE_REQUESTED_BY_PROVIDER]: states.CANCELED,
       },
     },
 
@@ -275,6 +284,13 @@ export const customerCancelTransitions = [
   transitions.CUSTOMER_CANCEL_NO_REFUND_RESCHEDULE_REQUESTED_BY_PROVIDER,
 ];
 
+// Provider cancellations of an accepted booking (full refund)
+export const providerCancelTransitions = [
+  transitions.PROVIDER_CANCEL,
+  transitions.PROVIDER_CANCEL_RESCHEDULE_REQUESTED_BY_CUSTOMER,
+  transitions.PROVIDER_CANCEL_RESCHEDULE_REQUESTED_BY_PROVIDER,
+];
+
 // Check if a transition is the kind that should be rendered
 // when showing transition history (e.g. ActivityFeed)
 // The first transition and most of the expiration transitions made by system are not relevant
@@ -298,6 +314,7 @@ export const isRelevantPastTransition = transition => {
     transitions.CANCEL_RESCHEDULE_REQUESTED_BY_PROVIDER,
     ...rescheduleTransitions,
     ...customerCancelTransitions,
+    ...providerCancelTransitions,
   ].includes(transition);
 };
 
@@ -372,6 +389,7 @@ export const isRefunded = transition => {
     transitions.CANCEL_RESCHEDULE_REQUESTED_BY_PROVIDER,
     transitions.CUSTOMER_CANCEL_REQUEST,
     transitions.DECLINE,
+    ...providerCancelTransitions,
   ];
   return txRefundedTransitions.includes(transition);
 };

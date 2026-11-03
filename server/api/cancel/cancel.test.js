@@ -92,6 +92,8 @@ const txResponse = ({ hoursToStart, protectedData = { policies } }) => {
 
 const paymentIntent = {
   id: 'pi_1',
+  status: 'succeeded',
+  metadata: { 'sharetribe-transaction-id': TX_ID },
   latest_charge: {
     captured: true,
     amount: 10500,
@@ -193,6 +195,46 @@ describe('POST /api/cancel', () => {
     mockSdk.transactions.show.mockResolvedValue(txResponse({ hoursToStart: 30 }));
     const providerRes = await call(PROVIDER_ID, 'cancel');
     expect(providerRes.json).toHaveBeenCalledWith({ status: 403, code: 'not-allowed' });
+    expect(mockSdk.transactions.transition).not.toHaveBeenCalled();
+  });
+
+  it('uses the payment stored with the booking, without searching Stripe', async () => {
+    const response = txResponse({ hoursToStart: 72 });
+    response.data.data.attributes.protectedData.stripePaymentIntents = {
+      default: { stripePaymentIntentId: 'pi_1' },
+    };
+    mockSdk.transactions.show.mockResolvedValue(response);
+    const res = await call(CUSTOMER_ID, 'cancel');
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(mockStripe.retrievePaymentIntent).toHaveBeenCalledWith('pi_1');
+    expect(mockStripe.findPaymentIntentsForTransaction).not.toHaveBeenCalled();
+  });
+
+  it("searches Stripe if the stored payment isn't this booking's", async () => {
+    const response = txResponse({ hoursToStart: 72 });
+    response.data.data.attributes.protectedData.stripePaymentIntents = {
+      default: { stripePaymentIntentId: 'pi_other' },
+    };
+    mockSdk.transactions.show.mockResolvedValue(response);
+    mockStripe.retrievePaymentIntent.mockImplementation(id =>
+      Promise.resolve(
+        id === 'pi_other'
+          ? { ...paymentIntent, id, metadata: { 'sharetribe-transaction-id': 'another-tx' } }
+          : paymentIntent
+      )
+    );
+    await call(CUSTOMER_ID, 'cancel');
+    expect(mockStripe.findPaymentIntentsForTransaction).toHaveBeenCalledWith(TX_ID);
+    expect(mockStripe.createRefund).toHaveBeenCalledWith(
+      expect.objectContaining({ paymentIntentId: 'pi_1' })
+    );
+  });
+
+  it('says the payment is still processing when Stripe has no captured payment yet', async () => {
+    mockSdk.transactions.show.mockResolvedValue(txResponse({ hoursToStart: 72 }));
+    mockStripe.findPaymentIntentsForTransaction.mockResolvedValue([]);
+    const res = await call(CUSTOMER_ID, 'cancel');
+    expect(res.json).toHaveBeenCalledWith({ status: 409, code: 'payment-not-found' });
     expect(mockSdk.transactions.transition).not.toHaveBeenCalled();
   });
 

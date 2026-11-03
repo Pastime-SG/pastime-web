@@ -60,20 +60,36 @@ const findIncluded = (txData, included, relationship) => {
   return ref ? included.find(i => i.type === ref.type && i.id.uuid === ref.id.uuid) : null;
 };
 
-// The captured PaymentIntent of the transaction
-const getPayment = transactionId =>
-  findPaymentIntentsForTransaction(transactionId).then(paymentIntents => {
-    const paymentIntent = paymentIntents.find(pi => pi.status === 'succeeded');
-    if (!paymentIntent) {
-      const error = new Error('Payment not found');
-      error.code = 'payment-not-found';
-      throw error;
+const paymentNotFound = () => {
+  const error = new Error('Payment not found');
+  error.code = 'payment-not-found';
+  return error;
+};
+
+// The PaymentIntent stored with the transaction by Sharetribe (stripe-create-payment-intent), if
+// it belongs to this transaction, or else one found by searching Stripe. Searching only finds
+// PaymentIntents after about a minute, so it's the fallback.
+const findPaymentIntent = async (transactionId, protectedData) => {
+  const storedId = protectedData?.stripePaymentIntents?.default?.stripePaymentIntentId;
+  if (typeof storedId === 'string' && /^pi_[A-Za-z0-9]+$/.test(storedId)) {
+    const pi = await retrievePaymentIntent(storedId).catch(() => null);
+    if (pi?.metadata?.['sharetribe-transaction-id'] === transactionId) {
+      return pi;
     }
-    return retrievePaymentIntent(paymentIntent.id).then(pi => ({
-      paymentIntentId: pi.id,
-      payment: getPaymentDetails(pi),
-    }));
-  });
+  }
+  const found = await findPaymentIntentsForTransaction(transactionId);
+  const match = found.find(pi => pi.status === 'succeeded');
+  return match ? retrievePaymentIntent(match.id) : null;
+};
+
+// The captured PaymentIntent of the transaction
+const getPayment = async (transactionId, protectedData) => {
+  const pi = await findPaymentIntent(transactionId, protectedData);
+  if (pi?.status !== 'succeeded') {
+    throw paymentNotFound();
+  }
+  return { paymentIntentId: pi.id, payment: getPaymentDetails(pi) };
+};
 
 // Take back the provider's share minus what they keep, and refund the customer. Stripe calls are
 // idempotent and skipped when already done, so a failed cancellation can be retried.
@@ -153,7 +169,7 @@ module.exports = async (req, res) => {
         payoutStatus: 'with-booking-end',
       };
     } else {
-      const { paymentIntentId, payment } = await getPayment(tx.id.uuid);
+      const { paymentIntentId, payment } = await getPayment(tx.id.uuid, protectedData);
       const amounts = getCancellationAmounts({
         refundPercentage: rule.refundPercentage,
         bookingAmounts: getBookingAmounts(lineItems),

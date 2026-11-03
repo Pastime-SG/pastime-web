@@ -988,6 +988,20 @@ export const TransactionPageComponent = props => {
           }
           cancelInProgress={cancelInProgress}
           cancelError={cancelError}
+          onProviderCancel={transitionName =>
+            // makeTransition resolves with the rejected action when the transition fails
+            onTransition(transaction.id, transitionName, {}).then(result => {
+              if (result?.error) {
+                throw result.payload || result.error;
+              }
+              return result;
+            })
+          }
+          providerCancelInProgress={
+            !!transitionInProgress &&
+            transitionInProgress === cancellationInfo?.providerCancelTransition
+          }
+          providerCancelError={transitionError}
           onManageDisableScrolling={onManageDisableScrolling}
         />
       }

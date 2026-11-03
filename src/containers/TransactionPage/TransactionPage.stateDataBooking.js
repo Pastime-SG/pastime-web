@@ -27,6 +27,10 @@ const getRescheduleTransitionMessages = transitions => {
     [transitions.CUSTOMER_CANCEL_NO_REFUND, 'customerCancelled'],
     [transitions.CUSTOMER_CANCEL_NO_REFUND_RESCHEDULE_REQUESTED_BY_CUSTOMER, 'customerCancelled'],
     [transitions.CUSTOMER_CANCEL_NO_REFUND_RESCHEDULE_REQUESTED_BY_PROVIDER, 'customerCancelled'],
+    // "You cancelled the booking." / "{name} cancelled the booking."
+    [transitions.PROVIDER_CANCEL, 'customerCancelled'],
+    [transitions.PROVIDER_CANCEL_RESCHEDULE_REQUESTED_BY_CUSTOMER, 'customerCancelled'],
+    [transitions.PROVIDER_CANCEL_RESCHEDULE_REQUESTED_BY_PROVIDER, 'customerCancelled'],
   ]
     .filter(([transition]) => !!transition)
     .map(([transition, key]) => ({ transition, translationId: messageId(key) }));
@@ -116,17 +120,17 @@ const getBookingStateData = (txInfo, processInfo) => {
         };
       })
       .cond([states.CANCELED, PROVIDER], () => {
-      // After a cancellation with a refund, the line items still show the full payout: the
-      // provider's actual payout is shown with the cancellation details instead.
-      const hasRefund = transaction?.attributes?.metadata?.cancellation?.refund > 0;
-      return {
-        processName,
-        processState,
-        showDetailCardHeadings: true,
-        showBreakDown: !hasRefund,
-      };
-    })
-    .cond([states.REVIEWED, _], () => {
+        // After a cancellation with a refund, the line items still show the full payout: the
+        // provider's actual payout is shown with the cancellation details instead.
+        const hasRefund = transaction?.attributes?.metadata?.cancellation?.refund > 0;
+        return {
+          processName,
+          processState,
+          showDetailCardHeadings: true,
+          showBreakDown: !hasRefund,
+        };
+      })
+      .cond([states.REVIEWED, _], () => {
         return { processName, processState, showDetailCardHeadings: true, showReviews: true };
       })
       .default(() => {

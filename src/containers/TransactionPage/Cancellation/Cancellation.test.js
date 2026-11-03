@@ -66,7 +66,7 @@ describe('getCancellationInfo', () => {
     expect(info.canCancel).toBe(false);
   });
 
-  it('does not let the provider cancel', () => {
+  it("doesn't offer the provider a cancellation the process doesn't allow", () => {
     expect(
       getCancellationInfo({
         transaction: transaction({ lastTransition: 'transition/accept' }),
@@ -75,6 +75,36 @@ describe('getCancellationInfo', () => {
         now: NOW,
       })
     ).toBe(null);
+  });
+
+  it('lets the provider cancel an accepted booking until it starts', () => {
+    const infoAt = (now, names) =>
+      getCancellationInfo({
+        transaction: transaction({ lastTransition: 'transition/accept' }),
+        transactionRole: 'provider',
+        nextTransitions: next(names),
+        now,
+      });
+    expect(infoAt(NOW, ['transition/provider-cancel']).providerCancelTransition).toBe(
+      'transition/provider-cancel'
+    );
+    // While a reschedule request is pending, the matching transition is used
+    expect(
+      infoAt(NOW, ['transition/provider-cancel-reschedule-requested-by-customer'])
+        .providerCancelTransition
+    ).toBe('transition/provider-cancel-reschedule-requested-by-customer');
+    // Not once the session has started
+    expect(infoAt(new Date(start.getTime() + HOUR_MS), ['transition/provider-cancel'])).toBe(null);
+  });
+
+  it('shows a cancellation by the provider to both sides', () => {
+    const info = getCancellationInfo({
+      transaction: transaction({ lastTransition: 'transition/provider-cancel' }),
+      transactionRole: 'customer',
+      nextTransitions: [],
+      now: NOW,
+    });
+    expect(info).toMatchObject({ isCancelled: true, isCancelledByProvider: true });
   });
 });
 

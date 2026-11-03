@@ -8,10 +8,13 @@ import { getMatchingCancellationRule, getPolicies } from '../../../util/policies
 // Keep these rules in sync with server/services/cancellation, which enforces them.
 
 /**
- * Cancellation status of a booking for the transaction page. Only customers can cancel:
+ * Cancellation status of a booking for the transaction page:
  *
- *  - before the booking is accepted, for free
- *  - after it's accepted, when a cancellation rule of the policies copied to the booking applies
+ *  - the customer, before the booking is accepted: for free
+ *  - the customer, after it's accepted: when a cancellation rule of the policies copied to the
+ *    booking applies
+ *  - the provider, after it's accepted and before the session starts: the customer is refunded
+ *    in full
  *
  * @param {Object} params
  * @param {Object} params.transaction The transaction, with the booking
@@ -44,6 +47,12 @@ export const getCancellationInfo = ({ transaction, transactionRole, nextTransiti
     t.CUSTOMER_CANCEL_NO_REFUND_RESCHEDULE_REQUESTED_BY_PROVIDER,
   ];
 
+  const providerCancelTransitions = [
+    t.PROVIDER_CANCEL,
+    t.PROVIDER_CANCEL_RESCHEDULE_REQUESTED_BY_CUSTOMER,
+    t.PROVIDER_CANCEL_RESCHEDULE_REQUESTED_BY_PROVIDER,
+  ];
+
   // Before the booking is accepted: free
   const canCancelRequest = isCustomer && nextTransitionNames.includes(t.CUSTOMER_CANCEL_REQUEST);
 
@@ -57,16 +66,32 @@ export const getCancellationInfo = ({ transaction, transactionRole, nextTransiti
       ? getMatchingCancellationRule(getPolicies(policies).cancellation.rules, timeUntilStart)
       : null;
 
+  // The provider: the cancel transition available now (by the current state), until the start
+  const providerCancelTransition =
+    !isCustomer && timeUntilStart > 0
+      ? providerCancelTransitions.find(tr => nextTransitionNames.includes(tr)) || null
+      : null;
+
   const isCancelledRequest = lastTransition === t.CUSTOMER_CANCEL_REQUEST;
+  const isCancelledByProvider = providerCancelTransitions.includes(lastTransition);
   const isCancelled =
     acceptedCancelTransitions.includes(lastTransition) ||
-    lastTransition === t.PAYOUT_CANCELLED_WITHOUT_REFUND;
+    lastTransition === t.PAYOUT_CANCELLED_WITHOUT_REFUND ||
+    isCancelledByProvider;
 
-  if (!canCancelRequest && !isAccepted && !isCancelledRequest && !isCancelled) {
+  if (
+    !canCancelRequest &&
+    !isAccepted &&
+    !providerCancelTransition &&
+    !isCancelledRequest &&
+    !isCancelled
+  ) {
     return null;
   }
 
   return {
+    providerCancelTransition,
+    isCancelledByProvider,
     canCancelRequest,
     // Accepted booking: can be cancelled now (a rule applies) or not
     isAccepted,
