@@ -89,7 +89,6 @@ const request = (path, options = {}) => {
 };
 
 // Keep the previous parameter order for the post method.
-// For now, only POST has own specific function, but you can create more or use request directly.
 const post = (path, body, options = {}) => {
   const requestOptions = {
     ...options,
@@ -99,6 +98,13 @@ const post = (path, body, options = {}) => {
 
   return request(path, requestOptions);
 };
+
+// The same for the other methods
+const get = (path, options = {}) => request(path, { ...options, method: methods.GET });
+const put = (path, body, options = {}) => request(path, { ...options, method: methods.PUT, body });
+const patch = (path, body, options = {}) =>
+  request(path, { ...options, method: methods.PATCH, body });
+const del = (path, options = {}) => request(path, { ...options, method: methods.DELETE });
 
 // Fetch transaction line items from the local API endpoint.
 //
@@ -173,7 +179,7 @@ const promoCodesPath = (isAdmin, id = null, suffix = '') =>
   `/api${isAdmin ? '/admin' : ''}/promo-codes${id ? `/${encodeURIComponent(id)}` : ''}${suffix}`;
 
 export const fetchPromoCodes = (isAdmin = false) => {
-  return request(promoCodesPath(isAdmin), { method: methods.GET });
+  return get(promoCodesPath(isAdmin));
 };
 
 export const createPromoCode = (body, isAdmin = false) => {
@@ -181,29 +187,29 @@ export const createPromoCode = (body, isAdmin = false) => {
 };
 
 export const updatePromoCode = (id, body, isAdmin = false) => {
-  return request(promoCodesPath(isAdmin, id), { method: methods.PATCH, body });
+  return patch(promoCodesPath(isAdmin, id), body);
 };
 
 export const deletePromoCode = (id, isAdmin = false) => {
-  return request(promoCodesPath(isAdmin, id), { method: methods.DELETE });
+  return del(promoCodesPath(isAdmin, id));
 };
 
 export const fetchPromoCodeLedger = (id, isAdmin = false) => {
-  return request(promoCodesPath(isAdmin, id, '/ledger'), { method: methods.GET });
+  return get(promoCodesPath(isAdmin, id, '/ledger'));
 };
 
 // The signed-in customer's loyalty credits: balance, points and history (Firestore, see
 // `server/api/loyalty/`).
 export const fetchLoyalty = () => {
-  return request('/api/loyalty', { method: methods.GET });
+  return get('/api/loyalty');
 };
 
 // Whether the loyalty program is on (public)
 export const fetchLoyaltySettings = () => {
-  return request('/api/loyalty/settings', { method: methods.GET });
+  return get('/api/loyalty/settings');
 };
 
 // Turn the loyalty program on or off (admins only, checked on the server)
 export const updateLoyaltySettings = enabled => {
-  return request('/api/admin/loyalty/settings', { method: methods.PUT, body: { enabled } });
+  return put('/api/admin/loyalty/settings', { enabled });
 };
