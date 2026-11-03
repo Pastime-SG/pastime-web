@@ -1751,7 +1751,7 @@
   "PromoCodesPage.error.maxUsesBelowUses": "El límite de usos no puede ser menor que las veces que se ha usado el código.",
   "PromoCodesPage.error.tooManyRequests": "Demasiados cambios en poco tiempo. Espera un minuto e inténtalo de nuevo.",
   "PromoCodesPage.error.generic": "Algo salió mal. Inténtalo de nuevo.",
-  "PromoCodesPage.error.fetch": "No pudimos cargar tus códigos promocionales. Recarga la página.",
+  "PromoCodesPage.error.fetch": "No pudimos cargar tus códigos promocionales. Inténtalo de nuevo.",
   "PromoCodeForm.codeLabel": "Código",
   "PromoCodeForm.codePlaceholder": "P. ej. VERANO10",
   "PromoCodeForm.codeRequired": "Añade un código",
@@ -1820,5 +1820,11 @@
   "LoyaltyPage.paused": "Los créditos están en pausa: por ahora no puedes ganar ni usar créditos. Tu saldo se conserva.",
   "PromoCodesPage.loyaltyTitle": "Créditos de fidelidad",
   "PromoCodesPage.loyaltyOn": "Activado: los clientes ganan 1 $ de crédito por cada 50 $ gastados y pueden usarlo al pagar.",
-  "PromoCodesPage.loyaltyOff": "Desactivado: los clientes no ganan ni usan créditos. Los créditos ya usados en una reserva se devuelven si se cancela."
+  "PromoCodesPage.loyaltyOff": "Desactivado: los clientes no ganan ni usan créditos. Los créditos ya usados en una reserva se devuelven si se cancela.",
+  "PromoCodesPage.error.fetchAdmin": "No pudimos cargar los códigos promocionales del marketplace. Inténtalo de nuevo.",
+  "PromoCodesPage.error.fetchNetwork": "No pudimos conectar con el servidor. Revisa tu conexión a internet e inténtalo de nuevo.",
+  "PromoCodesPage.error.fetchSignedOut": "Tu sesión ha caducado. Vuelve a iniciar sesión para ver tus códigos promocionales.",
+  "PromoCodesPage.error.fetchNotAdmin": "Solo los administradores del marketplace pueden ver estos códigos. Vuelve a tus códigos o comprueba que tu cuenta sea de administrador.",
+  "PromoCodesPage.error.fetchForbidden": "No tienes acceso a estos códigos promocionales.",
+  "PromoCodesPage.tryAgain": "Intentar de nuevo"
 }

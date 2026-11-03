@@ -30,6 +30,7 @@ import {
   createPromoCodeThunk,
   deletePromoCodeThunk,
   fetchPromoCodeLedgerThunk,
+  fetchPromoCodesThunk,
   switchView,
   updateLoyaltySettingsThunk,
   updatePromoCodeThunk,
@@ -51,6 +52,26 @@ const ERROR_MESSAGE_IDS = {
   'invalid-expiry': 'PromoCodesPage.error.invalidExpiry',
   'max-uses-below-uses': 'PromoCodesPage.error.maxUsesBelowUses',
   'too-many-requests': 'PromoCodesPage.error.tooManyRequests',
+};
+
+// Why the codes couldn't be loaded, from the response status (none: the server wasn't reached)
+const getFetchErrorId = (error, isAdminView) => {
+  const status = error?.status;
+  if (!status) {
+    return 'PromoCodesPage.error.fetchNetwork';
+  }
+  if (status === 401) {
+    return 'PromoCodesPage.error.fetchSignedOut';
+  }
+  if (status === 403) {
+    return isAdminView
+      ? 'PromoCodesPage.error.fetchNotAdmin'
+      : 'PromoCodesPage.error.fetchForbidden';
+  }
+  if (status === 429) {
+    return 'PromoCodesPage.error.tooManyRequests';
+  }
+  return isAdminView ? 'PromoCodesPage.error.fetchAdmin' : 'PromoCodesPage.error.fetch';
 };
 
 const getErrorMessage = (intl, error) =>
@@ -515,9 +536,18 @@ const PromoCodesPage = () => {
               <IconSpinner />
             </div>
           ) : fetchError ? (
-            <p className={css.error}>
-              <FormattedMessage id="PromoCodesPage.error.fetch" />
-            </p>
+            <div className={css.error} role="alert">
+              <p className={css.errorText}>
+                <FormattedMessage id={getFetchErrorId(fetchError, showAdminView)} />
+              </p>
+              <InlineTextButton
+                className={css.action}
+                type="button"
+                onClick={() => dispatch(fetchPromoCodesThunk())}
+              >
+                <FormattedMessage id="PromoCodesPage.tryAgain" />
+              </InlineTextButton>
+            </div>
           ) : hasCodes ? (
             <ul className={css.list}>
               {promoCodes.map(promoCode => (

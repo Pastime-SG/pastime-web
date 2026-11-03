@@ -1734,7 +1734,7 @@
   "PromoCodesPage.error.maxUsesBelowUses": "The usage limit can't be lower than the number of times the code has been used.",
   "PromoCodesPage.error.tooManyRequests": "Too many changes in a short time. Please wait a minute and try again.",
   "PromoCodesPage.error.generic": "Something went wrong. Please try again.",
-  "PromoCodesPage.error.fetch": "We couldn't load your promo codes. Please refresh the page.",
+  "PromoCodesPage.error.fetch": "We couldn't load your promo codes. Please try again.",
   "PromoCodeForm.codeLabel": "Code",
   "PromoCodeForm.codePlaceholder": "E.g. SUMMER10",
   "PromoCodeForm.codeRequired": "Add a code",
@@ -1803,5 +1803,11 @@
   "LoyaltyPage.paused": "Credits are paused at the moment: you can't earn or use credits for now. Your balance is kept.",
   "PromoCodesPage.loyaltyTitle": "Loyalty credits",
   "PromoCodesPage.loyaltyOn": "On: customers earn $1 of credit for every $50 they spend, and can use it at checkout.",
-  "PromoCodesPage.loyaltyOff": "Off: customers don't earn or use credits. Credits already used on a booking are still given back if it's cancelled."
+  "PromoCodesPage.loyaltyOff": "Off: customers don't earn or use credits. Credits already used on a booking are still given back if it's cancelled.",
+  "PromoCodesPage.error.fetchAdmin": "We couldn't load the marketplace promo codes. Please try again.",
+  "PromoCodesPage.error.fetchNetwork": "We couldn't reach the server. Check your internet connection and try again.",
+  "PromoCodesPage.error.fetchSignedOut": "Your session has expired. Please log in again to see your promo codes.",
+  "PromoCodesPage.error.fetchNotAdmin": "Only marketplace admins can see the marketplace promo codes. Switch back to your own codes, or check that your account is set as an admin.",
+  "PromoCodesPage.error.fetchForbidden": "You don't have access to these promo codes.",
+  "PromoCodesPage.tryAgain": "Try again"
 }

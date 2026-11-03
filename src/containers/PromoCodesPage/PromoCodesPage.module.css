@@ -64,7 +64,16 @@
 }
 
 .error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
   color: var(--colorFail);
+}
+
+.errorText {
+  margin: 0;
 }
 
 /* ================ Codes ================ */

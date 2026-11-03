@@ -1751,7 +1751,7 @@
   "PromoCodesPage.error.maxUsesBelowUses": "La limite d'utilisation ne peut pas être inférieure au nombre d'utilisations du code.",
   "PromoCodesPage.error.tooManyRequests": "Trop de modifications en peu de temps. Patientez une minute et réessayez.",
   "PromoCodesPage.error.generic": "Un problème est survenu. Veuillez réessayer.",
-  "PromoCodesPage.error.fetch": "Impossible de charger vos codes promo. Veuillez actualiser la page.",
+  "PromoCodesPage.error.fetch": "Impossible de charger vos codes promo. Veuillez réessayer.",
   "PromoCodeForm.codeLabel": "Code",
   "PromoCodeForm.codePlaceholder": "Ex. ETE10",
   "PromoCodeForm.codeRequired": "Ajoutez un code",
@@ -1820,5 +1820,11 @@
   "LoyaltyPage.paused": "Les crédits sont en pause : vous ne pouvez ni gagner ni utiliser de crédits pour l'instant. Votre solde est conservé.",
   "PromoCodesPage.loyaltyTitle": "Crédits de fidélité",
   "PromoCodesPage.loyaltyOn": "Activé : les clients gagnent 1 $ de crédit pour chaque tranche de 50 $ dépensée et peuvent l'utiliser au paiement.",
-  "PromoCodesPage.loyaltyOff": "Désactivé : les clients ne gagnent ni n'utilisent de crédits. Les crédits déjà utilisés pour une réservation sont restitués en cas d'annulation."
+  "PromoCodesPage.loyaltyOff": "Désactivé : les clients ne gagnent ni n'utilisent de crédits. Les crédits déjà utilisés pour une réservation sont restitués en cas d'annulation.",
+  "PromoCodesPage.error.fetchAdmin": "Impossible de charger les codes promo de la place de marché. Veuillez réessayer.",
+  "PromoCodesPage.error.fetchNetwork": "Impossible de joindre le serveur. Vérifiez votre connexion internet et réessayez.",
+  "PromoCodesPage.error.fetchSignedOut": "Votre session a expiré. Reconnectez-vous pour voir vos codes promo.",
+  "PromoCodesPage.error.fetchNotAdmin": "Seuls les administrateurs peuvent voir les codes promo de la place de marché. Revenez à vos codes ou vérifiez que votre compte est administrateur.",
+  "PromoCodesPage.error.fetchForbidden": "Vous n'avez pas accès à ces codes promo.",
+  "PromoCodesPage.tryAgain": "Réessayer"
 }

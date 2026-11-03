@@ -1734,7 +1734,7 @@
   "PromoCodesPage.error.maxUsesBelowUses": "Das Nutzungslimit darf nicht unter der Anzahl der bisherigen Nutzungen liegen.",
   "PromoCodesPage.error.tooManyRequests": "Zu viele Änderungen in kurzer Zeit. Bitte warte eine Minute und versuche es erneut.",
   "PromoCodesPage.error.generic": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
-  "PromoCodesPage.error.fetch": "Deine Promo-Codes konnten nicht geladen werden. Bitte lade die Seite neu.",
+  "PromoCodesPage.error.fetch": "Deine Promo-Codes konnten nicht geladen werden. Bitte versuche es erneut.",
   "PromoCodeForm.codeLabel": "Code",
   "PromoCodeForm.codePlaceholder": "z. B. SOMMER10",
   "PromoCodeForm.codeRequired": "Füge einen Code hinzu",
@@ -1803,5 +1803,11 @@
   "LoyaltyPage.paused": "Guthaben ist derzeit pausiert: Du kannst im Moment kein Guthaben sammeln oder verwenden. Dein Guthaben bleibt erhalten.",
   "PromoCodesPage.loyaltyTitle": "Treueguthaben",
   "PromoCodesPage.loyaltyOn": "An: Kunden erhalten 1 $ Guthaben pro 50 $ Ausgaben und können es an der Kasse verwenden.",
-  "PromoCodesPage.loyaltyOff": "Aus: Kunden sammeln und verwenden kein Guthaben. Bereits für eine Buchung verwendetes Guthaben wird bei einer Stornierung weiterhin zurückgegeben."
+  "PromoCodesPage.loyaltyOff": "Aus: Kunden sammeln und verwenden kein Guthaben. Bereits für eine Buchung verwendetes Guthaben wird bei einer Stornierung weiterhin zurückgegeben.",
+  "PromoCodesPage.error.fetchAdmin": "Die Marktplatz-Promo-Codes konnten nicht geladen werden. Bitte versuche es erneut.",
+  "PromoCodesPage.error.fetchNetwork": "Der Server ist nicht erreichbar. Prüfe deine Internetverbindung und versuche es erneut.",
+  "PromoCodesPage.error.fetchSignedOut": "Deine Sitzung ist abgelaufen. Bitte melde dich erneut an, um deine Promo-Codes zu sehen.",
+  "PromoCodesPage.error.fetchNotAdmin": "Nur Marktplatz-Admins können die Marktplatz-Promo-Codes sehen. Wechsle zurück zu deinen Codes oder prüfe, ob dein Konto als Admin eingerichtet ist.",
+  "PromoCodesPage.error.fetchForbidden": "Du hast keinen Zugriff auf diese Promo-Codes.",
+  "PromoCodesPage.tryAgain": "Erneut versuchen"
 }
