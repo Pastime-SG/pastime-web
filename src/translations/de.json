@@ -1798,5 +1798,10 @@
   "TopbarDesktop.creditsLink": "Guthaben",
   "TopbarMobileMenu.creditsLink": "Guthaben",
   "CarouselArrows.previous": "Zurück",
-  "CarouselArrows.next": "Weiter"
+  "CarouselArrows.next": "Weiter",
+  "LoyaltyPage.notAvailable": "Guthaben ist derzeit nicht verfügbar.",
+  "LoyaltyPage.paused": "Guthaben ist derzeit pausiert: Du kannst im Moment kein Guthaben sammeln oder verwenden. Dein Guthaben bleibt erhalten.",
+  "PromoCodesPage.loyaltyTitle": "Treueguthaben",
+  "PromoCodesPage.loyaltyOn": "An: Kunden erhalten 1 $ Guthaben pro 50 $ Ausgaben und können es an der Kasse verwenden.",
+  "PromoCodesPage.loyaltyOff": "Aus: Kunden sammeln und verwenden kein Guthaben. Bereits für eine Buchung verwendetes Guthaben wird bei einer Stornierung weiterhin zurückgegeben."
 }

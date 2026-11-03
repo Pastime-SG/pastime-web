@@ -22,6 +22,11 @@ jest.mock('../loyalty', () => ({
   earnCredits: (...args) => mockLoyalty.earnCredits(...args),
   returnCredits: (...args) => mockLoyalty.returnCredits(...args),
 }));
+const mockSettings = { enabled: true, changedAt: null };
+jest.mock('../loyalty/settings', () => ({
+  ...jest.requireActual('../loyalty/settings'),
+  getLoyaltySettings: () => Promise.resolve(mockSettings),
+}));
 const mockEventsQuery = jest.fn();
 const mockTransactionsShow = jest.fn();
 jest.mock('../sharetribe/integration', () => ({
@@ -77,6 +82,7 @@ describe('promo code booking events', () => {
     mockPromoCodes.setPromoCodeSyncPosition.mockResolvedValue();
     mockLoyalty.earnCredits.mockResolvedValue(100);
     mockLoyalty.returnCredits.mockResolvedValue(true);
+    Object.assign(mockSettings, { enabled: true, changedAt: null });
     mockLoyalty.confirmSpentCredits.mockResolvedValue();
     mockPromoCodes.confirmPromoCodeUse.mockResolvedValue();
   });
@@ -127,6 +133,24 @@ describe('promo code booking events', () => {
     });
     expect(await applyEvent(paidOut)).toEqual([]);
     expect(mockLoyalty.returnCredits).toHaveBeenCalledTimes(1);
+  });
+
+  it('earns nothing while the loyalty program is off, but still gives credits back', async () => {
+    Object.assign(mockSettings, { enabled: false, changedAt: Date.parse('2026-11-01T00:00:00Z') });
+    const finished = event(1, 'state/delivered', null);
+    finished.attributes.createdAt = new Date('2026-11-02T00:00:00Z');
+    expect(await applyEvent(finished)).toEqual([]);
+    expect(mockLoyalty.earnCredits).not.toHaveBeenCalled();
+
+    // Finished while it was still on: earns, even though it's read after the switch
+    finished.attributes.createdAt = new Date('2026-10-31T00:00:00Z');
+    expect(await applyEvent(finished)).toEqual(['credits-earned']);
+
+    const declined = event(2, 'state/declined', null, {
+      loyalty,
+      lastTransition: 'transition/decline',
+    });
+    expect(await applyEvent(declined)).toEqual(['credits-returned']);
   });
 
   it("ignores other processes' transactions, whatever their protected data says", async () => {

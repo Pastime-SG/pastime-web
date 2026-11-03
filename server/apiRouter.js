@@ -22,7 +22,7 @@ const {
   router: promoCodesRouter,
   adminRouter: adminPromoCodesRouter,
 } = require('./api/promo-codes');
-const loyaltyRouter = require('./api/loyalty');
+const { router: loyaltyRouter, adminRouter: adminLoyaltyRouter } = require('./api/loyalty');
 const middleware = require('./middleware');
 
 const createUserWithIdp = require('./api/auth/createUserWithIdp');
@@ -85,6 +85,7 @@ router.use('/cancel', cancelRouter);
 router.use('/promo-codes', promoCodesRouter);
 router.use('/admin/promo-codes', adminPromoCodesRouter);
 router.use('/loyalty', loyaltyRouter);
+router.use('/admin/loyalty', adminLoyaltyRouter);
 
 // Create user with identity provider (e.g. Facebook or Google)
 // This endpoint is called to create a new user after user has confirmed

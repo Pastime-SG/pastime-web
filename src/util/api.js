@@ -197,3 +197,13 @@ export const fetchPromoCodeLedger = (id, isAdmin = false) => {
 export const fetchLoyalty = () => {
   return request('/api/loyalty', { method: methods.GET });
 };
+
+// Whether the loyalty program is on (public)
+export const fetchLoyaltySettings = () => {
+  return request('/api/loyalty/settings', { method: methods.GET });
+};
+
+// Turn the loyalty program on or off (admins only, checked on the server)
+export const updateLoyaltySettings = enabled => {
+  return request('/api/admin/loyalty/settings', { method: methods.PUT, body: { enabled } });
+};

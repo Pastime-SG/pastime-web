@@ -7,6 +7,8 @@ import {
   fetchPromoCodeLedger,
   fetchPromoCodes,
   updatePromoCode,
+  fetchLoyaltySettings,
+  updateLoyaltySettings,
 } from '../../util/api';
 
 // Errors keep the code from the server (e.g. 'code-exists'), so the page can explain them
@@ -58,10 +60,31 @@ export const fetchPromoCodeLedgerThunk = createAsyncThunk(
       .catch(e => rejectWithValue({ ...toError(e), id }))
 );
 
+// Admin view: the loyalty program's on/off switch
+export const fetchLoyaltySettingsThunk = createAsyncThunk(
+  'PromoCodesPage/fetchLoyaltySettings',
+  (_, { rejectWithValue }) =>
+    fetchLoyaltySettings()
+      .then(response => response.enabled === true)
+      .catch(e => rejectWithValue(toError(e)))
+);
+
+export const updateLoyaltySettingsThunk = createAsyncThunk(
+  'PromoCodesPage/updateLoyaltySettings',
+  (enabled, { rejectWithValue }) =>
+    updateLoyaltySettings(enabled)
+      .then(response => response.enabled === true)
+      .catch(e => rejectWithValue(toError(e)))
+);
+
 // ================ Slice ================ //
 
 const initialState = {
   isAdminView: false,
+  // Admin view: null until fetched
+  loyaltyEnabled: null,
+  loyaltyUpdateInProgress: false,
+  loyaltyUpdateError: null,
   promoCodes: [],
   fetchInProgress: false,
   fetchError: null,
@@ -147,6 +170,21 @@ const promoCodesPageSlice = createSlice({
           error: action.payload,
         };
       })
+      .addCase(fetchLoyaltySettingsThunk.fulfilled, (state, action) => {
+        state.loyaltyEnabled = action.payload;
+      })
+      .addCase(updateLoyaltySettingsThunk.pending, state => {
+        state.loyaltyUpdateInProgress = true;
+        state.loyaltyUpdateError = null;
+      })
+      .addCase(updateLoyaltySettingsThunk.fulfilled, (state, action) => {
+        state.loyaltyUpdateInProgress = false;
+        state.loyaltyEnabled = action.payload;
+      })
+      .addCase(updateLoyaltySettingsThunk.rejected, (state, action) => {
+        state.loyaltyUpdateInProgress = false;
+        state.loyaltyUpdateError = action.payload;
+      })
       .addCase(deletePromoCodeThunk.pending, (state, action) => {
         state.actionInProgressId = action.meta.arg;
         state.actionError = null;
@@ -173,6 +211,9 @@ export const { clearSaveError } = promoCodesPageSlice.actions;
  */
 export const switchView = adminView => dispatch => {
   dispatch(promoCodesPageSlice.actions.setAdminView(adminView));
+  if (adminView) {
+    dispatch(fetchLoyaltySettingsThunk());
+  }
   return dispatch(fetchPromoCodesThunk());
 };
 

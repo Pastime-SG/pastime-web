@@ -106,7 +106,7 @@ const LedgerEntry = props => {
 const LoyaltyPage = () => {
   const intl = useIntl();
   const scrollingDisabled = useSelector(state => isScrollingDisabled(state));
-  const { account, ledger, fetchInProgress, fetchError } = useSelector(
+  const { account, ledger, enabled, fetchInProgress, fetchError } = useSelector(
     state => state.LoyaltyPage,
     shallowEqual
   );
@@ -133,8 +133,17 @@ const LoyaltyPage = () => {
             <p className={css.error}>
               <FormattedMessage id="LoyaltyPage.fetchError" />
             </p>
+          ) : account && !enabled && account.creditBalance === 0 && ledger.length === 0 ? (
+            <p className={css.empty}>
+              <FormattedMessage id="LoyaltyPage.notAvailable" />
+            </p>
           ) : account ? (
             <>
+              {!enabled ? (
+                <p className={css.paused} role="status">
+                  <FormattedMessage id="LoyaltyPage.paused" />
+                </p>
+              ) : null}
               <CreditsSummary account={account} />
               <H3 as="h2" className={css.historyHeading}>
                 <FormattedMessage id="LoyaltyPage.historyHeading" />

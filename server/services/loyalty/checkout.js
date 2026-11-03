@@ -10,6 +10,7 @@ const {
   releaseSpentCredits,
   spendCredits,
 } = require('./index');
+const { getLoyaltySettings } = require('./settings');
 
 /**
  * Loyalty credits when a booking is requested (initiate-privileged and transition-privileged).
@@ -37,6 +38,10 @@ const getBookingLoyalty = async ({ sdk, orderData, transitionName, processName }
     !BOOKING_REQUEST_TRANSITIONS.includes(transitionName) ||
     !isBookingProcess(processName)
   ) {
+    return null;
+  }
+  // The loyalty program can be turned off by admins: no credits are used then
+  if (!(await getLoyaltySettings()).enabled) {
     return null;
   }
   const userResponse = await sdk.currentUser.show({ 'fields.user': ['profile.displayName'] });

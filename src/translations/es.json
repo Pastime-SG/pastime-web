@@ -1815,5 +1815,10 @@
   "TopbarDesktop.creditsLink": "Créditos",
   "TopbarMobileMenu.creditsLink": "Créditos",
   "CarouselArrows.previous": "Anterior",
-  "CarouselArrows.next": "Siguiente"
+  "CarouselArrows.next": "Siguiente",
+  "LoyaltyPage.notAvailable": "Los créditos no están disponibles en este momento.",
+  "LoyaltyPage.paused": "Los créditos están en pausa: por ahora no puedes ganar ni usar créditos. Tu saldo se conserva.",
+  "PromoCodesPage.loyaltyTitle": "Créditos de fidelidad",
+  "PromoCodesPage.loyaltyOn": "Activado: los clientes ganan 1 $ de crédito por cada 50 $ gastados y pueden usarlo al pagar.",
+  "PromoCodesPage.loyaltyOff": "Desactivado: los clientes no ganan ni usan créditos. Los créditos ya usados en una reserva se devuelven si se cancela."
 }

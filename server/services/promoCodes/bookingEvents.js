@@ -1,6 +1,7 @@
 const log = require('../../log');
 const { getIntegrationSdk } = require('../sharetribe/integration');
 const { confirmSpentCredits, earnCredits, returnCredits } = require('../loyalty');
+const { getLoyaltySettings, wasLoyaltyEnabledAt } = require('../loyalty/settings');
 const { CANCEL_PRIVILEGED_TRANSITIONS } = require('../cancellation');
 const { isBookingProcess } = require('../bookingData');
 const { BOOKING_REQUEST_TRANSITIONS } = require('../policies');
@@ -156,6 +157,12 @@ const applyLoyaltyEvent = async ({ event, transaction, transactionId, state, ref
   // Credits are earned once, when the booking first becomes finished (not e.g. when reviewed)
   const previousState = event.attributes.previousValues?.attributes?.state;
   if (!FINISHED_STATES.includes(state) || FINISHED_STATES.includes(previousState) || !payinTotal) {
+    return null;
+  }
+  // Only while the loyalty program is on (when the booking finished). Giving credits back above
+  // doesn't depend on it.
+  const settings = await getLoyaltySettings();
+  if (!wasLoyaltyEnabledAt(settings, event.attributes.createdAt)) {
     return null;
   }
   const customerId = await getCustomerId(transaction, transactionId);

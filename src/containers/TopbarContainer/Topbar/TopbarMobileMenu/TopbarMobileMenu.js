@@ -8,6 +8,7 @@ import classNames from 'classnames';
 import { ACCOUNT_SETTINGS_PAGES } from '../../../../routing/routeConfiguration';
 import { FormattedMessage } from '../../../../util/reactIntl';
 import { ensureCurrentUser } from '../../../../util/data';
+import { useLoyaltyEnabled } from '../../../../util/loyalty';
 
 import {
   AvatarLarge,
@@ -72,6 +73,7 @@ const CustomLinkComponent = ({ linkConfig, currentPage }) => {
  * @returns {JSX.Element} search icon
  */
 const TopbarMobileMenu = props => {
+  const loyaltyEnabled = useLoyaltyEnabled();
   const {
     isAuthenticated,
     currentPage,
@@ -167,14 +169,14 @@ const TopbarMobileMenu = props => {
         </NamedLink>
       </li>
     </>
-  ) : (
-    // Customers: their loyalty credits
+  ) : loyaltyEnabled ? (
+    // Customers: their loyalty credits, while the loyalty program is on
     <li className={classNames(css.navigationLink, currentPageClass('LoyaltyPage'))}>
       <NamedLink name="LoyaltyPage">
         <FormattedMessage id="TopbarMobileMenu.creditsLink" />
       </NamedLink>
     </li>
-  );
+  ) : null;
 
   return (
     <div className={css.root}>

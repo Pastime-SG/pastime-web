@@ -1798,5 +1798,10 @@
   "TopbarDesktop.creditsLink": "Credits",
   "TopbarMobileMenu.creditsLink": "Credits",
   "CarouselArrows.previous": "Previous",
-  "CarouselArrows.next": "Next"
+  "CarouselArrows.next": "Next",
+  "LoyaltyPage.notAvailable": "Credits aren't available at the moment.",
+  "LoyaltyPage.paused": "Credits are paused at the moment: you can't earn or use credits for now. Your balance is kept.",
+  "PromoCodesPage.loyaltyTitle": "Loyalty credits",
+  "PromoCodesPage.loyaltyOn": "On: customers earn $1 of credit for every $50 they spend, and can use it at checkout.",
+  "PromoCodesPage.loyaltyOff": "Off: customers don't earn or use credits. Credits already used on a booking are still given back if it's cancelled."
 }

@@ -455,7 +455,8 @@ export const stripeCustomer = () => dispatch => {
 // The customer's loyalty credits, so that checkout can offer to use them (app's server, which
 // reads the balance from Firestore)
 export const fetchLoyaltyAccountThunk = createAsyncThunk('CheckoutPage/fetchLoyaltyAccount', () =>
-  fetchLoyalty().then(response => response.account)
+  // No credits at checkout while the loyalty program is off
+  fetchLoyalty().then(response => (response.enabled ? response.account : null))
 );
 
 // ================ Slice ================ //

@@ -11,6 +11,8 @@ jest.mock('./index', () => ({
   spendCredits: (...args) => mockLoyalty.spendCredits(...args),
 }));
 jest.mock('../../log', () => ({ error: jest.fn() }));
+const mockSettings = { enabled: true };
+jest.mock('./settings', () => ({ getLoyaltySettings: () => Promise.resolve(mockSettings) }));
 
 const { types } = require('sharetribe-flex-sdk');
 const { getBookingLoyalty, getLoyaltyProtectedData, withLoyaltyCredits } = require('./checkout');
@@ -45,6 +47,20 @@ describe('loyalty credits at checkout', () => {
       })
     ).toBe(null);
     expect(sdk.currentUser.show).not.toHaveBeenCalled();
+  });
+
+  it('uses no credits while the loyalty program is off', async () => {
+    mockSettings.enabled = false;
+    const sdk = { currentUser: { show: jest.fn() } };
+    const result = await getBookingLoyalty({
+      sdk,
+      orderData: { useCredits: true },
+      transitionName: 'transition/request-payment',
+      processName: 'default-booking/release-1',
+    });
+    expect(result).toBe(null);
+    expect(sdk.currentUser.show).not.toHaveBeenCalled();
+    mockSettings.enabled = true;
   });
 
   it('looks up the signed-in customer, not anyone the client names', async () => {

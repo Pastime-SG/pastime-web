@@ -15,6 +15,8 @@ export const fetchLoyaltyThunk = createAsyncThunk(
 const initialState = {
   account: null,
   ledger: [],
+  // Whether the loyalty program is on (admins can turn it off)
+  enabled: true,
   fetchInProgress: false,
   fetchError: null,
 };
@@ -33,6 +35,7 @@ const loyaltyPageSlice = createSlice({
         state.fetchInProgress = false;
         state.account = action.payload.account;
         state.ledger = action.payload.ledger || [];
+        state.enabled = action.payload.enabled === true;
       })
       .addCase(fetchLoyaltyThunk.rejected, (state, action) => {
         state.fetchInProgress = false;

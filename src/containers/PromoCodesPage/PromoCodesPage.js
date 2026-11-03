@@ -31,6 +31,7 @@ import {
   deletePromoCodeThunk,
   fetchPromoCodeLedgerThunk,
   switchView,
+  updateLoyaltySettingsThunk,
   updatePromoCodeThunk,
 } from './PromoCodesPage.duck';
 
@@ -407,6 +408,9 @@ const PromoCodesPage = () => {
     actionError,
     ledgerByCode,
     isAdminView,
+    loyaltyEnabled,
+    loyaltyUpdateInProgress,
+    loyaltyUpdateError,
   } = useSelector(state => state.PromoCodesPage, shallowEqual);
   // Admins (profile.metadata.isAdmin, set by an operator) can switch to the marketplace's codes
   const isAdmin = currentUser?.attributes?.profile?.metadata?.isAdmin === true;
@@ -474,6 +478,37 @@ const PromoCodesPage = () => {
               <FormattedMessage id="PromoCodesPage.createButton" />
             </PrimaryButton>
           </div>
+
+          {showAdminView && loyaltyEnabled !== null ? (
+            <section className={css.loyaltyCard}>
+              <div>
+                <h2 className={css.loyaltyTitle}>
+                  <FormattedMessage id="PromoCodesPage.loyaltyTitle" />
+                </h2>
+                <p className={css.loyaltyText}>
+                  <FormattedMessage
+                    id={loyaltyEnabled ? 'PromoCodesPage.loyaltyOn' : 'PromoCodesPage.loyaltyOff'}
+                  />
+                </p>
+                {loyaltyUpdateError ? (
+                  <p className={css.rowError}>
+                    <FormattedMessage id="PromoCodesPage.error.generic" />
+                  </p>
+                ) : null}
+              </div>
+              <button
+                className={classNames(css.switch, { [css.switchOn]: loyaltyEnabled })}
+                type="button"
+                role="switch"
+                aria-checked={loyaltyEnabled}
+                aria-label={intl.formatMessage({ id: 'PromoCodesPage.loyaltyTitle' })}
+                disabled={loyaltyUpdateInProgress}
+                onClick={() => dispatch(updateLoyaltySettingsThunk(!loyaltyEnabled))}
+              >
+                <span className={css.switchKnob} />
+              </button>
+            </section>
+          ) : null}
 
           {fetchInProgress ? (
             <div className={css.loading}>

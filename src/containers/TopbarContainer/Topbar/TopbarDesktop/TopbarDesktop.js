@@ -4,6 +4,7 @@ import classNames from 'classnames';
 import { FormattedMessage } from '../../../../util/reactIntl';
 import { ACCOUNT_SETTINGS_PAGES } from '../../../../routing/routeConfiguration';
 import { showCreateListingLinkForUser } from '../../../../util/userHelpers';
+import { useLoyaltyEnabled } from '../../../../util/loyalty';
 import {
   Avatar,
   InlineTextButton,
@@ -58,6 +59,7 @@ const InboxLink = ({ notificationCount, inboxTab }) => {
 };
 
 const ProfileMenu = ({ currentPage, currentUser, onLogout, showManageListingsLink, intl }) => {
+  const loyaltyEnabled = useLoyaltyEnabled();
   const currentPageClass = page => {
     const isAccountSettingsPage =
       page === 'AccountSettingsPage' && ACCOUNT_SETTINGS_PAGES.includes(currentPage);
@@ -97,7 +99,7 @@ const ProfileMenu = ({ currentPage, currentUser, onLogout, showManageListingsLin
             </NamedLink>
           </MenuItem>
         ) : null}
-        {!showManageListingsLink ? (
+        {!showManageListingsLink && loyaltyEnabled ? (
           <MenuItem key="LoyaltyPage">
             <NamedLink
               className={classNames(css.menuLink, currentPageClass('LoyaltyPage'))}
