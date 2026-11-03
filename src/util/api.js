@@ -173,29 +173,50 @@ export const cancelBooking = body => {
   return post('/api/cancel', body);
 };
 
-// Promo codes (Firestore, see `server/api/promo-codes/`): the signed-in merchant's own codes, or
-// with `isAdmin`, the marketplace's codes (admins only, checked on the server).
-const promoCodesPath = (isAdmin, id = null, suffix = '') =>
-  `/api${isAdmin ? '/admin' : ''}/promo-codes${id ? `/${encodeURIComponent(id)}` : ''}${suffix}`;
+// Promo codes (Firestore, see `server/api/promo-codes/`). The scope says whose codes:
+//  - 'merchant': the signed-in studio's own codes
+//  - 'admin': the marketplace's codes (admins only, checked on the server)
+//  - 'adminStudios': every studio's codes, for admins
+export const PROMO_CODE_SCOPES = ['merchant', 'admin', 'adminStudios'];
+const PROMO_CODE_BASE_PATHS = {
+  merchant: '/api/promo-codes',
+  admin: '/api/admin/promo-codes',
+  adminStudios: '/api/admin/promo-codes/merchant',
+};
+const promoCodesPath = (scope, id = null, suffix = '') =>
+  `${PROMO_CODE_BASE_PATHS[scope] || PROMO_CODE_BASE_PATHS.merchant}${
+    id ? `/${encodeURIComponent(id)}` : ''
+  }${suffix}`;
 
-export const fetchPromoCodes = (isAdmin = false) => {
-  return get(promoCodesPath(isAdmin));
+export const fetchPromoCodes = (scope = 'merchant') => {
+  return get(promoCodesPath(scope));
 };
 
-export const createPromoCode = (body, isAdmin = false) => {
-  return post(promoCodesPath(isAdmin), body);
+export const createPromoCode = (body, scope = 'merchant') => {
+  return post(promoCodesPath(scope), body);
 };
 
-export const updatePromoCode = (id, body, isAdmin = false) => {
-  return patch(promoCodesPath(isAdmin, id), body);
+// For 'adminStudios', only { active } is used: admins don't change a studio's discount
+export const updatePromoCode = (id, body, scope = 'merchant') => {
+  return patch(promoCodesPath(scope, id), body);
 };
 
-export const deletePromoCode = (id, isAdmin = false) => {
-  return del(promoCodesPath(isAdmin, id));
+export const deletePromoCode = (id, scope = 'merchant') => {
+  return del(promoCodesPath(scope, id));
 };
 
-export const fetchPromoCodeLedger = (id, isAdmin = false) => {
-  return get(promoCodesPath(isAdmin, id, '/ledger'));
+export const fetchPromoCodeLedger = (id, scope = 'merchant') => {
+  return get(promoCodesPath(scope, id, '/ledger'));
+};
+
+// Whether studio promo codes are turned on (public)
+export const fetchPromoCodeSettings = () => {
+  return get('/api/promo-codes/settings');
+};
+
+// Turn studio promo codes on or off (admins only, checked on the server)
+export const updatePromoCodeSettings = merchantCodesEnabled => {
+  return put('/api/admin/promo-codes/settings', { merchantCodesEnabled });
 };
 
 // The signed-in customer's loyalty credits: balance, points and history (Firestore, see

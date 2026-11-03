@@ -9,20 +9,29 @@ import {
   updatePromoCode,
   fetchLoyaltySettings,
   updateLoyaltySettings,
+  fetchPromoCodeSettings,
+  updatePromoCodeSettings,
 } from '../../util/api';
 
 // Errors keep the code from the server (e.g. 'code-exists'), so the page can explain them
 const toError = e => ({ ...storableError(e), code: e?.code || null });
 
-// Admin view: the marketplace's codes instead of the merchant's own (see PromoCodesPage)
-const isAdminView = getState => !!getState().PromoCodesPage?.isAdminView;
+// Whose codes the page shows: the studio's own, or for admins (see PromoCodesPage) the
+// marketplace's codes or every studio's codes
+const getScope = getState => {
+  const { isAdminView, adminTab } = getState().PromoCodesPage || {};
+  return !isAdminView ? 'merchant' : adminTab === ADMIN_TAB_STUDIOS ? 'adminStudios' : 'admin';
+};
+
+export const ADMIN_TAB_MARKETPLACE = 'marketplace';
+export const ADMIN_TAB_STUDIOS = 'studios';
 
 // ================ Thunks ================ //
 
 export const fetchPromoCodesThunk = createAsyncThunk(
   'PromoCodesPage/fetchPromoCodes',
   (_, { getState, rejectWithValue }) =>
-    fetchPromoCodes(isAdminView(getState))
+    fetchPromoCodes(getScope(getState))
       .then(response => response.promoCodes)
       .catch(e => rejectWithValue(toError(e)))
 );
@@ -30,7 +39,7 @@ export const fetchPromoCodesThunk = createAsyncThunk(
 export const createPromoCodeThunk = createAsyncThunk(
   'PromoCodesPage/createPromoCode',
   (values, { getState, rejectWithValue }) =>
-    createPromoCode(values, isAdminView(getState))
+    createPromoCode(values, getScope(getState))
       .then(response => response.promoCode)
       .catch(e => rejectWithValue(toError(e)))
 );
@@ -38,7 +47,7 @@ export const createPromoCodeThunk = createAsyncThunk(
 export const updatePromoCodeThunk = createAsyncThunk(
   'PromoCodesPage/updatePromoCode',
   ({ id, values }, { getState, rejectWithValue }) =>
-    updatePromoCode(id, values, isAdminView(getState))
+    updatePromoCode(id, values, getScope(getState))
       .then(response => response.promoCode)
       .catch(e => rejectWithValue({ ...toError(e), id }))
 );
@@ -46,7 +55,7 @@ export const updatePromoCodeThunk = createAsyncThunk(
 export const deletePromoCodeThunk = createAsyncThunk(
   'PromoCodesPage/deletePromoCode',
   (id, { getState, rejectWithValue }) =>
-    deletePromoCode(id, isAdminView(getState))
+    deletePromoCode(id, getScope(getState))
       .then(() => id)
       .catch(e => rejectWithValue({ ...toError(e), id }))
 );
@@ -55,7 +64,7 @@ export const deletePromoCodeThunk = createAsyncThunk(
 export const fetchPromoCodeLedgerThunk = createAsyncThunk(
   'PromoCodesPage/fetchPromoCodeLedger',
   (id, { getState, rejectWithValue }) =>
-    fetchPromoCodeLedger(id, isAdminView(getState))
+    fetchPromoCodeLedger(id, getScope(getState))
       .then(response => ({ id, ledger: response.ledger }))
       .catch(e => rejectWithValue({ ...toError(e), id }))
 );
@@ -77,10 +86,32 @@ export const updateLoyaltySettingsThunk = createAsyncThunk(
       .catch(e => rejectWithValue(toError(e)))
 );
 
+// Whether studio codes are turned on: studios see a notice when they're off, admins a switch
+export const fetchPromoCodeSettingsThunk = createAsyncThunk(
+  'PromoCodesPage/fetchPromoCodeSettings',
+  (_, { rejectWithValue }) =>
+    fetchPromoCodeSettings()
+      .then(response => response.merchantCodesEnabled !== false)
+      .catch(e => rejectWithValue(toError(e)))
+);
+
+export const updatePromoCodeSettingsThunk = createAsyncThunk(
+  'PromoCodesPage/updatePromoCodeSettings',
+  (enabled, { rejectWithValue }) =>
+    updatePromoCodeSettings(enabled)
+      .then(response => response.merchantCodesEnabled !== false)
+      .catch(e => rejectWithValue(toError(e)))
+);
+
 // ================ Slice ================ //
 
 const initialState = {
   isAdminView: false,
+  adminTab: ADMIN_TAB_MARKETPLACE,
+  // Whether studio codes are turned on: null until fetched
+  merchantCodesEnabled: null,
+  merchantCodesUpdateInProgress: false,
+  merchantCodesUpdateError: null,
   // Admin view: null until fetched
   loyaltyEnabled: null,
   loyaltyUpdateInProgress: false,
@@ -107,7 +138,18 @@ const promoCodesPageSlice = createSlice({
     clearSaveError: state => {
       state.saveError = null;
     },
-    setAdminView: (state, action) => ({ ...initialState, isAdminView: action.payload }),
+    setAdminView: (state, action) => ({
+      ...initialState,
+      merchantCodesEnabled: state.merchantCodesEnabled,
+      isAdminView: action.payload,
+    }),
+    setAdminTab: (state, action) => ({
+      ...initialState,
+      merchantCodesEnabled: state.merchantCodesEnabled,
+      loyaltyEnabled: state.loyaltyEnabled,
+      isAdminView: true,
+      adminTab: action.payload,
+    }),
   },
   extraReducers: builder => {
     builder
@@ -170,6 +212,21 @@ const promoCodesPageSlice = createSlice({
           error: action.payload,
         };
       })
+      .addCase(fetchPromoCodeSettingsThunk.fulfilled, (state, action) => {
+        state.merchantCodesEnabled = action.payload;
+      })
+      .addCase(updatePromoCodeSettingsThunk.pending, state => {
+        state.merchantCodesUpdateInProgress = true;
+        state.merchantCodesUpdateError = null;
+      })
+      .addCase(updatePromoCodeSettingsThunk.fulfilled, (state, action) => {
+        state.merchantCodesUpdateInProgress = false;
+        state.merchantCodesEnabled = action.payload;
+      })
+      .addCase(updatePromoCodeSettingsThunk.rejected, (state, action) => {
+        state.merchantCodesUpdateInProgress = false;
+        state.merchantCodesUpdateError = action.payload;
+      })
       .addCase(fetchLoyaltySettingsThunk.fulfilled, (state, action) => {
         state.loyaltyEnabled = action.payload;
       })
@@ -203,6 +260,17 @@ const promoCodesPageSlice = createSlice({
 export const { clearSaveError } = promoCodesPageSlice.actions;
 
 /**
+ * Admin view: switch between the marketplace's codes and every studio's codes.
+ *
+ * @param {string} tab ADMIN_TAB_MARKETPLACE or ADMIN_TAB_STUDIOS
+ * @returns {Function}
+ */
+export const switchAdminTab = tab => dispatch => {
+  dispatch(promoCodesPageSlice.actions.setAdminTab(tab));
+  return dispatch(fetchPromoCodesThunk());
+};
+
+/**
  * Switch between the merchant's own codes and, for admins, the marketplace's codes. The server
  * checks that the user is an admin.
  *
@@ -231,5 +299,5 @@ export const loadData = () => dispatch => {
   if (typeof window === 'undefined') {
     return Promise.resolve();
   }
-  return dispatch(fetchPromoCodesThunk());
+  return Promise.all([dispatch(fetchPromoCodesThunk()), dispatch(fetchPromoCodeSettingsThunk())]);
 };

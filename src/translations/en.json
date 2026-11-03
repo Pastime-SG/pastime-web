@@ -1809,5 +1809,16 @@
   "PromoCodesPage.error.fetchSignedOut": "Your session has expired. Please log in again to see your promo codes.",
   "PromoCodesPage.error.fetchNotAdmin": "Only marketplace admins can see the marketplace promo codes. Switch back to your own codes, or check that your account is set as an admin.",
   "PromoCodesPage.error.fetchForbidden": "You don't have access to these promo codes.",
-  "PromoCodesPage.tryAgain": "Try again"
+  "PromoCodesPage.tryAgain": "Try again",
+  "PromoCodesPage.tab.marketplace": "Marketplace codes",
+  "PromoCodesPage.tab.studios": "Studio codes",
+  "PromoCodesPage.studiosHeading": "Studio promo codes",
+  "PromoCodesPage.studiosDescription": "Codes created by studios for their own listings. You can see how they're used, turn them off, or delete ones that haven't been used.",
+  "PromoCodesPage.studiosEmpty": "No studio has created a promo code yet.",
+  "PromoCodesPage.studio": "Studio",
+  "PromoCodesPage.merchantCodesTitle": "Studio promo codes",
+  "PromoCodesPage.merchantCodesOn": "On: studios can create codes for their listings, and customers can use them at checkout.",
+  "PromoCodesPage.merchantCodesOffAdmin": "Off: studios can't create or turn on codes, and studio codes don't work at checkout. Marketplace codes still work.",
+  "PromoCodesPage.merchantCodesOff": "Promo codes are turned off by Pastime for now: your codes don't work at checkout, and new codes can't be created until they're turned back on.",
+  "PromoCodesPage.error.merchantCodesDisabled": "Promo codes are turned off by Pastime for now."
 }

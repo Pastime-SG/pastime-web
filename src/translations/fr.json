@@ -1826,5 +1826,16 @@
   "PromoCodesPage.error.fetchSignedOut": "Votre session a expiré. Reconnectez-vous pour voir vos codes promo.",
   "PromoCodesPage.error.fetchNotAdmin": "Seuls les administrateurs peuvent voir les codes promo de la place de marché. Revenez à vos codes ou vérifiez que votre compte est administrateur.",
   "PromoCodesPage.error.fetchForbidden": "Vous n'avez pas accès à ces codes promo.",
-  "PromoCodesPage.tryAgain": "Réessayer"
+  "PromoCodesPage.tryAgain": "Réessayer",
+  "PromoCodesPage.tab.marketplace": "Codes de la place de marché",
+  "PromoCodesPage.tab.studios": "Codes des studios",
+  "PromoCodesPage.studiosHeading": "Codes promo des studios",
+  "PromoCodesPage.studiosDescription": "Codes créés par les studios pour leurs propres annonces. Vous pouvez voir leur utilisation, les désactiver ou supprimer ceux qui n'ont pas été utilisés.",
+  "PromoCodesPage.studiosEmpty": "Aucun studio n'a encore créé de code promo.",
+  "PromoCodesPage.studio": "Studio",
+  "PromoCodesPage.merchantCodesTitle": "Codes promo des studios",
+  "PromoCodesPage.merchantCodesOn": "Activé : les studios peuvent créer des codes pour leurs annonces, et les clients peuvent les utiliser au paiement.",
+  "PromoCodesPage.merchantCodesOffAdmin": "Désactivé : les studios ne peuvent ni créer ni activer de codes, et leurs codes ne fonctionnent pas au paiement. Les codes de la place de marché fonctionnent toujours.",
+  "PromoCodesPage.merchantCodesOff": "Les codes promo sont désactivés par Pastime pour le moment : vos codes ne fonctionnent pas au paiement et aucun nouveau code ne peut être créé tant qu'ils ne sont pas réactivés.",
+  "PromoCodesPage.error.merchantCodesDisabled": "Les codes promo sont désactivés par Pastime pour le moment."
 }

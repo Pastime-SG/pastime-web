@@ -1809,5 +1809,16 @@
   "PromoCodesPage.error.fetchSignedOut": "Deine Sitzung ist abgelaufen. Bitte melde dich erneut an, um deine Promo-Codes zu sehen.",
   "PromoCodesPage.error.fetchNotAdmin": "Nur Marktplatz-Admins können die Marktplatz-Promo-Codes sehen. Wechsle zurück zu deinen Codes oder prüfe, ob dein Konto als Admin eingerichtet ist.",
   "PromoCodesPage.error.fetchForbidden": "Du hast keinen Zugriff auf diese Promo-Codes.",
-  "PromoCodesPage.tryAgain": "Erneut versuchen"
+  "PromoCodesPage.tryAgain": "Erneut versuchen",
+  "PromoCodesPage.tab.marketplace": "Marktplatz-Codes",
+  "PromoCodesPage.tab.studios": "Studio-Codes",
+  "PromoCodesPage.studiosHeading": "Studio-Promo-Codes",
+  "PromoCodesPage.studiosDescription": "Von Studios für ihre eigenen Angebote erstellte Codes. Du siehst ihre Nutzung, kannst sie deaktivieren oder unbenutzte löschen.",
+  "PromoCodesPage.studiosEmpty": "Noch kein Studio hat einen Promo-Code erstellt.",
+  "PromoCodesPage.studio": "Studio",
+  "PromoCodesPage.merchantCodesTitle": "Studio-Promo-Codes",
+  "PromoCodesPage.merchantCodesOn": "An: Studios können Codes für ihre Angebote erstellen und Kunden können sie an der Kasse verwenden.",
+  "PromoCodesPage.merchantCodesOffAdmin": "Aus: Studios können keine Codes erstellen oder aktivieren, und Studio-Codes funktionieren an der Kasse nicht. Marktplatz-Codes funktionieren weiterhin.",
+  "PromoCodesPage.merchantCodesOff": "Promo-Codes sind von Pastime vorübergehend deaktiviert: Deine Codes funktionieren an der Kasse nicht, und neue Codes können erst wieder erstellt werden, wenn sie aktiviert sind.",
+  "PromoCodesPage.error.merchantCodesDisabled": "Promo-Codes sind von Pastime vorübergehend deaktiviert."
 }

@@ -14,6 +14,7 @@ const authenticateUser = async (req, res) => {
     'fields.user': [
       'profile.firstName',
       'profile.lastName',
+      'profile.displayName',
       'profile.publicData.userType',
       // isAdmin (see middleware.admin): metadata can only be set by an operator
       'profile.metadata',
@@ -27,8 +28,11 @@ const authenticateUser = async (req, res) => {
     throw error;
   }
 
-  const { firstName, lastName, publicData } = currentUser.attributes?.profile || {};
-  const displayName = [firstName, lastName].filter(Boolean).join(' ') || 'Unknown';
+  const { firstName, lastName, publicData, displayName: profileDisplayName } =
+    currentUser.attributes?.profile || {};
+  // The public display name (e.g. a studio's name), or else the user's name
+  const displayName =
+    profileDisplayName || [firstName, lastName].filter(Boolean).join(' ') || 'Unknown';
 
   return {
     currentUser,

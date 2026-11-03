@@ -31,8 +31,12 @@ import {
   deletePromoCodeThunk,
   fetchPromoCodeLedgerThunk,
   fetchPromoCodesThunk,
+  ADMIN_TAB_MARKETPLACE,
+  ADMIN_TAB_STUDIOS,
+  switchAdminTab,
   switchView,
   updateLoyaltySettingsThunk,
+  updatePromoCodeSettingsThunk,
   updatePromoCodeThunk,
 } from './PromoCodesPage.duck';
 
@@ -52,6 +56,7 @@ const ERROR_MESSAGE_IDS = {
   'invalid-expiry': 'PromoCodesPage.error.invalidExpiry',
   'max-uses-below-uses': 'PromoCodesPage.error.maxUsesBelowUses',
   'too-many-requests': 'PromoCodesPage.error.tooManyRequests',
+  'merchant-codes-disabled': 'PromoCodesPage.error.merchantCodesDisabled',
 };
 
 // Why the codes couldn't be loaded, from the response status (none: the server wasn't reached)
@@ -251,6 +256,7 @@ const PromoCodeRow = props => {
     onLoadLedger,
     ledgerState,
     showBookingLinks,
+    showStudio,
     inProgress,
     errorMessage,
   } = props;
@@ -295,6 +301,11 @@ const PromoCodeRow = props => {
             </span>
           </div>
           <div className={css.details}>
+            {showStudio ? (
+              <span className={css.studio}>
+                {promoCode.providerName || intl.formatMessage({ id: 'PromoCodesPage.studio' })}
+              </span>
+            ) : null}
             <span>{discount}</span>
             <span>
               {maxUses != null ? (
@@ -365,14 +376,16 @@ const PromoCodeRow = props => {
             </>
           ) : (
             <>
-              <InlineTextButton
-                className={css.action}
-                type="button"
-                disabled={inProgress}
-                onClick={() => onEdit(promoCode)}
-              >
-                <FormattedMessage id="PromoCodesPage.edit" />
-              </InlineTextButton>
+              {onEdit ? (
+                <InlineTextButton
+                  className={css.action}
+                  type="button"
+                  disabled={inProgress}
+                  onClick={() => onEdit(promoCode)}
+                >
+                  <FormattedMessage id="PromoCodesPage.edit" />
+                </InlineTextButton>
+              ) : null}
               <InlineTextButton
                 className={css.action}
                 type="button"
@@ -432,10 +445,19 @@ const PromoCodesPage = () => {
     loyaltyEnabled,
     loyaltyUpdateInProgress,
     loyaltyUpdateError,
+    adminTab,
+    merchantCodesEnabled,
+    merchantCodesUpdateInProgress,
+    merchantCodesUpdateError,
   } = useSelector(state => state.PromoCodesPage, shallowEqual);
   // Admins (profile.metadata.isAdmin, set by an operator) can switch to the marketplace's codes
   const isAdmin = currentUser?.attributes?.profile?.metadata?.isAdmin === true;
   const showAdminView = isAdmin && isAdminView;
+  // Admin view: every studio's codes (see, turn on or off, delete unused ones; no creating or
+  // editing a studio's discount)
+  const isStudiosTab = showAdminView && adminTab === ADMIN_TAB_STUDIOS;
+  // Studios: codes turned off by an admin
+  const isMerchantCodesOff = !showAdminView && merchantCodesEnabled === false;
 
   const onManageDisableScrolling = (componentId, disableScrolling) =>
     dispatch(manageDisableScrolling(componentId, disableScrolling));
@@ -480,27 +502,97 @@ const PromoCodesPage = () => {
             <div>
               <H3 as="h1" className={css.heading}>
                 <FormattedMessage
-                  id={showAdminView ? 'PromoCodesPage.adminHeading' : 'PromoCodesPage.heading'}
+                  id={
+                    isStudiosTab
+                      ? 'PromoCodesPage.studiosHeading'
+                      : showAdminView
+                      ? 'PromoCodesPage.adminHeading'
+                      : 'PromoCodesPage.heading'
+                  }
                 />
               </H3>
               <p className={css.description}>
                 <FormattedMessage
                   id={
-                    showAdminView ? 'PromoCodesPage.adminDescription' : 'PromoCodesPage.description'
+                    isStudiosTab
+                      ? 'PromoCodesPage.studiosDescription'
+                      : showAdminView
+                      ? 'PromoCodesPage.adminDescription'
+                      : 'PromoCodesPage.description'
                   }
                 />
               </p>
             </div>
-            <PrimaryButton
-              className={css.createButton}
-              type="button"
-              onClick={() => setModalCode({})}
-            >
-              <FormattedMessage id="PromoCodesPage.createButton" />
-            </PrimaryButton>
+            {!isStudiosTab && !isMerchantCodesOff ? (
+              <PrimaryButton
+                className={css.createButton}
+                type="button"
+                onClick={() => setModalCode({})}
+              >
+                <FormattedMessage id="PromoCodesPage.createButton" />
+              </PrimaryButton>
+            ) : null}
           </div>
 
-          {showAdminView && loyaltyEnabled !== null ? (
+          {showAdminView ? (
+            <div className={css.tabs} role="tablist">
+              {[ADMIN_TAB_MARKETPLACE, ADMIN_TAB_STUDIOS].map(tab => (
+                <button
+                  key={tab}
+                  className={classNames(css.tab, { [css.tabSelected]: adminTab === tab })}
+                  type="button"
+                  role="tab"
+                  aria-selected={adminTab === tab}
+                  onClick={() => (adminTab === tab ? null : dispatch(switchAdminTab(tab)))}
+                >
+                  <FormattedMessage id={`PromoCodesPage.tab.${tab}`} />
+                </button>
+              ))}
+            </div>
+          ) : null}
+
+          {isMerchantCodesOff ? (
+            <p className={css.offNotice} role="status">
+              <FormattedMessage id="PromoCodesPage.merchantCodesOff" />
+            </p>
+          ) : null}
+
+          {isStudiosTab && merchantCodesEnabled !== null ? (
+            <section className={css.loyaltyCard}>
+              <div>
+                <h2 className={css.loyaltyTitle}>
+                  <FormattedMessage id="PromoCodesPage.merchantCodesTitle" />
+                </h2>
+                <p className={css.loyaltyText}>
+                  <FormattedMessage
+                    id={
+                      merchantCodesEnabled
+                        ? 'PromoCodesPage.merchantCodesOn'
+                        : 'PromoCodesPage.merchantCodesOffAdmin'
+                    }
+                  />
+                </p>
+                {merchantCodesUpdateError ? (
+                  <p className={css.rowError}>
+                    <FormattedMessage id="PromoCodesPage.error.generic" />
+                  </p>
+                ) : null}
+              </div>
+              <button
+                className={classNames(css.switch, { [css.switchOn]: merchantCodesEnabled })}
+                type="button"
+                role="switch"
+                aria-checked={merchantCodesEnabled}
+                aria-label={intl.formatMessage({ id: 'PromoCodesPage.merchantCodesTitle' })}
+                disabled={merchantCodesUpdateInProgress}
+                onClick={() => dispatch(updatePromoCodeSettingsThunk(!merchantCodesEnabled))}
+              >
+                <span className={css.switchKnob} />
+              </button>
+            </section>
+          ) : null}
+
+          {showAdminView && !isStudiosTab && loyaltyEnabled !== null ? (
             <section className={css.loyaltyCard}>
               <div>
                 <h2 className={css.loyaltyTitle}>
@@ -554,7 +646,7 @@ const PromoCodesPage = () => {
                 <PromoCodeRow
                   key={promoCode.id}
                   promoCode={promoCode}
-                  onEdit={setModalCode}
+                  onEdit={isStudiosTab ? null : setModalCode}
                   onToggleActive={code =>
                     dispatch(
                       updatePromoCodeThunk({ id: code.id, values: withActive(code, !code.active) })
@@ -564,6 +656,7 @@ const PromoCodesPage = () => {
                   onLoadLedger={code => dispatch(fetchPromoCodeLedgerThunk(code.id))}
                   ledgerState={ledgerByCode?.[promoCode.id]}
                   showBookingLinks={!showAdminView}
+                  showStudio={isStudiosTab}
                   inProgress={actionInProgressId === promoCode.id}
                   errorMessage={
                     actionError?.id === promoCode.id && !modalCode
@@ -575,7 +668,9 @@ const PromoCodesPage = () => {
             </ul>
           ) : (
             <p className={css.empty}>
-              <FormattedMessage id="PromoCodesPage.empty" />
+              <FormattedMessage
+                id={isStudiosTab ? 'PromoCodesPage.studiosEmpty' : 'PromoCodesPage.empty'}
+              />
             </p>
           )}
         </div>

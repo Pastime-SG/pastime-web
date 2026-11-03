@@ -1,6 +1,12 @@
 const express = require('express');
 const middleware = require('../../middleware');
 const {
+  adminListMerchant,
+  adminListMerchantLedger,
+  adminRemoveMerchant,
+  adminSetMerchantActive,
+  adminUpdateSettings,
+  getSettings,
   adminCreate,
   adminList,
   adminListLedger,
@@ -29,6 +35,8 @@ const writeLimit = middleware.createRateLimit({ windowMs: MINUTE_MS, max: 20 });
 router.use(ipLimit);
 
 // The signed-in merchant's promo codes
+// Whether studio codes are turned on (no user needed)
+router.get('/settings', getSettings);
 router.get('/', middleware.auth, readLimit, list);
 router.get('/:id/ledger', middleware.auth, readLimit, listLedger);
 router.post('/', middleware.auth, writeLimit, create);
@@ -39,6 +47,31 @@ router.delete('/:id', middleware.auth, writeLimit, remove);
 const adminRouter = express.Router();
 adminRouter.use(ipLimit);
 adminRouter.get('/', middleware.auth, middleware.admin, readLimit, adminList);
+// Studio codes: admins see them all, turn them on or off, delete unused ones, see their history
+adminRouter.get('/merchant', middleware.auth, middleware.admin, readLimit, adminListMerchant);
+adminRouter.get(
+  '/merchant/:id/ledger',
+  middleware.auth,
+  middleware.admin,
+  readLimit,
+  adminListMerchantLedger
+);
+adminRouter.patch(
+  '/merchant/:id',
+  middleware.auth,
+  middleware.admin,
+  writeLimit,
+  adminSetMerchantActive
+);
+adminRouter.delete(
+  '/merchant/:id',
+  middleware.auth,
+  middleware.admin,
+  writeLimit,
+  adminRemoveMerchant
+);
+// The switch for studio codes
+adminRouter.put('/settings', middleware.auth, middleware.admin, writeLimit, adminUpdateSettings);
 adminRouter.get('/:id/ledger', middleware.auth, middleware.admin, readLimit, adminListLedger);
 adminRouter.post('/', middleware.auth, middleware.admin, writeLimit, adminCreate);
 adminRouter.patch('/:id', middleware.auth, middleware.admin, writeLimit, adminUpdate);

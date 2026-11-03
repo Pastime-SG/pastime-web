@@ -1,4 +1,5 @@
 const { FieldValue, getFirestore } = require('../firebase');
+const { assertMerchantCodesEnabled, getPromoCodeSettings } = require('./settings');
 
 /**
  * Promo codes, stored in Firestore:
@@ -152,6 +153,9 @@ const serializePromoCode = doc => {
     id: doc.id,
     code: data.code,
     createdBy: data.createdBy,
+    // Studio codes: the studio, for the admin view
+    providerId: data.providerId ?? null,
+    providerName: data.providerName ?? null,
     discountType: data.discountType,
     percentage: data.percentage ?? null,
     amount: data.amount ?? null,
@@ -169,16 +173,33 @@ const serializePromoCode = doc => {
  * Who manages promo codes: a merchant (their own codes) or an admin (the marketplace's codes).
  * Every change checks that the code belongs to the owner.
  */
-const merchantOwner = providerId => ({
+const merchantOwner = (providerId, providerName = null) => ({
   collection: COLLECTION,
   docId: code => merchantCodeId(providerId, code),
-  fields: { createdBy: CREATED_BY_MERCHANT, providerId },
+  // The studio's name is stored for the admin view (names can't be looked up without extra
+  // Sharetribe calls)
+  fields: {
+    createdBy: CREATED_BY_MERCHANT,
+    providerId,
+    ...(providerName ? { providerName } : {}),
+  },
   owns: data => data.createdBy === CREATED_BY_MERCHANT && data.providerId === providerId,
   list: collection =>
     collection
       .where('providerId', '==', providerId)
       .where('createdBy', '==', CREATED_BY_MERCHANT)
       .get(),
+});
+// Admins managing studio codes: every studio's codes, but only to see their history, turn them
+// on or off, or delete unused ones (not to change the studio's discount)
+const allMerchantsOwner = () => ({
+  collection: COLLECTION,
+  docId: () => {
+    throw new Error('Admins create marketplace codes, not studio codes');
+  },
+  fields: {},
+  owns: data => data.createdBy === CREATED_BY_MERCHANT,
+  list: collection => collection.where('createdBy', '==', CREATED_BY_MERCHANT).get(),
 });
 const adminOwner = adminId => ({
   collection: ADMIN_COLLECTION,
@@ -256,6 +277,16 @@ const updatePromoCode = async (owner, id, input) => {
   return serializePromoCode(await ref.get());
 };
 
+// Turn a promo code on or off, without changing anything else
+const setPromoCodeActive = async (owner, id, active) => {
+  if (typeof active !== 'boolean') {
+    throw promoCodeError(400, 'invalid-active');
+  }
+  const { ref } = await getOwnPromoCodeRef(owner, id);
+  await ref.update({ active, updatedAt: FieldValue.serverTimestamp() });
+  return serializePromoCode(await ref.get());
+};
+
 // Delete a promo code. Codes that have been used are kept for the history: they can be
 // deactivated instead (409 'code-in-use').
 const deletePromoCode = async (owner, id) => {
@@ -279,10 +310,14 @@ const listMerchantPromoCodes = providerId => listPromoCodes(merchantOwner(provid
  *
  * @param {string} providerId
  * @param {Object} input
+ * @param {string} [providerName] Shown to admins
  * @returns {Promise<Object>} The created promo code
  */
-const createMerchantPromoCode = (providerId, input) =>
-  createPromoCode(merchantOwner(providerId), input);
+const createMerchantPromoCode = async (providerId, input, providerName = null) => {
+  // Not while admins have turned studio codes off
+  await assertMerchantCodesEnabled();
+  return createPromoCode(merchantOwner(providerId, providerName), input);
+};
 
 /**
  * Update the merchant's promo code (404 if it isn't theirs).
@@ -292,8 +327,13 @@ const createMerchantPromoCode = (providerId, input) =>
  * @param {Object} input
  * @returns {Promise<Object>} The updated promo code
  */
-const updateMerchantPromoCode = (providerId, id, input) =>
-  updatePromoCode(merchantOwner(providerId), id, input);
+const updateMerchantPromoCode = async (providerId, id, input) => {
+  // While admins have turned studio codes off, codes can be changed but not turned on
+  if (input?.active !== false) {
+    await assertMerchantCodesEnabled();
+  }
+  return updatePromoCode(merchantOwner(providerId), id, input);
+};
 
 /**
  * Delete the merchant's promo code (404 if it isn't theirs, 409 if it has been used).
@@ -302,6 +342,39 @@ const updateMerchantPromoCode = (providerId, id, input) =>
  * @param {string} id
  */
 const deleteMerchantPromoCode = (providerId, id) => deletePromoCode(merchantOwner(providerId), id);
+
+/**
+ * Every studio's promo codes, newest first, for admins. The caller must have checked that the
+ * user is an admin (middleware.admin).
+ *
+ * @returns {Promise<Array<Object>>}
+ */
+const listAllMerchantPromoCodes = () => listPromoCodes(allMerchantsOwner());
+
+/**
+ * Admins: turn a studio's code on or off.
+ *
+ * @param {string} id
+ * @param {boolean} active
+ * @returns {Promise<Object>}
+ */
+const setMerchantPromoCodeActiveByAdmin = (id, active) =>
+  setPromoCodeActive(allMerchantsOwner(), id, active);
+
+/**
+ * Admins: delete a studio's code that hasn't been used (409 'code-in-use' otherwise).
+ *
+ * @param {string} id
+ */
+const deleteMerchantPromoCodeByAdmin = id => deletePromoCode(allMerchantsOwner(), id);
+
+/**
+ * Admins: the history of a studio's code.
+ *
+ * @param {string} id
+ * @returns {Promise<Array<Object>>}
+ */
+const listMerchantPromoCodeLedgerByAdmin = id => listPromoCodeLedger(allMerchantsOwner(), id);
 
 /**
  * The marketplace's promo codes, created by admins, newest first. The caller must have checked
@@ -405,7 +478,11 @@ const findPromoCodeForBooking = async ({ code, providerId, now = new Date() }) =
     throw checkoutError('promo-code-invalid');
   }
   const db = getFirestore();
-  const merchantDoc = await promoCodeRef(db, merchantCodeId(providerId, normalized)).get();
+  // While studio codes are turned off, only marketplace codes work
+  const { merchantCodesEnabled } = await getPromoCodeSettings();
+  const merchantDoc = merchantCodesEnabled
+    ? await promoCodeRef(db, merchantCodeId(providerId, normalized)).get()
+    : { exists: false };
   const doc = merchantDoc.exists
     ? merchantDoc
     : await promoCodeRef(db, adminCodeId(normalized)).get();
@@ -640,6 +717,10 @@ const releasePromoCodeUse = (promoCodeId, redemptionId) => {
 
 module.exports = {
   CREATED_BY_ADMIN,
+  deleteMerchantPromoCodeByAdmin,
+  listAllMerchantPromoCodes,
+  listMerchantPromoCodeLedgerByAdmin,
+  setMerchantPromoCodeActiveByAdmin,
   createAdminPromoCode,
   deleteAdminPromoCode,
   listAdminPromoCodeLedger,

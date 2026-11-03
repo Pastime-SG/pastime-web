@@ -1826,5 +1826,16 @@
   "PromoCodesPage.error.fetchSignedOut": "Tu sesión ha caducado. Vuelve a iniciar sesión para ver tus códigos promocionales.",
   "PromoCodesPage.error.fetchNotAdmin": "Solo los administradores del marketplace pueden ver estos códigos. Vuelve a tus códigos o comprueba que tu cuenta sea de administrador.",
   "PromoCodesPage.error.fetchForbidden": "No tienes acceso a estos códigos promocionales.",
-  "PromoCodesPage.tryAgain": "Intentar de nuevo"
+  "PromoCodesPage.tryAgain": "Intentar de nuevo",
+  "PromoCodesPage.tab.marketplace": "Códigos del marketplace",
+  "PromoCodesPage.tab.studios": "Códigos de estudios",
+  "PromoCodesPage.studiosHeading": "Códigos promocionales de estudios",
+  "PromoCodesPage.studiosDescription": "Códigos creados por los estudios para sus propios anuncios. Puedes ver su uso, desactivarlos o eliminar los que no se han usado.",
+  "PromoCodesPage.studiosEmpty": "Ningún estudio ha creado un código promocional todavía.",
+  "PromoCodesPage.studio": "Estudio",
+  "PromoCodesPage.merchantCodesTitle": "Códigos promocionales de estudios",
+  "PromoCodesPage.merchantCodesOn": "Activado: los estudios pueden crear códigos para sus anuncios y los clientes pueden usarlos al pagar.",
+  "PromoCodesPage.merchantCodesOffAdmin": "Desactivado: los estudios no pueden crear ni activar códigos, y sus códigos no funcionan al pagar. Los códigos del marketplace siguen funcionando.",
+  "PromoCodesPage.merchantCodesOff": "Pastime ha desactivado los códigos promocionales por ahora: tus códigos no funcionan al pagar y no se pueden crear nuevos hasta que se vuelvan a activar.",
+  "PromoCodesPage.error.merchantCodesDisabled": "Pastime ha desactivado los códigos promocionales por ahora."
 }

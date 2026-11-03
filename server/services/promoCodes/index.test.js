@@ -47,6 +47,14 @@ const mockDocRef = id => ({
     mockApplyUpdate(id, data);
     return Promise.resolve();
   },
+  set: (data, options) => {
+    if (options?.merge) {
+      mockApplyUpdate(id, data);
+    } else {
+      mockStore.set(id, data);
+    }
+    return Promise.resolve();
+  },
   delete: () => {
     mockStore.delete(id);
     return Promise.resolve();
@@ -368,6 +376,74 @@ describe('promo codes', () => {
         updateMerchantPromoCode('provider-1', `${created.id}/redemptions/${R1}`, percentageCode)
       ).rejects.toMatchObject({ status: 404 });
       await expect(deleteAdminPromoCode('../promoCodes/x')).rejects.toMatchObject({ status: 404 });
+    });
+  });
+
+  describe('studio codes for admins, and the studio codes switch', () => {
+    const {
+      deleteMerchantPromoCodeByAdmin,
+      listAllMerchantPromoCodes,
+      setMerchantPromoCodeActiveByAdmin,
+      createAdminPromoCode,
+    } = require('./index');
+    const { clearPromoCodeSettingsCache, setMerchantCodesEnabled } = require('./settings');
+
+    beforeEach(() => clearPromoCodeSettingsCache());
+
+    it("lists every studio's codes with the studio's name, and nothing else", async () => {
+      await createMerchantPromoCode('provider-1', percentageCode, 'Clay Studio');
+      await createMerchantPromoCode('provider-2', { ...percentageCode, code: 'OTHER' });
+      await createAdminPromoCode('admin-1', { ...percentageCode, code: 'WELCOME' });
+      const codes = await listAllMerchantPromoCodes();
+      expect(codes.map(c => [c.code, c.providerId, c.providerName]).sort()).toEqual([
+        ['OTHER', 'provider-2', null],
+        ['SUMMER10', 'provider-1', 'Clay Studio'],
+      ]);
+    });
+
+    it("lets admins turn a studio's code off or delete it, but not marketplace codes that way", async () => {
+      const created = await createMerchantPromoCode('provider-1', percentageCode);
+      const adminCode = await createAdminPromoCode('admin-1', {
+        ...percentageCode,
+        code: 'WELCOME',
+      });
+      expect((await setMerchantPromoCodeActiveByAdmin(created.id, false)).active).toBe(false);
+      await expect(setMerchantPromoCodeActiveByAdmin(created.id, 'no')).rejects.toMatchObject({
+        status: 400,
+      });
+      await expect(setMerchantPromoCodeActiveByAdmin(adminCode.id, false)).rejects.toMatchObject({
+        status: 404,
+      });
+      await deleteMerchantPromoCodeByAdmin(created.id);
+      expect(mockStore.has(created.id)).toBe(false);
+    });
+
+    it('turns studio codes off: no new or reactivated codes, and they stop working at checkout', async () => {
+      const created = await createMerchantPromoCode('provider-1', percentageCode);
+      await createAdminPromoCode('admin-1', { ...percentageCode, code: 'WELCOME' });
+      await setMerchantCodesEnabled(false, 'admin-1');
+
+      await expect(
+        createMerchantPromoCode('provider-1', { ...percentageCode, code: 'NEWCODE' })
+      ).rejects.toMatchObject({ status: 403, code: 'merchant-codes-disabled' });
+      await expect(
+        findPromoCodeForBooking({ code: 'SUMMER10', providerId: 'provider-1' })
+      ).rejects.toThrow('promo-code-invalid');
+      // Marketplace codes still work
+      expect(
+        (await findPromoCodeForBooking({ code: 'WELCOME', providerId: 'provider-1' })).createdBy
+      ).toBe('admin');
+      // Studios can still turn codes off, but not on
+      await updateMerchantPromoCode('provider-1', created.id, { ...percentageCode, active: false });
+      await expect(
+        updateMerchantPromoCode('provider-1', created.id, { ...percentageCode, active: true })
+      ).rejects.toMatchObject({ status: 403 });
+
+      await setMerchantCodesEnabled(true, 'admin-1');
+      await updateMerchantPromoCode('provider-1', created.id, { ...percentageCode, active: true });
+      expect(
+        (await findPromoCodeForBooking({ code: 'SUMMER10', providerId: 'provider-1' })).createdBy
+      ).toBe('merchant');
     });
   });
 });
