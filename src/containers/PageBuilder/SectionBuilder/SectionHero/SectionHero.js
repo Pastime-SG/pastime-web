@@ -65,7 +65,7 @@ const SectionHero = props => {
     <SectionContainer
       id={sectionId}
       className={className}
-      rootClassName={classNames(rootClassName || css.root)}
+      rootClassName={classNames(rootClassName || css.root, { [css.rootCompact]: !isPageTopHero })}
       appearance={appearance}
       options={fieldOptions}
     >

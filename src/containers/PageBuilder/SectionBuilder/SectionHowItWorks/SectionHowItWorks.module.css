@@ -5,17 +5,23 @@
   --stepsTextColor: #6b6156;
   --stepsBackground: #f4eadb;
   --stepsIconBackground: #1f5c4a;
+}
 
-  padding: 36px 0;
+/* Replaces the section's default padding (64px), so that sections sit closer together */
+.sectionContent {
+  position: relative;
+  word-break: break-word;
+  padding: 24px 0;
 
   @media (--viewportMedium) {
-    padding: 48px 0;
+    padding: 32px 0;
   }
 }
 
-/* The beige box around the steps */
+/* The box around the steps: its colour is the section's background colour in Console. As wide
+   as the content of the other landing page sections. */
 .content {
-  max-width: var(--contentMaxWidthPages);
+  max-width: calc(var(--contentMaxWidthPages) - 64px);
   margin: 0 24px;
   padding: 24px;
   background-color: var(--stepsBackground);
@@ -26,10 +32,16 @@
     padding: 32px;
   }
 
-  @media (min-width: 1184px) {
+  @media (min-width: 1120px) {
     /* Centered once the page is wider than the content */
     margin: 0 auto;
   }
+}
+
+/* Text colour "white" in Console: light text on a dark box */
+.contentDark {
+  --stepsHeadingColor: var(--colorWhite);
+  --stepsTextColor: rgba(255, 255, 255, 0.85);
 }
 
 /* ================ Heading ================ */

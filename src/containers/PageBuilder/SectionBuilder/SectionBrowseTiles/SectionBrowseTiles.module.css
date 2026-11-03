@@ -4,27 +4,40 @@
   --browseHeadingColor: #16231f;
   --browseTextColor: #6b6156;
   --browseEyebrowColor: #c0532f;
-  /* Wider than the default page content, so that the 6 tiles get more room */
-  --browseMaxWidth: 1440px;
+  /* The same width as the other landing page sections: the tiles scroll sideways */
+  --browseMaxWidth: var(--contentMaxWidthPages);
+}
 
-  padding: 48px 0;
+/* Replaces the section's default padding (64px), so that sections sit closer together */
+.sectionContent {
+  position: relative;
+  word-break: break-word;
+  padding: 24px 0;
 
   @media (--viewportMedium) {
-    padding: 64px 0;
+    padding: 32px 0;
   }
 }
 
 /* ================ Heading ================ */
 
 .header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 24px;
   max-width: var(--browseMaxWidth);
-  margin: 0 auto 24px auto;
+  margin: 0 auto 18px auto;
   padding: 0 24px;
 
   @media (--viewportMedium) {
-    margin: 0 auto 32px auto;
+    margin: 0 auto 16px auto;
     padding: 0 32px;
   }
+}
+
+.headerText {
+  min-width: 0;
 }
 
 .eyebrow {
@@ -96,6 +109,8 @@
     grid-auto-columns: calc((100% - 3 * var(--tileGap)) / 3.5);
     padding: 8px 32px 16px 32px;
     scroll-padding: 0 32px;
+    /* Tiles scrolled past the content edge are hidden (room above and below for the hover lift) */
+    clip-path: inset(-8px 32px -8px 32px);
   }
 
   @media (--viewportLarge) {

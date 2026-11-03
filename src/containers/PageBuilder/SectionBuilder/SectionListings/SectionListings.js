@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import classNames from 'classnames';
 
 // Import configs and util modules
@@ -13,6 +13,7 @@ import { ListingCard, IconSpinner, ErrorMessage, NamedLink } from '../../../../c
 import Field, { hasDataInFields } from '../../Field';
 
 import SectionContainer from '../SectionContainer';
+import CarouselArrows, { useHorizontalScroll } from '../CarouselArrows/CarouselArrows';
 import { getPlainText } from '../SectionBuilder.helpers';
 
 import css from './SectionListings.module.css';
@@ -87,19 +88,28 @@ const TRENDING_SECTION_ID = 'trending';
  * @param {Object} props.description Description field
  * @param {Object} props.callToAction Call to action field
  * @param {Object} props.fieldOptions
+ * @param {Object} props.scroll Scroll state of the cards (see useHorizontalScroll)
  * @returns {JSX.Element}
  */
 const TrendingHeader = props => {
-  const { title, description, callToAction, fieldOptions } = props;
+  const { title, description, callToAction, fieldOptions, scroll } = props;
   const titleText = getPlainText(title);
   const descriptionText = getPlainText(description);
   const label = descriptionText ? titleText : null;
   const heading = descriptionText || titleText;
   return (
     <header className={css.trendingHeader}>
-      {label ? <p className={css.trendingLabel}>{label}</p> : null}
-      {heading ? <h2 className={css.trendingHeading}>{heading}</h2> : null}
-      <Field data={callToAction} options={fieldOptions} />
+      <div className={css.trendingHeaderText}>
+        {label ? <p className={css.trendingLabel}>{label}</p> : null}
+        {heading ? <h2 className={css.trendingHeading}>{heading}</h2> : null}
+        <Field data={callToAction} options={fieldOptions} />
+      </div>
+      <CarouselArrows
+        canPrev={scroll.canPrev}
+        canNext={scroll.canNext}
+        onPrev={scroll.scrollPrev}
+        onNext={scroll.scrollNext}
+      />
     </header>
   );
 };
@@ -287,6 +297,14 @@ const SectionListings = props => {
 
   const containerRef = React.useRef(null);
   const sliderRef = React.useRef(null);
+  // The slider is rendered lazily: a callback ref tells when it's there, for the trending arrows
+  const [sliderElement, setSliderElement] = useState(null);
+  const setSliderRef = useCallback(element => {
+    sliderRef.current = element;
+    setSliderElement(element);
+  }, []);
+  const scroll = useHorizontalScroll(sliderElement);
+  const isTrending = sectionId === TRENDING_SECTION_ID;
 
   // force mobile styles if we render this section within a modal
   const isMobile = mounted && isMobileViewport();
@@ -363,15 +381,17 @@ const SectionListings = props => {
       id={sectionId}
       className={className}
       rootClassName={rootClassName}
+      contentClassName={isTrending ? css.trendingSectionContent : null}
       appearance={appearance}
       options={fieldOptions}
     >
-      {hasHeaderFields && sectionId === TRENDING_SECTION_ID ? (
+      {hasHeaderFields && isTrending ? (
         <TrendingHeader
           title={title}
           description={description}
           callToAction={callToAction}
           fieldOptions={fieldOptions}
+          scroll={scroll}
         />
       ) : hasHeaderFields ? (
         <header className={defaultClasses.sectionDetails}>
@@ -381,10 +401,16 @@ const SectionListings = props => {
         </header>
       ) : null}
 
-      <div className={css.carouselContainer}>
+      <div
+        className={classNames(css.carouselContainer, {
+          [css.trendingCarouselContainer]: isTrending,
+        })}
+      >
         <div
           className={classNames(css.carouselArrows, {
             [css.notEnoughListings]: numberOfListings <= numColumns,
+            // The trending section has its arrows next to the heading
+            [css.hiddenArrows]: isTrending,
           })}
         >
           <button className={css.carouselArrowPrev} onClick={onSlideLeft} onKeyDown={onKeyDown}>
@@ -400,7 +426,7 @@ const SectionListings = props => {
             <ListingCarouselComponent
               numColumns={numColumns}
               listings={listingEntities}
-              sliderRef={sliderRef}
+              sliderRef={setSliderRef}
               darkMode={darkMode}
               onFetchFeaturedListings={onFetchFeaturedListings}
               fetched={fetched}
@@ -416,7 +442,7 @@ const SectionListings = props => {
             <LazyListingCarouselComponent
               numColumns={numColumns}
               listings={listingEntities}
-              sliderRef={sliderRef}
+              sliderRef={setSliderRef}
               darkMode={darkMode}
               onFetchFeaturedListings={onFetchFeaturedListings}
               fetched={fetched}

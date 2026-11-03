@@ -1,0 +1,39 @@
+@import '../../../../styles/customMediaQueries.css';
+
+.root {
+  display: none;
+  gap: 8px;
+  flex-shrink: 0;
+
+  @media (--viewportMedium) {
+    display: flex;
+  }
+}
+
+.arrow {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0 0 3px 0;
+  border: 1px solid #e3d8c6;
+  border-radius: 50%;
+  background-color: var(--colorWhite);
+  color: #16231f;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color ease-in-out 150ms, color ease-in-out 150ms;
+
+  &:hover:not(:disabled) {
+    background-color: #16231f;
+    border-color: #16231f;
+    color: var(--colorWhite);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+}

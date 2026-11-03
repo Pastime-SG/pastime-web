@@ -1796,5 +1796,7 @@
   "LoyaltyPage.entry.returned": "Zurückerhalten: Die Buchung fand nicht statt",
   "LoyaltyPage.viewBooking": "Buchung ansehen",
   "TopbarDesktop.creditsLink": "Guthaben",
-  "TopbarMobileMenu.creditsLink": "Guthaben"
+  "TopbarMobileMenu.creditsLink": "Guthaben",
+  "CarouselArrows.previous": "Zurück",
+  "CarouselArrows.next": "Weiter"
 }

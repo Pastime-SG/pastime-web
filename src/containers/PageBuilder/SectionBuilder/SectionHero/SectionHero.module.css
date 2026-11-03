@@ -8,11 +8,17 @@
   width: 100%;
   position: relative;
 
-  /* Hero specific */
-  min-height: 80vh;
+  /* Hero specific: the landing page carousel and heroes further down set their own height */
+  min-height: var(--heroMinHeight, 80vh);
   display: flex;
   justify-content: center;
   align-items: center;
+}
+
+/* Heroes further down the page (e.g. "Run a workshop? Fill your seats."): a banner, not a full
+   screen */
+.rootCompact {
+  --heroMinHeight: clamp(280px, 40vh, 380px);
 }
 
 /* Pastime hero: Instrument Sans for the hero text and its search bar, Fraunces for the title */

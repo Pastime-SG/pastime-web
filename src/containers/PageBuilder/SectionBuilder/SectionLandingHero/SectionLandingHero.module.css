@@ -1,8 +1,16 @@
 @import '../../../../styles/customMediaQueries.css';
 
-/* Layout (height, centering) comes from SectionHero's root */
+/* Layout (centering) comes from SectionHero's root. Shorter than a full-screen hero, so that the
+   sections below show sooner. */
 .root {
+  --heroMinHeight: clamp(420px, 60vh, 560px);
   overflow: hidden;
+  /* Room below the content for the image indicators */
+  padding-bottom: 40px;
+
+  @media (--viewportMedium) {
+    padding-bottom: 48px;
+  }
 }
 
 /* ================ Background images ================ */

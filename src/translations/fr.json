@@ -1813,5 +1813,7 @@
   "LoyaltyPage.entry.returned": "Restitué : la réservation n'a pas eu lieu",
   "LoyaltyPage.viewBooking": "Voir la réservation",
   "TopbarDesktop.creditsLink": "Crédits",
-  "TopbarMobileMenu.creditsLink": "Crédits"
+  "TopbarMobileMenu.creditsLink": "Crédits",
+  "CarouselArrows.previous": "Précédent",
+  "CarouselArrows.next": "Suivant"
 }

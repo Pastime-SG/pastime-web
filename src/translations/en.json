@@ -1796,5 +1796,7 @@
   "LoyaltyPage.entry.returned": "Returned: the booking didn't go ahead",
   "LoyaltyPage.viewBooking": "View booking",
   "TopbarDesktop.creditsLink": "Credits",
-  "TopbarMobileMenu.creditsLink": "Credits"
+  "TopbarMobileMenu.creditsLink": "Credits",
+  "CarouselArrows.previous": "Previous",
+  "CarouselArrows.next": "Next"
 }

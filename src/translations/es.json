@@ -1813,5 +1813,7 @@
   "LoyaltyPage.entry.returned": "Devuelto: la reserva no se realizó",
   "LoyaltyPage.viewBooking": "Ver reserva",
   "TopbarDesktop.creditsLink": "Créditos",
-  "TopbarMobileMenu.creditsLink": "Créditos"
+  "TopbarMobileMenu.creditsLink": "Créditos",
+  "CarouselArrows.previous": "Anterior",
+  "CarouselArrows.next": "Siguiente"
 }

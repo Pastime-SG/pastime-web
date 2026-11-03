@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import classNames from 'classnames';
 
 import { FormattedMessage } from '../../../../util/reactIntl';
@@ -8,6 +8,7 @@ import Field, { hasDataInFields } from '../../Field';
 import BlockBuilder, { BlockContainer } from '../../BlockBuilder';
 
 import SectionContainer from '../SectionContainer';
+import CarouselArrows, { useHorizontalScroll } from '../CarouselArrows/CarouselArrows';
 import { getPlainText } from '../SectionBuilder.helpers';
 import css from './SectionBrowseTiles.module.css';
 
@@ -68,6 +69,9 @@ const SectionBrowseTiles = props => {
 
   // If external mapping has been included for fields
   const fieldOptions = pickFieldOptions(options);
+  // The row of tiles scrolls sideways, with arrows next to the heading
+  const [tilesElement, setTilesElement] = useState(null);
+  const scroll = useHorizontalScroll(tilesElement);
   const blockOptions = {
     ...options,
     blockComponents: { defaultBlock: { component: BrowseTile } },
@@ -78,19 +82,28 @@ const SectionBrowseTiles = props => {
       id={sectionId}
       className={classNames(className, css.root)}
       rootClassName={rootClassName}
+      contentClassName={css.sectionContent}
       appearance={appearance}
       options={fieldOptions}
     >
       <header className={css.header}>
-        <p className={css.eyebrow}>
-          <FormattedMessage id="SectionBrowseTiles.eyebrow" />
-        </p>
-        <Field data={title} className={css.title} options={fieldOptions} />
-        <Field data={description} className={css.description} options={fieldOptions} />
-        <Field data={callToAction} options={fieldOptions} />
+        <div className={css.headerText}>
+          <p className={css.eyebrow}>
+            <FormattedMessage id="SectionBrowseTiles.eyebrow" />
+          </p>
+          <Field data={title} className={css.title} options={fieldOptions} />
+          <Field data={description} className={css.description} options={fieldOptions} />
+          <Field data={callToAction} options={fieldOptions} />
+        </div>
+        <CarouselArrows
+          canPrev={scroll.canPrev}
+          canNext={scroll.canNext}
+          onPrev={scroll.scrollPrev}
+          onNext={scroll.scrollNext}
+        />
       </header>
       {blocks.length > 0 ? (
-        <div className={css.tiles}>
+        <div className={css.tiles} ref={setTilesElement}>
           <BlockBuilder
             blocks={blocks}
             sectionId={sectionId}

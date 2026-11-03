@@ -52,6 +52,8 @@ const Step = props => {
 /**
  * The "How it works" section of the landing page: the Console section's title and blocks as
  * numbered steps. Each block's image is the step's icon. The content stays editable in Console.
+ * The section's background colour (Console: section appearance) is the colour of the box, and its
+ * text colour (black or white) the colour of the text in it; the page background stays around it.
  *
  * @component
  * @param {Object} props Section props from the SectionBuilder (see SectionColumns)
@@ -72,16 +74,20 @@ const SectionHowItWorks = props => {
 
   // If external mapping has been included for fields
   const fieldOptions = pickFieldOptions(options);
+  const { backgroundColor, ...sectionAppearance } = appearance || {};
+  const boxStyle = backgroundColor ? { '--stepsBackground': backgroundColor } : null;
+  const isDarkBox = appearance?.textColor === 'white';
 
   return (
     <SectionContainer
       id={sectionId}
       className={classNames(className, css.root)}
       rootClassName={rootClassName}
-      appearance={appearance}
+      contentClassName={css.sectionContent}
+      appearance={appearance ? sectionAppearance : appearance}
       options={fieldOptions}
     >
-      <div className={css.content}>
+      <div className={classNames(css.content, { [css.contentDark]: isDarkBox })} style={boxStyle}>
         <header className={css.header}>
           <Field data={title} className={css.title} options={fieldOptions} />
           <Field data={description} className={css.description} options={fieldOptions} />
