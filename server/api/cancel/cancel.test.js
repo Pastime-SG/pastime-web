@@ -1,7 +1,20 @@
 const mockSdk = { transactions: { show: jest.fn(), transition: jest.fn() } };
+// Like the Marketplace API: a transaction's relationships are only returned when included
+const mockOnlyIncluded = (response, include = []) => {
+  const { relationships = {}, ...data } = response.data.data;
+  const included = Object.fromEntries(
+    Object.entries(relationships).filter(([name]) => include.includes(name))
+  );
+  return { ...response, data: { ...response.data, data: { ...data, relationships: included } } };
+};
 jest.mock('../../api-util/sdk', () => ({
   createCookieTokenStore: () => ({}),
-  getSdk: () => mockSdk,
+  getSdk: () => ({
+    transactions: {
+      show: params =>
+        mockSdk.transactions.show(params).then(res => mockOnlyIncluded(res, params.include)),
+    },
+  }),
   getTrustedSdk: () => Promise.resolve(mockSdk),
   serialize: data => JSON.stringify(data),
   handleError: (res, e) => res.status(e.status || 500).json({ status: e.status || 500 }),

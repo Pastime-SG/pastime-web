@@ -131,7 +131,13 @@ module.exports = async (req, res) => {
     // used for the privileged transition, with the same cookie token store.
     const tokenStore = createCookieTokenStore(req, res);
     const sdk = getSdk(req, res, tokenStore);
-    const txResponse = await sdk.transactions.show({ id: transactionId, include: ['booking'] });
+    // The customer has to be included: Sharetribe only returns the relationships that are asked for,
+    // and the customer is checked below
+    const txResponse = await sdk.transactions.show({
+      id: transactionId,
+      include: ['booking', 'customer'],
+      'fields.user': ['profile.displayName'],
+    });
     const { data: tx, included = [] } = txResponse.data;
     const booking = findIncluded(tx, included, 'booking');
     const customerId = tx.relationships?.customer?.data?.id?.uuid;
