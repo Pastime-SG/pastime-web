@@ -1836,6 +1836,6 @@
   "PromoCodesPage.merchantCodesTitle": "Códigos promocionales de estudios",
   "PromoCodesPage.merchantCodesOn": "Activado: los estudios pueden crear códigos para sus anuncios y los clientes pueden usarlos al pagar.",
   "PromoCodesPage.merchantCodesOffAdmin": "Desactivado: los estudios no pueden crear ni activar códigos, y sus códigos no funcionan al pagar. Los códigos del marketplace siguen funcionando.",
-  "PromoCodesPage.merchantCodesOff": "Pastime ha desactivado los códigos promocionales por ahora: tus códigos no funcionan al pagar y no se pueden crear nuevos hasta que se vuelvan a activar.",
+  "PromoCodesPage.merchantCodesOff": "Los códigos promocionales no están disponibles en este momento.",
   "PromoCodesPage.error.merchantCodesDisabled": "Pastime ha desactivado los códigos promocionales por ahora."
 }

@@ -623,7 +623,7 @@ const PromoCodesPage = () => {
             </section>
           ) : null}
 
-          {fetchInProgress ? (
+          {isMerchantCodesOff ? null : fetchInProgress ? (
             <div className={css.loading}>
               <IconSpinner />
             </div>

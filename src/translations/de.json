@@ -1819,6 +1819,6 @@
   "PromoCodesPage.merchantCodesTitle": "Studio-Promo-Codes",
   "PromoCodesPage.merchantCodesOn": "An: Studios können Codes für ihre Angebote erstellen und Kunden können sie an der Kasse verwenden.",
   "PromoCodesPage.merchantCodesOffAdmin": "Aus: Studios können keine Codes erstellen oder aktivieren, und Studio-Codes funktionieren an der Kasse nicht. Marktplatz-Codes funktionieren weiterhin.",
-  "PromoCodesPage.merchantCodesOff": "Promo-Codes sind von Pastime vorübergehend deaktiviert: Deine Codes funktionieren an der Kasse nicht, und neue Codes können erst wieder erstellt werden, wenn sie aktiviert sind.",
+  "PromoCodesPage.merchantCodesOff": "Promo-Codes sind derzeit nicht verfügbar.",
   "PromoCodesPage.error.merchantCodesDisabled": "Promo-Codes sind von Pastime vorübergehend deaktiviert."
 }

@@ -1836,6 +1836,6 @@
   "PromoCodesPage.merchantCodesTitle": "Codes promo des studios",
   "PromoCodesPage.merchantCodesOn": "Activé : les studios peuvent créer des codes pour leurs annonces, et les clients peuvent les utiliser au paiement.",
   "PromoCodesPage.merchantCodesOffAdmin": "Désactivé : les studios ne peuvent ni créer ni activer de codes, et leurs codes ne fonctionnent pas au paiement. Les codes de la place de marché fonctionnent toujours.",
-  "PromoCodesPage.merchantCodesOff": "Les codes promo sont désactivés par Pastime pour le moment : vos codes ne fonctionnent pas au paiement et aucun nouveau code ne peut être créé tant qu'ils ne sont pas réactivés.",
+  "PromoCodesPage.merchantCodesOff": "Les codes promo ne sont pas disponibles pour le moment.",
   "PromoCodesPage.error.merchantCodesDisabled": "Les codes promo sont désactivés par Pastime pour le moment."
 }

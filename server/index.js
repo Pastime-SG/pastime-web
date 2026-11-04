@@ -367,6 +367,18 @@ const server = app.listen(PORT, () => {
   if (hasFirebase && hasIntegrationCredentials()) {
     bookingEventsJob = startBookingEventsJob();
   }
+  // Pastime features that need extra environment variables: say clearly what's missing
+  const missing = [
+    [!process.env.STRIPE_SECRET_KEY, 'STRIPE_SECRET_KEY (customer cancellations with refunds)'],
+    [!hasFirebase, 'FIREBASE_SERVICE_ACCOUNT (promo codes and loyalty credits)'],
+    [
+      !hasIntegrationCredentials(),
+      'SHARETRIBE_INTEGRATION_CLIENT_ID/SECRET (giving back promo code uses and credits)',
+    ],
+  ].filter(([isMissing]) => isMissing);
+  missing.forEach(([, name]) => {
+    console.warn(`Missing environment variable: ${name}`); // eslint-disable-line no-console
+  });
 });
 
 // Graceful shutdown:
