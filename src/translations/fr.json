@@ -1852,7 +1852,7 @@
   "OrderBreakdown.platformCovered": "Pris en charge par Pastime",
   "PromoCodesPage.tab.payouts": "Versements Pastime",
   "PromoCodesPage.payoutsHeading": "Versements payés par Pastime",
-  "PromoCodesPage.payoutsDescription": "Lorsque des crédits ou un code promo Pastime dépassent la commission de Pastime, ou qu'une réservation est gratuite, Pastime verse au studio la totalité de son paiement depuis son solde Stripe à la fin de la session. Gardez au moins S$500 sur le solde Stripe de Pastime pour que ces versements ne soient pas retardés.",
+  "PromoCodesPage.payoutsDescription": "Lorsque des crédits ou un code promo Pastime dépassent la commission de Pastime, ou qu'une réservation est gratuite, Pastime verse au studio la totalité de son paiement depuis son solde Stripe à la fin de la session. Gardez un solde Stripe suffisant (par exemple de S$300 à S$500) pour que ces versements ne soient pas retardés.",
   "PromoCodesPage.payoutsEmpty": "Aucun versement payé par Pastime pour le moment.",
   "PromoCodesPage.payoutsFetchError": "Impossible de charger les versements.",
   "PlatformPayoutsList.details": "{date} · {reason, select, cancelled {Réservation annulée} other {Réservation terminée}} {bookingId}",

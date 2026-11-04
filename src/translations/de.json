@@ -1835,7 +1835,7 @@
   "OrderBreakdown.platformCovered": "Von Pastime übernommen",
   "PromoCodesPage.tab.payouts": "Pastime-Auszahlungen",
   "PromoCodesPage.payoutsHeading": "Von Pastime bezahlte Auszahlungen",
-  "PromoCodesPage.payoutsDescription": "Wenn Guthaben oder ein Pastime-Promo-Code höher sind als die Provision von Pastime oder eine Buchung kostenlos ist, zahlt Pastime dem Studio die volle Auszahlung aus seinem Stripe-Guthaben, sobald die Session endet. Halte mindestens S$500 im Stripe-Guthaben von Pastime, damit sich diese Auszahlungen nicht verzögern.",
+  "PromoCodesPage.payoutsDescription": "Wenn Guthaben oder ein Pastime-Promo-Code höher sind als die Provision von Pastime oder eine Buchung kostenlos ist, zahlt Pastime dem Studio die volle Auszahlung aus seinem Stripe-Guthaben, sobald die Session endet. Halte genug Stripe-Guthaben bereit (zum Beispiel S$300 bis S$500), damit sich diese Auszahlungen nicht verzögern.",
   "PromoCodesPage.payoutsEmpty": "Noch keine von Pastime bezahlten Auszahlungen.",
   "PromoCodesPage.payoutsFetchError": "Die Auszahlungen konnten nicht geladen werden.",
   "PlatformPayoutsList.details": "{date} · {reason, select, cancelled {Stornierte Buchung} other {Abgeschlossene Buchung}} {bookingId}",

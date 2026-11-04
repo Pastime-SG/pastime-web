@@ -7,7 +7,7 @@ import {
   isValidCurrencyForTransactionProcess,
   pickTransactionFieldsData,
 } from '../../util/fieldHelpers.js';
-import { propTypes } from '../../util/types';
+import { LINE_ITEM_LOYALTY_CREDIT, propTypes } from '../../util/types';
 import { ensureTransaction } from '../../util/data';
 import { createSlug } from '../../util/urlHelpers';
 import {
@@ -686,6 +686,16 @@ export const CheckoutPageWithPayment = props => {
   const isBooking = processName === BOOKING_PROCESS_NAME;
   // Credits or discounts cover the whole price: the server makes a free booking (no card)
   const isFreeBooking = tx?.attributes?.processName === FREE_BOOKING_PROCESS_NAME;
+  // A discount alone covers the price: credits wouldn't be used, so they aren't offered (shown
+  // only while the customer's credits are what makes the booking free, so they can turn them off)
+  const creditsUsedNow = (tx?.attributes?.lineItems || []).some(
+    li => li.code === LINE_ITEM_LOYALTY_CREDIT && !li.reversal && li.lineTotal?.amount !== 0
+  );
+  const showCreditsField =
+    showPaymentForm &&
+    canUsePromoCode &&
+    (creditBalance > 0 || useCredits) &&
+    (!isFreeBooking || creditsUsedNow);
   const isPurchase = processName === PURCHASE_PROCESS_NAME;
   const isNegotiation = processName === NEGOTIATION_PROCESS_NAME;
 
@@ -790,7 +800,7 @@ export const CheckoutPageWithPayment = props => {
                 onRemove={handleRemovePromoCode}
               />
             ) : null}
-            {showPaymentForm && canUsePromoCode && (creditBalance > 0 || useCredits) ? (
+            {showCreditsField ? (
               <LoyaltyCreditsField
                 balance={creditBalance}
                 currency={loyaltyAccount?.currency}

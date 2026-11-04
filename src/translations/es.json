@@ -1852,7 +1852,7 @@
   "OrderBreakdown.platformCovered": "Cubierto por Pastime",
   "PromoCodesPage.tab.payouts": "Pagos de Pastime",
   "PromoCodesPage.payoutsHeading": "Pagos realizados por Pastime",
-  "PromoCodesPage.payoutsDescription": "Cuando los créditos o un código promocional de Pastime superan la comisión de Pastime, o una reserva es gratuita, Pastime paga al estudio el importe completo desde su saldo de Stripe cuando termina la sesión. Mantén al menos S$500 en el saldo de Stripe de Pastime para que estos pagos no se retrasen.",
+  "PromoCodesPage.payoutsDescription": "Cuando los créditos o un código promocional de Pastime superan la comisión de Pastime, o una reserva es gratuita, Pastime paga al estudio el importe completo desde su saldo de Stripe cuando termina la sesión. Mantén suficiente saldo en Stripe (por ejemplo, de S$300 a S$500) para que estos pagos no se retrasen.",
   "PromoCodesPage.payoutsEmpty": "Todavía no hay pagos realizados por Pastime.",
   "PromoCodesPage.payoutsFetchError": "No pudimos cargar los pagos.",
   "PlatformPayoutsList.details": "{date} · {reason, select, cancelled {Reserva cancelada} other {Reserva completada}} {bookingId}",
