@@ -27,6 +27,11 @@ jest.mock('../loyalty/settings', () => ({
   ...jest.requireActual('../loyalty/settings'),
   getLoyaltySettings: () => Promise.resolve(mockSettings),
 }));
+const mockApplyListingEvent = jest.fn();
+jest.mock('../listingCategories', () => ({
+  applyListingEvent: (...args) => mockApplyListingEvent(...args),
+  seedListingCategories: () => Promise.resolve(null),
+}));
 const mockEventsQuery = jest.fn();
 const mockTransactionsShow = jest.fn();
 jest.mock('../sharetribe/integration', () => ({
@@ -81,6 +86,7 @@ describe('promo code booking events', () => {
     mockPromoCodes.completePromoCodeUse.mockResolvedValue(true);
     mockPromoCodes.setPromoCodeSyncPosition.mockResolvedValue();
     mockLoyalty.earnCredits.mockResolvedValue(100);
+    mockApplyListingEvent.mockResolvedValue(false);
     mockLoyalty.returnCredits.mockResolvedValue(true);
     Object.assign(mockSettings, { enabled: true, changedAt: null });
     mockLoyalty.confirmSpentCredits.mockResolvedValue();
@@ -223,6 +229,20 @@ describe('promo code booking events', () => {
     expect(mockLoyalty.earnCredits.mock.calls[0][0].customerId).toBe('customer-2');
   });
 
+  it('reads listing events in the same query, for the hero search categories', async () => {
+    mockPromoCodes.getPromoCodeSyncPosition.mockResolvedValue(10);
+    const listingEvent = { attributes: { sequenceId: 11, eventType: 'listing/updated' } };
+    mockApplyListingEvent.mockImplementation(e => Promise.resolve(e === listingEvent));
+    mockEventsQuery.mockResolvedValue({ data: { data: [listingEvent] } });
+    const result = await processBookingEvents();
+    expect(mockEventsQuery).toHaveBeenCalledTimes(1);
+    expect(mockEventsQuery.mock.calls[0][0].eventTypes).toBe(
+      'transaction/transitioned,listing/created,listing/updated,listing/deleted'
+    );
+    expect(result).toEqual({ events: 1, changed: 1 });
+    expect(mockPromoCodes.setPromoCodeSyncPosition).toHaveBeenCalledWith(11);
+  });
+
   it('resumes after the last event read and saves where it got to', async () => {
     mockPromoCodes.getPromoCodeSyncPosition.mockResolvedValue(10);
     mockEventsQuery.mockResolvedValue({
@@ -238,7 +258,7 @@ describe('promo code booking events', () => {
     expect(mockEventsQuery).toHaveBeenCalledTimes(1);
     expect(mockEventsQuery.mock.calls[0][0]).toMatchObject({
       startAfterSequenceId: 10,
-      eventTypes: 'transaction/transitioned',
+      eventTypes: 'transaction/transitioned,listing/created,listing/updated,listing/deleted',
     });
     expect(result).toEqual({ events: 2, changed: 1 });
     expect(mockPromoCodes.setPromoCodeSyncPosition).toHaveBeenCalledWith(12);

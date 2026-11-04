@@ -2,6 +2,7 @@ const log = require('../../log');
 const { getIntegrationSdk } = require('../sharetribe/integration');
 const { confirmSpentCredits, earnCredits, returnCredits } = require('../loyalty');
 const { getLoyaltySettings, wasLoyaltyEnabledAt } = require('../loyalty/settings');
+const { applyListingEvent, seedListingCategories } = require('../listingCategories');
 const { CANCEL_PRIVILEGED_TRANSITIONS } = require('../cancellation');
 const { isBookingProcess } = require('../bookingData');
 const { BOOKING_REQUEST_TRANSITIONS } = require('../policies');
@@ -29,7 +30,10 @@ const {
  * promo code use or credits are only given back for the booking that used them (the
  * transaction id they were linked to when the booking was made).
  *
- * Booking changes are read from the Sharetribe Integration API's transaction events every 30
+ * Listing events are read in the same queries, for the hero search's categories (see
+ * services/listingCategories): no extra Sharetribe calls for them.
+ *
+ * Booking changes are read from the Sharetribe Integration API's transaction events every 15
  * minutes, resuming after the last event read (its sequence id is saved in Firestore after every
  * page), so no event is skipped or read twice. Each check is one events query (100 events), and
  * more only if there are more events.
@@ -62,7 +66,14 @@ const FINISHED_STATES = [
 const EVENTS_PER_PAGE = 100;
 // At most this many pages per check (a busy period is caught up on the next checks)
 const MAX_PAGES_PER_CHECK = 5;
-const CHECK_INTERVAL_MS = 30 * 60 * 1000;
+const CHECK_INTERVAL_MS = 15 * 60 * 1000;
+// Read in the same query: bookings, and listings (for the hero search's categories)
+const EVENT_TYPES = [
+  'transaction/transitioned',
+  'listing/created',
+  'listing/updated',
+  'listing/deleted',
+].join(',');
 // The very first read (no saved position yet) starts this long ago
 const FIRST_READ_LOOKBACK_MS = 60 * 60 * 1000;
 // First check shortly after the server starts (e.g. after a deploy)
@@ -223,13 +234,13 @@ const processBookingEvents = async (now = new Date()) => {
     // eslint-disable-next-line no-await-in-loop
     const response = await getIntegrationSdk().events.query({
       ...startMaybe,
-      eventTypes: 'transaction/transitioned',
+      eventTypes: EVENT_TYPES,
       perPage: EVENTS_PER_PAGE,
     });
     const events = response.data.data;
     for (const event of events) {
       // eslint-disable-next-line no-await-in-loop
-      changed += (await applyEvent(event)).length;
+      changed += (await applyListingEvent(event)) ? 1 : (await applyEvent(event)).length;
       position = event.attributes.sequenceId;
     }
     eventCount += events.length;
@@ -245,8 +256,9 @@ const processBookingEvents = async (now = new Date()) => {
 };
 
 /**
- * Check booking events every 30 minutes, and once a minute after the server starts. Requires a
- * long-running server process.
+ * Check booking and listing events every 15 minutes, and once a minute after the server starts.
+ * The first run also fills the listing category records once (see services/listingCategories).
+ * Requires a long-running server process.
  *
  * @returns {Object} The interval timer
  */
@@ -258,7 +270,9 @@ const startBookingEventsJob = () => {
       return;
     }
     running = true;
-    processBookingEvents()
+    seedListingCategories()
+      .catch(e => log.error(e, 'listing-categories-seed-failed', {}))
+      .then(() => processBookingEvents())
       .catch(e => log.error(e, 'promo-code-booking-events-failed', {}))
       .finally(() => {
         running = false;

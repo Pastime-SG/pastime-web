@@ -349,7 +349,7 @@ if (cspEnabled) {
 // Background jobs, started once the server is listening and stopped on shutdown:
 // - payouts of cancelled bookings that wait for the funds to be available (partial refunds)
 // - promo code uses given back or completed when bookings change (reads Sharetribe events every
-//   30 minutes)
+//   15 minutes)
 let pendingPayoutsJob = null;
 let bookingEventsJob = null;
 

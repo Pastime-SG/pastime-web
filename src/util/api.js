@@ -225,6 +225,11 @@ export const fetchLoyalty = () => {
   return get('/api/loyalty');
 };
 
+// Listing categories with at least one published listing (public): { categoryIds } or null
+export const fetchActiveCategories = () => {
+  return get('/api/listing-categories/active');
+};
+
 // Whether the loyalty program is on (public)
 export const fetchLoyaltySettings = () => {
   return get('/api/loyalty/settings');
