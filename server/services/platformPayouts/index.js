@@ -9,6 +9,7 @@ const {
   createTransfer,
   getDestinationPaymentAvailability,
   isInsufficientBalanceError,
+  isRefusedRequestError,
 } = require('../stripe');
 
 /**
@@ -26,7 +27,9 @@ const {
  *
  * Every payout is kept in Firestore (platformPayouts/{transactionId}) until it's paid, and retried
  * every 15 minutes (with the booking events job): e.g. when Pastime's Stripe balance is too low
- * for the transfer. Stripe calls use idempotency keys, so a booking is never paid twice.
+ * for the transfer. Stripe calls use idempotency keys, so a booking is never paid twice. Stripe
+ * replays a refused request for the same key for 24 hours, so after a refusal (nothing was
+ * created) the next attempt uses a new key; after a network error it keeps the same key.
  */
 
 const COLLECTION = 'platformPayouts';
@@ -50,6 +53,16 @@ const payoutRef = transactionId =>
   getFirestore()
     .collection(COLLECTION)
     .doc(transactionId);
+
+// Idempotency key of a Stripe call: a new one after each refused attempt
+const idempotencyKey = (name, transactionId, refusedCount) =>
+  refusedCount > 0
+    ? `platform-${name}-${transactionId}-retry-${refusedCount}`
+    : `platform-${name}-${transactionId}`;
+
+// The refusal counter to save after a failed Stripe call
+const refusalChanges = (field, record, e) =>
+  isRefusedRequestError(e) ? { [field]: (record[field] || 0) + 1 } : {};
 
 const getUuid = value => value?.uuid || (typeof value === 'string' ? value : null);
 
@@ -142,7 +155,7 @@ const advancePayout = async savedRecord => {
         accountId,
         amount: platformAmount,
         currency,
-        idempotencyKey: `platform-transfer-${transactionId}`,
+        idempotencyKey: idempotencyKey('transfer', transactionId, record.transferRefusals || 0),
         metadata,
       });
       transferPaymentId = transfer.destination_payment || null;
@@ -155,7 +168,7 @@ const advancePayout = async savedRecord => {
     } catch (e) {
       const lastError = isInsufficientBalanceError(e) ? ERROR_BALANCE : ERROR_OTHER;
       log.error(e, 'platform-payout-transfer-failed', { transactionId, lastError });
-      return { ...changes, lastError };
+      return { ...changes, ...refusalChanges('transferRefusals', record, e), lastError };
     }
   }
 
@@ -174,7 +187,7 @@ const advancePayout = async savedRecord => {
       accountId,
       amount: payoutAmount,
       currency,
-      idempotencyKey: `platform-payout-${transactionId}`,
+      idempotencyKey: idempotencyKey('payout', transactionId, record.payoutRefusals || 0),
       metadata,
     });
     return {
@@ -186,7 +199,7 @@ const advancePayout = async savedRecord => {
     };
   } catch (e) {
     log.error(e, 'platform-payout-failed', { transactionId });
-    return { ...changes, lastError: ERROR_OTHER };
+    return { ...changes, ...refusalChanges('payoutRefusals', record, e), lastError: ERROR_OTHER };
   }
 };
 

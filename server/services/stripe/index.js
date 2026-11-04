@@ -161,6 +161,16 @@ const isInsufficientBalanceError = e =>
   e?.code === 'balance_insufficient' || e?.raw?.code === 'balance_insufficient';
 
 /**
+ * Whether Stripe refused a request for sure (nothing was created). Stripe saves such a result for
+ * 24 hours and replays it for the same idempotency key, so a retry needs a new key. Network errors,
+ * timeouts and conflicts aren't: the request may have succeeded, so a retry keeps its key.
+ *
+ * @param {Error} e
+ * @returns {boolean}
+ */
+const isRefusedRequestError = e => [400, 402, 403, 404].includes(e?.statusCode);
+
+/**
  * Update the PaymentIntent's metadata (merged with the existing keys).
  *
  * @param {string} paymentIntentId
@@ -192,6 +202,7 @@ module.exports = {
   createTransfer,
   createTransferReversal,
   isInsufficientBalanceError,
+  isRefusedRequestError,
   findPaymentIntentsForTransaction,
   findPendingPayouts,
   getDestinationPaymentAvailability,

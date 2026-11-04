@@ -1,5 +1,6 @@
 import {
   BOOKING_PROCESS_NAME,
+  FREE_BOOKING_PROCESS_NAME,
   getProcess,
   resolveLatestProcessName,
 } from '../../../transactions/transaction';
@@ -90,6 +91,8 @@ export const getCancellationInfo = ({ transaction, transactionRole, nextTransiti
   }
 
   return {
+    // Free bookings (booking-free process) have no card payment
+    isFree: transaction.attributes.processName === FREE_BOOKING_PROCESS_NAME,
     providerCancelTransition,
     isCancelledByProvider,
     canCancelRequest,

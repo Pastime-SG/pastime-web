@@ -177,9 +177,11 @@ const Cancellation = props => {
         <p className={css.note}>
           <FormattedMessage
             id={
-              isCustomer
-                ? 'TransactionPage.Cancellation.requestCancelledCustomer'
-                : 'TransactionPage.Cancellation.requestCancelledProvider'
+              !isCustomer
+                ? 'TransactionPage.Cancellation.requestCancelledProvider'
+                : info.isFree
+                ? 'TransactionPage.Cancellation.requestCancelledCustomerFree'
+                : 'TransactionPage.Cancellation.requestCancelledCustomer'
             }
             values={names}
           />
@@ -275,7 +277,13 @@ const Cancellation = props => {
       <>
         <Card title={intl.formatMessage({ id: 'TransactionPage.Cancellation.cancelRequestTitle' })}>
           <p className={css.note}>
-            <FormattedMessage id="TransactionPage.Cancellation.cancelRequestDescription" />
+            <FormattedMessage
+              id={
+                info.isFree
+                  ? 'TransactionPage.Cancellation.cancelRequestDescriptionFree'
+                  : 'TransactionPage.Cancellation.cancelRequestDescription'
+              }
+            />
           </p>
           <SecondaryButton
             className={css.secondaryButton}
@@ -298,7 +306,11 @@ const Cancellation = props => {
           </h2>
           <p className={css.modalDescription}>
             <FormattedMessage
-              id="TransactionPage.Cancellation.cancelRequestModalDescription"
+              id={
+                info.isFree
+                  ? 'TransactionPage.Cancellation.cancelRequestModalDescriptionFree'
+                  : 'TransactionPage.Cancellation.cancelRequestModalDescription'
+              }
               values={names}
             />
           </p>

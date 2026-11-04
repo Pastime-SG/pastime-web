@@ -7,6 +7,7 @@ jest.mock('../stripe', () => ({
   createTransfer: jest.fn(),
   getDestinationPaymentAvailability: jest.fn(),
   isInsufficientBalanceError: e => e?.code === 'balance_insufficient',
+  isRefusedRequestError: e => e?.statusCode === 400,
 }));
 
 const { getIntegrationSdk } = require('../sharetribe/integration');
@@ -67,11 +68,25 @@ describe('platform payouts', () => {
   });
 
   it("waits when Pastime's balance is too low, without paying out", async () => {
-    createTransfer.mockRejectedValue({ code: 'balance_insufficient' });
+    createTransfer.mockRejectedValue({ code: 'balance_insufficient', statusCode: 400 });
     const changes = await advancePayout(platformPaidRecord);
     expect(changes.lastError).toBe(ERROR_BALANCE);
+    expect(changes.transferRefusals).toBe(1);
     expect(changes.status).toBeUndefined();
     expect(createPayout).not.toHaveBeenCalled();
+  });
+
+  it('retries a refused transfer with a new idempotency key (Stripe replays the refusal)', async () => {
+    await advancePayout({ ...platformPaidRecord, transferRefusals: 2 });
+    expect(createTransfer).toHaveBeenCalledWith(
+      expect.objectContaining({ idempotencyKey: 'platform-transfer-tx-1-retry-2' })
+    );
+  });
+
+  it('keeps the idempotency key after a network error (the transfer may exist)', async () => {
+    createTransfer.mockRejectedValue({ type: 'StripeConnectionError' });
+    const changes = await advancePayout(platformPaidRecord);
+    expect(changes.transferRefusals).toBeUndefined();
   });
 
   it("waits for the booking's funds before paying out (never from other funds)", async () => {
