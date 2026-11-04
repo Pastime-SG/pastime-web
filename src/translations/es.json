@@ -1837,5 +1837,12 @@
   "PromoCodesPage.merchantCodesOn": "Activado: los estudios pueden crear códigos para sus anuncios y los clientes pueden usarlos al pagar.",
   "PromoCodesPage.merchantCodesOffAdmin": "Desactivado: los estudios no pueden crear ni activar códigos, y sus códigos no funcionan al pagar. Los códigos del marketplace siguen funcionando.",
   "PromoCodesPage.merchantCodesOff": "Los códigos promocionales no están disponibles en este momento.",
-  "PromoCodesPage.error.merchantCodesDisabled": "Pastime ha desactivado los códigos promocionales por ahora."
+  "PromoCodesPage.error.merchantCodesDisabled": "Pastime ha desactivado los códigos promocionales por ahora.",
+  "StudioTermsField.acceptText": "He leído y acepto los {termsLink}",
+  "StudioTermsField.linkText": "Términos para estudios",
+  "StudioTermsField.required": "Lee y acepta los Términos para estudios",
+  "StudioTermsField.scrollHint": "Desplázate hasta el final de los términos para aceptarlos.",
+  "StudioTermsField.readDone": "Has llegado al final. Ya puedes aceptar los términos.",
+  "StudioTermsField.agree": "Acepto",
+  "StudioTermsField.loadError": "No se pudieron cargar los términos para estudios. Recarga la página e inténtalo de nuevo."
 }

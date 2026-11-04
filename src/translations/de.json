@@ -1820,5 +1820,12 @@
   "PromoCodesPage.merchantCodesOn": "An: Studios können Codes für ihre Angebote erstellen und Kunden können sie an der Kasse verwenden.",
   "PromoCodesPage.merchantCodesOffAdmin": "Aus: Studios können keine Codes erstellen oder aktivieren, und Studio-Codes funktionieren an der Kasse nicht. Marktplatz-Codes funktionieren weiterhin.",
   "PromoCodesPage.merchantCodesOff": "Promo-Codes sind derzeit nicht verfügbar.",
-  "PromoCodesPage.error.merchantCodesDisabled": "Promo-Codes sind von Pastime vorübergehend deaktiviert."
+  "PromoCodesPage.error.merchantCodesDisabled": "Promo-Codes sind von Pastime vorübergehend deaktiviert.",
+  "StudioTermsField.acceptText": "Ich habe die {termsLink} gelesen und akzeptiere sie",
+  "StudioTermsField.linkText": "Studio-Bedingungen",
+  "StudioTermsField.required": "Bitte lies und akzeptiere die Studio-Bedingungen",
+  "StudioTermsField.scrollHint": "Scrolle bis zum Ende der Bedingungen, um sie zu akzeptieren.",
+  "StudioTermsField.readDone": "Du hast das Ende erreicht. Du kannst die Bedingungen jetzt akzeptieren.",
+  "StudioTermsField.agree": "Ich stimme zu",
+  "StudioTermsField.loadError": "Die Studio-Bedingungen konnten nicht geladen werden. Bitte lade die Seite neu und versuche es erneut."
 }

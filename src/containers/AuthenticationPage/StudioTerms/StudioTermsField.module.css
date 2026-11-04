@@ -1,0 +1,108 @@
+@import '../../../styles/customMediaQueries.css';
+
+/* Matches the Terms of Service row below it. That row pulls itself up 24px
+   (marketplaceModalBottomWrapperText), so this row takes that offset and the
+   bottom margin gives it back plus an 8px gap. */
+.root {
+  margin-top: -24px;
+  margin-bottom: 32px;
+}
+
+.checkboxRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.checkbox {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  margin: 1px 0 0 0;
+  accent-color: var(--marketplaceColor);
+  cursor: pointer;
+}
+
+.label {
+  composes: marketplaceModalHelperLink from global;
+  padding: 0;
+  text-align: left;
+  cursor: default;
+}
+
+.link {
+  composes: marketplaceModalHelperLink from global;
+  color: var(--marketplaceColor);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--marketplaceColorDark);
+    text-decoration: underline;
+  }
+}
+
+/* ================ Modal ================ */
+
+.modalContainer {
+  composes: marketplaceModalBaseStyles from global;
+  padding-top: 70px;
+
+  @media (--viewportMedium) {
+    flex-basis: 680px;
+  }
+}
+
+.modalContent {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+/* The terms scroll inside the modal, so that reading to the end can be detected */
+.scrollArea {
+  max-height: 60vh;
+  overflow-y: auto;
+  padding-right: 6px;
+  border-bottom: 1px solid var(--colorGrey100);
+
+  @media (--viewportMedium) {
+    max-height: 55vh;
+  }
+}
+
+.modalFooter {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 18px;
+
+  @media (--viewportMedium) {
+    padding-top: 16px;
+  }
+}
+
+.hint {
+  margin: 0;
+  font-size: 14px;
+  color: var(--colorGrey700);
+}
+
+.hintDone {
+  color: var(--colorSuccess);
+}
+
+.agreeButton {
+  width: 100%;
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  padding: 48px 0;
+}
+
+.error {
+  margin: 0;
+  padding: 24px 0;
+  color: var(--colorFail);
+}
