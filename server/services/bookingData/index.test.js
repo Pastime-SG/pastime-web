@@ -25,7 +25,13 @@ describe('booking protected data', () => {
   it('replaces what an inquiry stored when a booking is requested after it', () => {
     expect(getProtectedDataParams({ clientProtectedData: fake, replaceServerOwned: true })).toEqual(
       {
-        protectedData: { policies: null, reschedule: null, promoCode: null, loyalty: null },
+        protectedData: {
+          policies: null,
+          reschedule: null,
+          promoCode: null,
+          loyalty: null,
+          providerPayout: null,
+        },
       }
     );
   });

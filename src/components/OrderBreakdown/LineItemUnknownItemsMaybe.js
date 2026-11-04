@@ -9,6 +9,8 @@ import css from './OrderBreakdown.module.css';
 const PASTIME_LINE_ITEM_LABELS = {
   'line-item/promo-discount': 'OrderBreakdown.promoDiscount',
   'line-item/loyalty-credit': 'OrderBreakdown.loyaltyCredit',
+  // A remainder below Stripe's minimum charge (S$0.50), covered by Pastime
+  'line-item/platform-covered': 'OrderBreakdown.platformCovered',
 };
 
 /**

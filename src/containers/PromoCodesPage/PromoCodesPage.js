@@ -33,6 +33,7 @@ import {
   fetchPromoCodesThunk,
   ADMIN_TAB_MARKETPLACE,
   ADMIN_TAB_STUDIOS,
+  ADMIN_TAB_PAYOUTS,
   switchAdminTab,
   switchView,
   updateLoyaltySettingsThunk,
@@ -40,6 +41,7 @@ import {
   updatePromoCodeThunk,
 } from './PromoCodesPage.duck';
 
+import PlatformPayoutsList from './PlatformPayoutsList/PlatformPayoutsList';
 import css from './PromoCodesPage.module.css';
 
 const { Money } = sdkTypes;
@@ -449,6 +451,9 @@ const PromoCodesPage = () => {
     merchantCodesEnabled,
     merchantCodesUpdateInProgress,
     merchantCodesUpdateError,
+    platformPayouts,
+    payoutsFetchInProgress,
+    payoutsFetchError,
   } = useSelector(state => state.PromoCodesPage, shallowEqual);
   // Admins (profile.metadata.isAdmin, set by an operator) can switch to the marketplace's codes
   const isAdmin = currentUser?.attributes?.profile?.metadata?.isAdmin === true;
@@ -456,6 +461,8 @@ const PromoCodesPage = () => {
   // Admin view: every studio's codes (see, turn on or off, delete unused ones; no creating or
   // editing a studio's discount)
   const isStudiosTab = showAdminView && adminTab === ADMIN_TAB_STUDIOS;
+  // Admin view: payouts Pastime pays to studios (read only)
+  const isPayoutsTab = showAdminView && adminTab === ADMIN_TAB_PAYOUTS;
   // Studios: codes turned off by an admin
   const isMerchantCodesOff = !showAdminView && merchantCodesEnabled === false;
 
@@ -503,7 +510,9 @@ const PromoCodesPage = () => {
               <H3 as="h1" className={css.heading}>
                 <FormattedMessage
                   id={
-                    isStudiosTab
+                    isPayoutsTab
+                      ? 'PromoCodesPage.payoutsHeading'
+                      : isStudiosTab
                       ? 'PromoCodesPage.studiosHeading'
                       : showAdminView
                       ? 'PromoCodesPage.adminHeading'
@@ -514,7 +523,9 @@ const PromoCodesPage = () => {
               <p className={css.description}>
                 <FormattedMessage
                   id={
-                    isStudiosTab
+                    isPayoutsTab
+                      ? 'PromoCodesPage.payoutsDescription'
+                      : isStudiosTab
                       ? 'PromoCodesPage.studiosDescription'
                       : showAdminView
                       ? 'PromoCodesPage.adminDescription'
@@ -523,7 +534,7 @@ const PromoCodesPage = () => {
                 />
               </p>
             </div>
-            {!isStudiosTab && !isMerchantCodesOff ? (
+            {!isStudiosTab && !isPayoutsTab && !isMerchantCodesOff ? (
               <PrimaryButton
                 className={css.createButton}
                 type="button"
@@ -536,7 +547,7 @@ const PromoCodesPage = () => {
 
           {showAdminView ? (
             <div className={css.tabs} role="tablist">
-              {[ADMIN_TAB_MARKETPLACE, ADMIN_TAB_STUDIOS].map(tab => (
+              {[ADMIN_TAB_MARKETPLACE, ADMIN_TAB_STUDIOS, ADMIN_TAB_PAYOUTS].map(tab => (
                 <button
                   key={tab}
                   className={classNames(css.tab, { [css.tabSelected]: adminTab === tab })}
@@ -592,7 +603,7 @@ const PromoCodesPage = () => {
             </section>
           ) : null}
 
-          {showAdminView && !isStudiosTab && loyaltyEnabled !== null ? (
+          {showAdminView && !isStudiosTab && !isPayoutsTab && loyaltyEnabled !== null ? (
             <section className={css.loyaltyCard}>
               <div>
                 <h2 className={css.loyaltyTitle}>
@@ -623,7 +634,32 @@ const PromoCodesPage = () => {
             </section>
           ) : null}
 
-          {isMerchantCodesOff ? null : fetchInProgress ? (
+          {isPayoutsTab ? (
+            payoutsFetchInProgress ? (
+              <div className={css.loading}>
+                <IconSpinner />
+              </div>
+            ) : payoutsFetchError ? (
+              <div className={css.error} role="alert">
+                <p className={css.errorText}>
+                  <FormattedMessage id="PromoCodesPage.payoutsFetchError" />
+                </p>
+                <InlineTextButton
+                  className={css.action}
+                  type="button"
+                  onClick={() => dispatch(switchAdminTab(ADMIN_TAB_PAYOUTS))}
+                >
+                  <FormattedMessage id="PromoCodesPage.tryAgain" />
+                </InlineTextButton>
+              </div>
+            ) : platformPayouts.length > 0 ? (
+              <PlatformPayoutsList payouts={platformPayouts} />
+            ) : (
+              <p className={css.empty}>
+                <FormattedMessage id="PromoCodesPage.payoutsEmpty" />
+              </p>
+            )
+          ) : isMerchantCodesOff ? null : fetchInProgress ? (
             <div className={css.loading}>
               <IconSpinner />
             </div>

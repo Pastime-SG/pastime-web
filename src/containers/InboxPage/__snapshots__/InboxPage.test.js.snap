@@ -2378,6 +2378,78 @@ exports[`InboxPage InboxItem: default-booking process with "day" check booking: 
 </div>
 `;
 
+exports[`InboxPage InboxItem: default-booking process with "day" check booking: transition/request 1`] = `
+<div
+  class="item"
+>
+  <div
+    class="itemAvatar"
+  >
+    <a
+      class="root"
+      href="/u/customer"
+      title="customer display name"
+    >
+      <span
+        class="initials"
+      >
+        TT
+      </span>
+    </a>
+  </div>
+  <a
+    class="itemLink"
+    href="/sale/id-booking-REQUEST_FREE-sale"
+  >
+    <div
+      class="rowNotificationDot"
+    >
+      <div
+        class="notificationDot"
+      />
+    </div>
+    <div
+      class="itemUsername"
+    >
+      <span
+        class=""
+      >
+        customer display name
+      </span>
+    </div>
+    <div
+      class="itemTitle"
+    >
+      listing-day title
+    </div>
+    <div
+      class="itemDetails"
+    >
+      <div
+        class="root"
+      >
+        <span
+          class="dateSection"
+        >
+          Jun 14, 2022
+        </span>
+      </div>
+    </div>
+    <div
+      class="itemState"
+    >
+      <div
+        class="stateName stateActionNeeded"
+      >
+        <span>
+          InboxPage.default-booking.preauthorized.status
+        </span>
+      </div>
+    </div>
+  </a>
+</div>
+`;
+
 exports[`InboxPage InboxItem: default-booking process with "day" check booking: transition/request-payment 1`] = `
 <div
   class="item"
@@ -5361,6 +5433,74 @@ exports[`InboxPage InboxItem: default-booking process with "hour" check booking:
       >
         <span>
           InboxPage.default-booking.canceled.status
+        </span>
+      </div>
+    </div>
+  </a>
+</div>
+`;
+
+exports[`InboxPage InboxItem: default-booking process with "hour" check booking: transition/request 1`] = `
+<div
+  class="item"
+>
+  <div
+    class="itemAvatar"
+  >
+    <a
+      class="root"
+      href="/u/provider"
+      title="provider display name"
+    >
+      <span
+        class="initials"
+      >
+        TT
+      </span>
+    </a>
+  </div>
+  <a
+    class="itemLink"
+    href="/order/id-booking-REQUEST_FREE-order"
+  >
+    <div
+      class="rowNotificationDot"
+    />
+    <div
+      class="itemUsername"
+    >
+      <span
+        class=""
+      >
+        provider display name
+      </span>
+    </div>
+    <div
+      class="itemTitle"
+    >
+      listing-hour title
+    </div>
+    <div
+      class="itemDetails"
+    >
+      <div
+        class="root"
+      >
+        <span
+          class="dateSection"
+        >
+          Jun 14, 2022, 10:00 AM - 1:00 PM
+        </span>
+      </div>
+    </div>
+    <div
+      class="itemState"
+    >
+      <div
+        class="stateName stateNoActionNeeded"
+      >
+        <span>
+          InboxPage.default-booking.preauthorized.status
         </span>
       </div>
     </div>

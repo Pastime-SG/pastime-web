@@ -12,15 +12,13 @@ const {
   getBookingAmounts,
   getCancelTransition,
   getCancellationAmounts,
-  getPaymentDetails,
 } = require('../../services/cancellation');
 const { payOutOrSchedule } = require('../../services/cancellation/payouts');
-const {
-  createRefund,
-  createTransferReversal,
-  findPaymentIntentsForTransaction,
-  retrievePaymentIntent,
-} = require('../../services/stripe');
+const { createRefund, createTransferReversal } = require('../../services/stripe');
+const { getPayment } = require('../../services/cancellation/payment');
+const { hasStripePayment, isPaidOutByPlatform } = require('../../services/bookingData');
+const { getPaymentPlan } = require('../../services/commission');
+const { payProvider } = require('../../services/platformPayouts');
 
 /**
  * Customer cancellation of an accepted booking (see server/services/cancellation for the rules).
@@ -58,37 +56,6 @@ const sendTransaction = (res, apiResponse) => {
 const findIncluded = (txData, included, relationship) => {
   const ref = txData.relationships?.[relationship]?.data;
   return ref ? included.find(i => i.type === ref.type && i.id.uuid === ref.id.uuid) : null;
-};
-
-const paymentNotFound = () => {
-  const error = new Error('Payment not found');
-  error.code = 'payment-not-found';
-  return error;
-};
-
-// The PaymentIntent stored with the transaction by Sharetribe (stripe-create-payment-intent), if
-// it belongs to this transaction, or else one found by searching Stripe. Searching only finds
-// PaymentIntents after about a minute, so it's the fallback.
-const findPaymentIntent = async (transactionId, protectedData) => {
-  const storedId = protectedData?.stripePaymentIntents?.default?.stripePaymentIntentId;
-  if (typeof storedId === 'string' && /^pi_[A-Za-z0-9]+$/.test(storedId)) {
-    const pi = await retrievePaymentIntent(storedId).catch(() => null);
-    if (pi?.metadata?.['sharetribe-transaction-id'] === transactionId) {
-      return pi;
-    }
-  }
-  const found = await findPaymentIntentsForTransaction(transactionId);
-  const match = found.find(pi => pi.status === 'succeeded');
-  return match ? retrievePaymentIntent(match.id) : null;
-};
-
-// The captured PaymentIntent of the transaction
-const getPayment = async (transactionId, protectedData) => {
-  const pi = await findPaymentIntent(transactionId, protectedData);
-  if (pi?.status !== 'succeeded') {
-    throw paymentNotFound();
-  }
-  return { paymentIntentId: pi.id, payment: getPaymentDetails(pi) };
 };
 
 // Take back the provider's share minus what they keep, and refund the customer. Stripe calls are
@@ -135,13 +102,17 @@ module.exports = async (req, res) => {
     // and the customer is checked below
     const txResponse = await sdk.transactions.show({
       id: transactionId,
-      include: ['booking', 'customer'],
+      include: ['booking', 'customer', 'provider'],
       'fields.user': ['profile.displayName'],
     });
     const { data: tx, included = [] } = txResponse.data;
     const booking = findIncluded(tx, included, 'booking');
     const customerId = tx.relationships?.customer?.data?.id?.uuid;
-    const { lastTransition, protectedData, lineItems, payinTotal, payoutTotal } = tx.attributes;
+    const { lastTransition, protectedData, lineItems, payinTotal, processName } = tx.attributes;
+    // Bookings that Pastime pays part of, or free bookings: Pastime's server pays the provider
+    const isPlatformPayout = isPaidOutByPlatform(processName);
+    // What the provider is paid for the whole booking (Pastime's part included)
+    const fullPayout = getPaymentPlan(lineItems).providerPayout;
     const now = new Date();
 
     if (userId !== customerId || !booking || !getCancelTransition(lastTransition, true)) {
@@ -170,12 +141,16 @@ module.exports = async (req, res) => {
         currency,
         paid: payinTotal.amount,
         refund: 0,
-        providerPayout: payoutTotal.amount,
-        providerPayoutText: formatMoney(payoutTotal.amount, currency),
+        providerPayout: fullPayout,
+        providerPayoutText: formatMoney(fullPayout, currency),
         payoutStatus: 'with-booking-end',
       };
     } else {
-      const { paymentIntentId, payment } = await getPayment(tx.id.uuid, protectedData);
+      // Free bookings have no Stripe payment: nothing to refund, the credits are given back by
+      // the booking events job
+      const { paymentIntentId, payment } = hasStripePayment(processName)
+        ? await getPayment(tx.id.uuid, protectedData)
+        : { paymentIntentId: null, payment: { paid: 0, stripeFee: 0, currency } };
       const amounts = getCancellationAmounts({
         refundPercentage: rule.refundPercentage,
         bookingAmounts: getBookingAmounts(lineItems),
@@ -189,19 +164,37 @@ module.exports = async (req, res) => {
           .json({ ...ruleDetails, currency, paid, stripeFee, refund: amounts.refund });
       }
 
-      try {
-        await refundPayment({ transactionId: tx.id.uuid, paymentIntentId, payment, amounts });
-      } catch (e) {
-        log.error(e, 'cancellation-refund-failed', { transactionId: tx.id.uuid });
-        return fail(res, 502, 'refund-failed');
+      if (paymentIntentId) {
+        try {
+          await refundPayment({ transactionId: tx.id.uuid, paymentIntentId, payment, amounts });
+        } catch (e) {
+          log.error(e, 'cancellation-refund-failed', { transactionId: tx.id.uuid });
+          return fail(res, 502, 'refund-failed');
+        }
       }
-      // The provider's share is paid out when this booking's funds are available
-      const payout = await payOutOrSchedule({
-        paymentIntentId,
-        transactionId: tx.id.uuid,
-        payment,
-        amount: amounts.providerPayout,
-      }).catch(e => {
+      // The provider's share is paid out when this booking's funds are available. For bookings
+      // paid out by Pastime, it can be more than the payment left in the provider's account:
+      // Pastime sends the rest from its balance.
+      const payOut = isPlatformPayout
+        ? payProvider({
+            transactionId: tx.id.uuid,
+            processName,
+            protectedData,
+            providerId: tx.relationships?.provider?.data?.id?.uuid,
+            payoutAmount: amounts.providerPayout,
+            currency,
+            reason: 'cancelled',
+          }).then(record => ({
+            status: record.status === 'paid' ? 'paid' : 'pending',
+            ...(record.availableOn instanceof Date ? { availableOn: record.availableOn } : {}),
+          }))
+        : payOutOrSchedule({
+            paymentIntentId,
+            transactionId: tx.id.uuid,
+            payment,
+            amount: amounts.providerPayout,
+          });
+      const payout = await payOut.catch(e => {
         // The refund was made: don't fail the cancellation. The payout needs a manual check.
         log.error(e, 'cancellation-payout-not-scheduled', { transactionId: tx.id.uuid });
         return { status: 'failed' };
@@ -210,15 +203,15 @@ module.exports = async (req, res) => {
       cancellation = {
         ...ruleDetails,
         cancelledAt: now.toISOString(),
-        currency: payment.currency.toUpperCase(),
+        currency: (payment.currency || currency).toUpperCase(),
         paid,
         stripeFee,
         refund: amounts.refund,
         providerPayout: amounts.providerPayout,
         platformCommission: amounts.platformCommission,
-        refundText: formatMoney(amounts.refund, payment.currency),
-        feeText: formatMoney(stripeFee, payment.currency),
-        providerPayoutText: formatMoney(amounts.providerPayout, payment.currency),
+        refundText: formatMoney(amounts.refund, payment.currency || currency),
+        feeText: formatMoney(stripeFee, payment.currency || currency),
+        providerPayoutText: formatMoney(amounts.providerPayout, payment.currency || currency),
         payoutStatus: payout.status,
         ...(payout.availableOn ? { payoutAvailableOn: payout.availableOn.toISOString() } : {}),
       };

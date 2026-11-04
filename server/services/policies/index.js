@@ -17,6 +17,8 @@ const UNITS = ['hours', 'days'];
 const BOOKING_REQUEST_TRANSITIONS = [
   'transition/request-payment',
   'transition/request-payment-after-inquiry',
+  // Free bookings (booking-free process)
+  'transition/request',
 ];
 
 const durationInMs = (amount, unit) => Number(amount) * (unit === 'days' ? DAY_MS : HOUR_MS);

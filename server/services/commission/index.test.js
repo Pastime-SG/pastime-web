@@ -151,72 +151,217 @@ describe('promo code discounts', () => {
     expect(totalFor(lineItems, 'provider')).toBe(4087);
   });
 
-  it("pays an admin's discount from the marketplace commission, at most the commission", () => {
+  const { getPaymentPlan } = require('./index');
+  const FUNDED = 'line-item/platform-funded';
+
+  it("pays an admin's discount from Pastime: the provider is still paid in full", () => {
     const lineItems = lineItemsWith({
       createdBy: 'admin',
       discountType: 'fixed',
       amount: 1000,
       currency: 'SGD',
     });
-    // Commission is $4.59 (from $45.87 before GST): the $10 discount is limited to it
-    expect(lineTotal(lineItems, 'line-item/promo-discount')).toBe(-459);
-    expect(totalFor(lineItems, 'customer')).toBe(4541);
-    // The provider's payout doesn't change
-    expect(totalFor(lineItems, 'provider')).toBe(4541);
+    // $10 off $50: the customer pays $40, the provider's payout is $45.41 ($4.59 commission)
+    expect(lineTotal(lineItems, 'line-item/promo-discount')).toBe(-1000);
+    expect(totalFor(lineItems, 'customer')).toBe(4000);
+    // Sharetribe can't pay out more than the customer pays: Pastime pays the other $5.41
+    expect(totalFor(lineItems, 'provider')).toBe(4000);
+    expect(lineTotal(lineItems, FUNDED)).toBe(-541);
+    expect(getPaymentPlan(lineItems)).toEqual({
+      type: 'platform-paid',
+      payinTotal: 4000,
+      platformFunded: 541,
+      providerPayout: 4541,
+    });
   });
 
-  it("leaves the merchant's payout as without a discount for an admin's percentage code", () => {
-    // $50, 10% off from an admin code: the merchant still gets $50 minus 10% of $45.87 = $45.41.
-    // The $5 discount is more than the $4.59 commission, so it's limited to the commission.
+  it("doesn't need Pastime's money while the discount is within the commission", () => {
+    const lineItems = lineItemsWith({
+      createdBy: 'admin',
+      discountType: 'fixed',
+      amount: 300,
+      currency: 'SGD',
+    });
+    expect(totalFor(lineItems, 'customer')).toBe(4700);
+    expect(totalFor(lineItems, 'provider')).toBe(4541);
+    expect(lineTotal(lineItems, FUNDED)).toBeUndefined();
+    expect(getPaymentPlan(lineItems).type).toBe('standard');
+  });
+
+  it('makes the booking free with a 100% admin code, paid to the provider by Pastime', () => {
     const lineItems = lineItemsWith({
       createdBy: 'admin',
       discountType: 'percentage',
-      percentage: 10,
+      percentage: 100,
     });
-    expect(lineTotal(lineItems, 'line-item/provider-commission')).toBe(-459);
-    expect(totalFor(lineItems, 'provider')).toBe(4541);
-    expect(lineTotal(lineItems, 'line-item/promo-discount')).toBe(-459);
-    expect(totalFor(lineItems, 'customer')).toBe(4541);
+    expect(totalFor(lineItems, 'customer')).toBe(0);
+    expect(totalFor(lineItems, 'provider')).toBe(0);
+    expect(getPaymentPlan(lineItems)).toEqual({
+      type: 'free',
+      payinTotal: 0,
+      platformFunded: 4541,
+      providerPayout: 4541,
+    });
+  });
+
+  it('pays nothing to the provider for their own 100% code', () => {
+    const lineItems = lineItemsWith(
+      { createdBy: 'merchant', discountType: 'percentage', percentage: 100 },
+      { percentage: 10, minimum_amount: 100 }
+    );
+    expect(totalFor(lineItems, 'customer')).toBe(0);
+    // The minimum commission can't make the payout negative
+    expect(totalFor(lineItems, 'provider')).toBe(0);
+    expect(getPaymentPlan(lineItems)).toEqual({
+      type: 'free',
+      payinTotal: 0,
+      platformFunded: 0,
+      providerPayout: 0,
+    });
+  });
+
+  it("covers less than Stripe's S$0.50 minimum charge, making the booking free", () => {
+    // $49.70 off: 30 cents would be left to pay
+    const lineItems = lineItemsWith({
+      createdBy: 'admin',
+      discountType: 'fixed',
+      amount: 4970,
+      currency: 'SGD',
+    });
+    expect(lineTotal(lineItems, 'line-item/platform-covered')).toBe(-30);
+    expect(totalFor(lineItems, 'customer')).toBe(0);
+    expect(getPaymentPlan(lineItems).type).toBe('free');
+    expect(getPaymentPlan(lineItems).providerPayout).toBe(4541);
+  });
+
+  it('charges exactly the minimum of S$0.50', () => {
+    const lineItems = lineItemsWith({
+      createdBy: 'admin',
+      discountType: 'fixed',
+      amount: 4950,
+      currency: 'SGD',
+    });
+    expect(lineTotal(lineItems, 'line-item/platform-covered')).toBeUndefined();
+    expect(totalFor(lineItems, 'customer')).toBe(50);
+    expect(getPaymentPlan(lineItems)).toEqual({
+      type: 'platform-paid',
+      payinTotal: 50,
+      platformFunded: 4491,
+      providerPayout: 4541,
+    });
   });
 
   describe('loyalty credits', () => {
     const merchantCode = { createdBy: 'merchant', discountType: 'percentage', percentage: 10 };
     const adminCode = { createdBy: 'admin', discountType: 'percentage', percentage: 5 };
 
-    it("are paid from the marketplace's commission, at most the commission", () => {
-      // $50: commission $4.59. $10 of credits is limited to $4.59
-      const lineItems = lineItemsWith(null, undefined, 1000);
-      expect(lineTotal(lineItems, 'line-item/loyalty-credit')).toBe(-459);
-      expect(totalFor(lineItems, 'customer')).toBe(4541);
-      // The merchant's payout doesn't change
-      expect(totalFor(lineItems, 'provider')).toBe(4541);
+    it('are paid by Pastime, up to the whole price', () => {
+      // $20 of credits on $50: the customer pays $30, the provider still gets $45.41
+      const lineItems = lineItemsWith(null, undefined, 2000);
+      expect(lineTotal(lineItems, 'line-item/loyalty-credit')).toBe(-2000);
+      expect(totalFor(lineItems, 'customer')).toBe(3000);
+      expect(getPaymentPlan(lineItems)).toEqual({
+        type: 'platform-paid',
+        payinTotal: 3000,
+        platformFunded: 1541,
+        providerPayout: 4541,
+      });
     });
 
     it('use only the balance when it is lower', () => {
       const lineItems = lineItemsWith(null, undefined, 200);
       expect(lineTotal(lineItems, 'line-item/loyalty-credit')).toBe(-200);
       expect(totalFor(lineItems, 'customer')).toBe(4800);
+      expect(getPaymentPlan(lineItems).type).toBe('standard');
     });
 
-    it("come on top of a merchant's discount, from the commission on the discounted price", () => {
-      // $45 after 10% off: commission $4.13
+    it('use at most the price: a larger balance makes the booking free', () => {
+      const lineItems = lineItemsWith(null, undefined, 10000);
+      expect(lineTotal(lineItems, 'line-item/loyalty-credit')).toBe(-5000);
+      expect(getPaymentPlan(lineItems)).toEqual({
+        type: 'free',
+        payinTotal: 0,
+        platformFunded: 4541,
+        providerPayout: 4541,
+      });
+    });
+
+    it("come on top of a merchant's discount; the provider gets the discounted payout", () => {
+      // $45 after 10% off: commission $4.13, provider $40.87
       const lineItems = lineItemsWith(merchantCode, undefined, 1000);
-      expect(lineTotal(lineItems, 'line-item/loyalty-credit')).toBe(-413);
-      expect(totalFor(lineItems, 'customer')).toBe(4500 - 413);
-      expect(totalFor(lineItems, 'provider')).toBe(4087);
+      expect(lineTotal(lineItems, 'line-item/loyalty-credit')).toBe(-1000);
+      expect(totalFor(lineItems, 'customer')).toBe(3500);
+      expect(getPaymentPlan(lineItems).providerPayout).toBe(4087);
+      expect(getPaymentPlan(lineItems).platformFunded).toBe(587);
     });
 
-    it("share the commission with an admin's discount", () => {
-      // Commission $4.59, admin's 5% is $2.50: $2.09 is left for credits
+    it("add up with an admin's discount", () => {
+      // 5% ($2.50) and $10 of credits: the customer pays $37.50
       const lineItems = lineItemsWith(adminCode, undefined, 1000);
       expect(lineTotal(lineItems, 'line-item/promo-discount')).toBe(-250);
-      expect(lineTotal(lineItems, 'line-item/loyalty-credit')).toBe(-209);
-      expect(totalFor(lineItems, 'provider')).toBe(4541);
+      expect(lineTotal(lineItems, 'line-item/loyalty-credit')).toBe(-1000);
+      expect(getPaymentPlan(lineItems)).toEqual({
+        type: 'platform-paid',
+        payinTotal: 3750,
+        platformFunded: 791,
+        providerPayout: 4541,
+      });
+    });
+  });
+});
+
+describe('booking request process', () => {
+  const { types } = require('sharetribe-flex-sdk');
+  const { getBookingRequestForLineItems, getTransactionLineItems } = require('./index');
+  const listing = {
+    attributes: { price: new types.Money(5000, 'SGD'), publicData: { unitType: 'item' } },
+  };
+  const lineItemsWith = loyaltyCredits =>
+    getTransactionLineItems({
+      listing,
+      orderData: { stockReservationQuantity: 1 },
+      providerCommission: { percentage: 10 },
+      loyaltyCredits,
+    });
+  const requestFor = (lineItems, processName = 'default-booking/release-1') =>
+    getBookingRequestForLineItems({
+      processName,
+      transitionName: 'transition/request-payment',
+      lineItems,
     });
 
-    it('are left out when nothing of the commission is left', () => {
-      const lineItems = lineItemsWith(null, { percentage: 0 }, 1000);
-      expect(lineTotal(lineItems, 'line-item/loyalty-credit')).toBeUndefined();
+  it('keeps the default booking process when the payment covers the payout', () => {
+    expect(requestFor(lineItemsWith(0))).toEqual({
+      processAlias: 'default-booking/release-1',
+      transition: 'transition/request-payment',
+      paymentType: 'standard',
     });
+  });
+
+  it('uses the platform-paid process when Pastime pays part of the payout', () => {
+    expect(requestFor(lineItemsWith(2000))).toEqual({
+      processAlias: 'booking-platform-paid/release-1',
+      transition: 'transition/request-payment',
+      paymentType: 'platform-paid',
+    });
+  });
+
+  it('uses the free process, without a payment, when nothing is left to pay', () => {
+    expect(requestFor(lineItemsWith(5000))).toEqual({
+      processAlias: 'booking-free/release-1',
+      transition: 'transition/request',
+      paymentType: 'free',
+    });
+  });
+
+  it("doesn't change other processes or transitions", () => {
+    expect(requestFor(lineItemsWith(5000), 'default-purchase/release-1')).toBe(null);
+    expect(
+      getBookingRequestForLineItems({
+        processName: 'default-booking/release-1',
+        transitionName: 'transition/inquire',
+        lineItems: lineItemsWith(5000),
+      })
+    ).toBe(null);
   });
 });

@@ -23,6 +23,10 @@ export const FILE = 'file';
 // preventing users from deleting their account if a payment is in process.
 export const PURCHASE_PROCESS_NAME = 'default-purchase';
 export const BOOKING_PROCESS_NAME = 'default-booking';
+// Pastime's booking processes with the same graph as default-booking (see
+// transactionProcessBooking.js): bookings Pastime pays part of, and free bookings
+export const PLATFORM_PAID_BOOKING_PROCESS_NAME = 'booking-platform-paid';
+export const FREE_BOOKING_PROCESS_NAME = 'booking-free';
 export const INQUIRY_PROCESS_NAME = 'default-inquiry';
 export const NEGOTIATION_PROCESS_NAME = 'default-negotiation';
 export const DOWNLOAD_PROCESS_NAME = 'default-download';
@@ -234,6 +238,8 @@ export const resolveLatestProcessName = processName => {
     case 'flex-default-process':
     case 'flex-hourly-default-process':
     case 'flex-booking-default-process':
+    case PLATFORM_PAID_BOOKING_PROCESS_NAME:
+    case FREE_BOOKING_PROCESS_NAME:
     case BOOKING_PROCESS_NAME:
       return BOOKING_PROCESS_NAME;
     case INQUIRY_PROCESS_NAME:

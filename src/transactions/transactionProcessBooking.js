@@ -1,6 +1,9 @@
 /**
  * Transaction process graph for bookings:
  *   - default-booking
+ *   - booking-platform-paid: the same graph; Pastime's server pays the provider (credits or an
+ *     admin's discount are more than the commission)
+ *   - booking-free: the same graph, without the payment step (transition/request)
  */
 
 /**
@@ -18,6 +21,9 @@ export const transitions = {
   // At this transition a PaymentIntent is created by Marketplace API.
   // After this transition, the actual payment must be made on client-side directly to Stripe.
   REQUEST_PAYMENT: 'transition/request-payment',
+
+  // booking-free: the customer pays nothing, so the request goes straight to the provider
+  REQUEST_FREE: 'transition/request',
 
   // A customer can also initiate a transaction with an inquiry, and
   // then transition that with a request.
@@ -159,6 +165,7 @@ export const graph = {
       on: {
         [transitions.INQUIRE]: states.INQUIRY,
         [transitions.REQUEST_PAYMENT]: states.PENDING_PAYMENT,
+        [transitions.REQUEST_FREE]: states.PREAUTHORIZED,
       },
     },
     [states.INQUIRY]: {
@@ -302,6 +309,7 @@ export const isRelevantPastTransition = transition => {
     transitions.COMPLETE,
     transitions.OPERATOR_COMPLETE,
     transitions.CONFIRM_PAYMENT,
+    transitions.REQUEST_FREE,
     transitions.DECLINE,
     transitions.OPERATOR_DECLINE,
     transitions.EXPIRE,
@@ -344,6 +352,7 @@ export const isPrivileged = transition => {
   return [
     transitions.REQUEST_PAYMENT,
     transitions.REQUEST_PAYMENT_AFTER_INQUIRY,
+    transitions.REQUEST_FREE,
     transitions.REQUEST_RESCHEDULE_BY_CUSTOMER,
     transitions.REQUEST_RESCHEDULE_BY_PROVIDER,
     transitions.ACCEPT_RESCHEDULE_BY_PROVIDER,

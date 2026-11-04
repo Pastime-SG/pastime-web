@@ -11,6 +11,7 @@ import {
   updateLoyaltySettings,
   fetchPromoCodeSettings,
   updatePromoCodeSettings,
+  fetchPlatformPayouts,
 } from '../../util/api';
 
 // Errors keep the code from the server (e.g. 'code-exists'), so the page can explain them
@@ -25,6 +26,8 @@ const getScope = getState => {
 
 export const ADMIN_TAB_MARKETPLACE = 'marketplace';
 export const ADMIN_TAB_STUDIOS = 'studios';
+// Payouts Pastime pays to studios (credits, Pastime's codes, free bookings)
+export const ADMIN_TAB_PAYOUTS = 'payouts';
 
 // ================ Thunks ================ //
 
@@ -103,6 +106,14 @@ export const updatePromoCodeSettingsThunk = createAsyncThunk(
       .catch(e => rejectWithValue(toError(e)))
 );
 
+export const fetchPlatformPayoutsThunk = createAsyncThunk(
+  'PromoCodesPage/fetchPlatformPayouts',
+  (_, { rejectWithValue }) =>
+    fetchPlatformPayouts()
+      .then(response => response.payouts || [])
+      .catch(e => rejectWithValue(toError(e)))
+);
+
 // ================ Slice ================ //
 
 const initialState = {
@@ -126,6 +137,10 @@ const initialState = {
   actionError: null,
   // By promo code id: { ledger, inProgress, error }
   ledgerByCode: {},
+  // Admin view, payouts tab
+  platformPayouts: [],
+  payoutsFetchInProgress: false,
+  payoutsFetchError: null,
 };
 
 const replaceCode = (promoCodes, promoCode) =>
@@ -153,6 +168,18 @@ const promoCodesPageSlice = createSlice({
   },
   extraReducers: builder => {
     builder
+      .addCase(fetchPlatformPayoutsThunk.pending, state => {
+        state.payoutsFetchInProgress = true;
+        state.payoutsFetchError = null;
+      })
+      .addCase(fetchPlatformPayoutsThunk.fulfilled, (state, action) => {
+        state.payoutsFetchInProgress = false;
+        state.platformPayouts = action.payload;
+      })
+      .addCase(fetchPlatformPayoutsThunk.rejected, (state, action) => {
+        state.payoutsFetchInProgress = false;
+        state.payoutsFetchError = action.payload;
+      })
       .addCase(fetchPromoCodesThunk.pending, state => {
         state.fetchInProgress = true;
         state.fetchError = null;
@@ -260,14 +287,16 @@ const promoCodesPageSlice = createSlice({
 export const { clearSaveError } = promoCodesPageSlice.actions;
 
 /**
- * Admin view: switch between the marketplace's codes and every studio's codes.
+ * Admin view: switch between the marketplace's codes, every studio's codes and Pastime's payouts.
  *
- * @param {string} tab ADMIN_TAB_MARKETPLACE or ADMIN_TAB_STUDIOS
+ * @param {string} tab ADMIN_TAB_MARKETPLACE, ADMIN_TAB_STUDIOS or ADMIN_TAB_PAYOUTS
  * @returns {Function}
  */
 export const switchAdminTab = tab => dispatch => {
   dispatch(promoCodesPageSlice.actions.setAdminTab(tab));
-  return dispatch(fetchPromoCodesThunk());
+  return tab === ADMIN_TAB_PAYOUTS
+    ? dispatch(fetchPlatformPayoutsThunk())
+    : dispatch(fetchPromoCodesThunk());
 };
 
 /**

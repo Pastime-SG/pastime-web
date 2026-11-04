@@ -36,6 +36,10 @@ const mockPayOutOrSchedule = jest.fn();
 jest.mock('../../services/cancellation/payouts', () => ({
   payOutOrSchedule: (...args) => mockPayOutOrSchedule(...args),
 }));
+const mockPayProvider = jest.fn();
+jest.mock('../../services/platformPayouts', () => ({
+  payProvider: (...args) => mockPayProvider(...args),
+}));
 jest.mock('../../log', () => ({ error: jest.fn() }));
 
 const cancel = require('./cancel');
@@ -56,7 +60,12 @@ const policies = {
   },
 };
 
-const txResponse = ({ hoursToStart, protectedData = { policies } }) => {
+const txResponse = ({
+  hoursToStart,
+  protectedData = { policies },
+  processName = 'default-booking',
+  extraLineItems = [],
+}) => {
   const start = new Date(Date.now() + hoursToStart * HOUR_MS);
   return {
     data: {
@@ -65,6 +74,7 @@ const txResponse = ({ hoursToStart, protectedData = { policies } }) => {
         type: 'transaction',
         attributes: {
           lastTransition: 'transition/accept',
+          processName,
           protectedData,
           payinTotal: money(10500),
           payoutTotal: money(9000),
@@ -84,6 +94,7 @@ const txResponse = ({ hoursToStart, protectedData = { policies } }) => {
               includeFor: ['customer'],
               lineTotal: money(500),
             },
+            ...extraLineItems,
           ],
         },
         relationships: {
@@ -147,6 +158,7 @@ describe('POST /api/cancel', () => {
     mockStripe.createTransferReversal.mockResolvedValue({});
     mockStripe.createRefund.mockResolvedValue({});
     mockPayOutOrSchedule.mockResolvedValue({ status: 'pending', availableOn: new Date() });
+    mockPayProvider.mockResolvedValue({ status: 'pending' });
   });
 
   it('previews the refund without cancelling', async () => {
@@ -258,5 +270,90 @@ describe('POST /api/cancel', () => {
 
     expect(res.json).toHaveBeenCalledWith({ status: 502, code: 'refund-failed' });
     expect(mockSdk.transactions.transition).not.toHaveBeenCalled();
+  });
+
+  describe('bookings paid out by Pastime', () => {
+    // $100 + $5 customer commission, $65 of credits: the customer paid $40, the provider's payout
+    // is $90 ($40 through Sharetribe, $50 from Pastime)
+    const platformPaid = hoursToStart =>
+      txResponse({
+        hoursToStart,
+        processName: 'booking-platform-paid',
+        extraLineItems: [
+          { code: 'line-item/loyalty-credit', includeFor: ['customer'], lineTotal: money(-6500) },
+          { code: 'line-item/platform-funded', includeFor: ['provider'], lineTotal: money(-5000) },
+        ],
+      });
+    const platformPaidIntent = {
+      ...paymentIntent,
+      latest_charge: {
+        ...paymentIntent.latest_charge,
+        amount: 4000,
+        application_fee_amount: 0,
+        transfer: { ...paymentIntent.latest_charge.transfer, amount: 4000 },
+      },
+    };
+
+    it("pays the provider's share through Pastime, refunding the customer's cash share", async () => {
+      mockStripe.retrievePaymentIntent.mockResolvedValue(platformPaidIntent);
+      mockSdk.transactions.show.mockResolvedValue(platformPaid(30));
+      await call(CUSTOMER_ID, 'cancel');
+
+      // Half refund: the provider keeps $45 (half of $90); the customer pays for half of the
+      // booking ($52.50 - $32.50 of credits = $20), the rest of their $40 is refunded minus the fee
+      expect(mockStripe.createRefund).toHaveBeenCalledWith(
+        expect.objectContaining({ amount: 4000 - 2000 - 335 })
+      );
+      // $40 is in the provider's account: none of it is taken back, Pastime sends $5 more
+      expect(mockStripe.createTransferReversal).not.toHaveBeenCalled();
+      expect(mockPayOutOrSchedule).not.toHaveBeenCalled();
+      expect(mockPayProvider).toHaveBeenCalledWith(
+        expect.objectContaining({
+          transactionId: TX_ID,
+          processName: 'booking-platform-paid',
+          payoutAmount: 4500,
+          reason: 'cancelled',
+        })
+      );
+    });
+
+    it('keeps the full payout for the provider when cancelled without a refund', async () => {
+      mockSdk.transactions.show.mockResolvedValue(platformPaid(2));
+      await call(CUSTOMER_ID, 'cancel');
+      const [params] = mockSdk.transactions.transition.mock.calls[0];
+      expect(params.params.metadata.cancellation).toMatchObject({ providerPayout: 9000 });
+    });
+
+    it('cancels a free booking without Stripe', async () => {
+      mockSdk.transactions.show.mockResolvedValue(
+        txResponse({
+          hoursToStart: 30,
+          processName: 'booking-free',
+          extraLineItems: [
+            {
+              code: 'line-item/loyalty-credit',
+              includeFor: ['customer'],
+              lineTotal: money(-10500),
+            },
+            {
+              code: 'line-item/platform-funded',
+              includeFor: ['provider'],
+              lineTotal: money(-9000),
+            },
+          ],
+        })
+      );
+      await call(CUSTOMER_ID, 'cancel');
+      expect(mockStripe.retrievePaymentIntent).not.toHaveBeenCalled();
+      expect(mockStripe.createRefund).not.toHaveBeenCalled();
+      expect(mockPayProvider).toHaveBeenCalledWith(
+        expect.objectContaining({ payoutAmount: 4500, providerId: PROVIDER_ID })
+      );
+      const [params] = mockSdk.transactions.transition.mock.calls[0];
+      expect(params.params.metadata.cancellation).toMatchObject({
+        refund: 0,
+        providerPayout: 4500,
+      });
+    });
   });
 });

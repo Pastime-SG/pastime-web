@@ -19,6 +19,7 @@ import {
   getProcess,
   resolveLatestProcessName,
   BOOKING_PROCESS_NAME,
+  FREE_BOOKING_PROCESS_NAME,
   NEGOTIATION_PROCESS_NAME,
   PURCHASE_PROCESS_NAME,
 } from '../../transactions/transaction';
@@ -44,6 +45,7 @@ import {
 import { getErrorMessages } from './ErrorMessages';
 
 import StripePaymentForm from './StripePaymentForm/StripePaymentForm';
+import FreeBookingForm from './FreeBookingForm/FreeBookingForm';
 import DetailsSideCard from './DetailsSideCard';
 import MobileListingImage from './MobileListingImage';
 import MobileOrderBreakdown from './MobileOrderBreakdown';
@@ -682,6 +684,8 @@ export const CheckoutPageWithPayment = props => {
   );
 
   const isBooking = processName === BOOKING_PROCESS_NAME;
+  // Credits or discounts cover the whole price: the server makes a free booking (no card)
+  const isFreeBooking = tx?.attributes?.processName === FREE_BOOKING_PROCESS_NAME;
   const isPurchase = processName === PURCHASE_PROCESS_NAME;
   const isNegotiation = processName === NEGOTIATION_PROCESS_NAME;
 
@@ -796,7 +800,18 @@ export const CheckoutPageWithPayment = props => {
                 onToggle={handleToggleCredits}
               />
             ) : null}
-            {showPaymentForm ? (
+            {showPaymentForm && isFreeBooking ? (
+              <FreeBookingForm
+                onSubmit={values =>
+                  handleSubmit(values, process, props, null, submitting, setSubmitting)
+                }
+                inProgress={submitting}
+                disabled={isUpdatingPrice}
+                providerDisplayName={providerDisplayName}
+                showInitialMessageInput={showInitialMessageInput}
+                initiateOrderError={initiateOrderError}
+              />
+            ) : showPaymentForm ? (
               <StripePaymentForm
                 className={css.paymentForm}
                 onSubmit={values =>

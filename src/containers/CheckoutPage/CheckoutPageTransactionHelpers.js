@@ -2,7 +2,11 @@
 import { findRouteByRouteName } from '../../util/routes';
 import { ensureStripeCustomer, ensureTransaction } from '../../util/data';
 import { formatMoney } from '../../util/currency';
-import { NEGOTIATION_PROCESS_NAME, resolveLatestProcessName } from '../../transactions/transaction';
+import {
+  FREE_BOOKING_PROCESS_NAME,
+  NEGOTIATION_PROCESS_NAME,
+  resolveLatestProcessName,
+} from '../../transactions/transaction';
 import { storeData } from './CheckoutPageSessionHelpers';
 
 /**
@@ -324,11 +328,17 @@ export const processCheckoutWithPayment = (orderParams, extraPaymentParams) => {
   //   .then(result => fnConfirmPayment({...result}))
   const applyAsync = (acc, val) => acc.then(val);
   const composeAsync = (...funcs) => x => funcs.reduce(applyAsync, Promise.resolve(x));
-  const handlePaymentIntentCreation = composeAsync(
-    fnRequestPayment,
+  const handleCardPayment = composeAsync(
     fnConfirmCardPayment,
     fnConfirmPayment,
     fnSavePaymentMethod
+  );
+  // A free booking (credits or discounts cover the whole price) has no Stripe payment: the
+  // request is the whole order (the app's server picks the process, see server/api)
+  const handlePaymentIntentCreation = composeAsync(fnRequestPayment, order =>
+    order?.attributes?.processName === FREE_BOOKING_PROCESS_NAME
+      ? { orderId: order.id, paymentMethodSaved: true }
+      : handleCardPayment(order)
   );
 
   return handlePaymentIntentCreation(orderParams);

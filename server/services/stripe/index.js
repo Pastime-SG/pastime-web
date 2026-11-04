@@ -133,6 +133,34 @@ const createPayout = ({ accountId, amount, currency, idempotencyKey, metadata })
   );
 
 /**
+ * Send money from the platform's available balance to a connected account (e.g. what Pastime pays
+ * of a provider's payout). Fails if the platform's available balance is too low (Stripe error
+ * code 'balance_insufficient'); Stripe doesn't retry it.
+ *
+ * @param {Object} params
+ * @param {string} params.accountId Connected account id
+ * @param {number} params.amount In minor units
+ * @param {string} params.currency
+ * @param {string} params.idempotencyKey
+ * @param {Object} [params.metadata]
+ * @returns {Promise<Object>} Transfer
+ */
+const createTransfer = ({ accountId, amount, currency, idempotencyKey, metadata }) =>
+  getStripe().transfers.create(
+    { amount, currency, destination: accountId, metadata },
+    { idempotencyKey }
+  );
+
+/**
+ * Whether a Stripe error is about the platform's balance being too low.
+ *
+ * @param {Error} e
+ * @returns {boolean}
+ */
+const isInsufficientBalanceError = e =>
+  e?.code === 'balance_insufficient' || e?.raw?.code === 'balance_insufficient';
+
+/**
  * Update the PaymentIntent's metadata (merged with the existing keys).
  *
  * @param {string} paymentIntentId
@@ -161,7 +189,9 @@ module.exports = {
   PAYOUT_STATUS_KEY,
   createPayout,
   createRefund,
+  createTransfer,
   createTransferReversal,
+  isInsufficientBalanceError,
   findPaymentIntentsForTransaction,
   findPendingPayouts,
   getDestinationPaymentAvailability,

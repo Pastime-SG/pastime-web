@@ -235,6 +235,11 @@ export const fetchLoyaltySettings = () => {
   return get('/api/loyalty/settings');
 };
 
+// Payouts Pastime's server makes to studios (admins only, checked on the server)
+export const fetchPlatformPayouts = () => {
+  return get('/api/admin/platform-payouts');
+};
+
 // Turn the loyalty program on or off (admins only, checked on the server)
 export const updateLoyaltySettings = enabled => {
   return put('/api/admin/loyalty/settings', { enabled });

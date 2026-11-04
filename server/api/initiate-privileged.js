@@ -11,7 +11,12 @@ const {
 } = require('../api-util/sdk');
 const { assertBookingStartAfterCutoff, getPoliciesProtectedData } = require('../services/policies');
 const { getProtectedDataParams } = require('../services/bookingData');
-const { getIncludedRelationship, getTransactionLineItems } = require('../services/commission');
+const {
+  getBookingRequestForLineItems,
+  getIncludedRelationship,
+  getProviderPayoutProtectedData,
+  getTransactionLineItems,
+} = require('../services/commission');
 const {
   getBookingPromoCode,
   getPromoCodeProtectedData,
@@ -76,6 +81,7 @@ module.exports = (req, res) => {
   let promoCode = null;
   let loyalty = null;
   let providerId = null;
+  let requestParams = bodyParams;
 
   Promise.all([listingPromise(sdk, bodyParams?.params?.listingId), fetchCommission(sdk)])
     .then(async ([showListingResponse, fetchAssetsResponse]) => {
@@ -108,6 +114,21 @@ module.exports = (req, res) => {
       // If the client sends expectedPayinTotal (checkout payment flows), ensure it
       assertExpectedPayinTotal(lineItems, orderData?.expectedPayinTotal);
 
+      // A booking request uses the process that matches how it's paid: with Sharetribe's payout,
+      // paid out by Pastime (credits or an admin's discount), or free (no Stripe payment)
+      const bookingRequest = getBookingRequestForLineItems({
+        processName,
+        transitionName,
+        lineItems,
+      });
+      if (bookingRequest) {
+        requestParams = {
+          ...bodyParams,
+          processAlias: bookingRequest.processAlias,
+          transition: bookingRequest.transition,
+        };
+      }
+
       metadataMaybe = getMetadata(orderData, transitionName);
       // Bookings can't start within the listing's booking cutoff (e.g. 24 hours)
       assertBookingStartAfterCutoff({
@@ -131,12 +152,13 @@ module.exports = (req, res) => {
           ...policiesMaybe,
           ...getPromoCodeProtectedData(promoCode, lineItems),
           ...getLoyaltyProtectedData(loyalty, lineItems),
+          ...getProviderPayoutProtectedData(lineItems),
         },
       });
 
       // Add lineItems to the body params
       const body = {
-        ...bodyParams,
+        ...requestParams,
         params: {
           ...params,
           ...protectedDataMaybe,

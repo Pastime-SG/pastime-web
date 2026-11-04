@@ -2,9 +2,27 @@ import React from 'react';
 import { FormattedMessage, intlShape } from '../../util/reactIntl';
 import { formatMoney } from '../../util/currency';
 import { propTypes } from '../../util/types';
+import { types as sdkTypes } from '../../util/sdkLoader';
 import { resolveLatestProcessName, getProcess } from '../../transactions/transaction';
 
+import { LINE_ITEM_PLATFORM_FUNDED } from '../../util/types';
+
 import css from './OrderBreakdown.module.css';
+
+const { Money } = sdkTypes;
+
+// The provider's whole payout: Sharetribe's payout total plus the part Pastime pays (bookings
+// with credits or an admin's discount, see server/services/commission). Refund reversals cancel
+// it out.
+const getProviderTotal = transaction => {
+  const { payoutTotal, lineItems = [] } = transaction.attributes;
+  const platformFunded = lineItems
+    .filter(item => item.code === LINE_ITEM_PLATFORM_FUNDED)
+    .reduce((sum, item) => sum + item.lineTotal.amount, 0);
+  return platformFunded && payoutTotal
+    ? new Money(payoutTotal.amount - platformFunded, payoutTotal.currency)
+    : payoutTotal;
+};
 
 /**
  * A component that renders the total price as a line item.
@@ -39,9 +57,7 @@ const LineItemTotalPrice = props => {
     <FormattedMessage id="OrderBreakdown.total" />
   );
 
-  const totalPrice = isProvider
-    ? transaction.attributes.payoutTotal
-    : transaction.attributes.payinTotal;
+  const totalPrice = isProvider ? getProviderTotal(transaction) : transaction.attributes.payinTotal;
   const formattedTotalPrice = formatMoney(intl, totalPrice);
 
   return (

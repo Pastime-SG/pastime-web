@@ -1844,5 +1844,21 @@
   "StudioTermsField.scrollHint": "Desplázate hasta el final de los términos para aceptarlos.",
   "StudioTermsField.readDone": "Has llegado al final. Ya puedes aceptar los términos.",
   "StudioTermsField.agree": "Acepto",
-  "StudioTermsField.loadError": "No se pudieron cargar los términos para estudios. Recarga la página e inténtalo de nuevo."
+  "StudioTermsField.loadError": "No se pudieron cargar los términos para estudios. Recarga la página e inténtalo de nuevo.",
+  "FreeBookingForm.title": "No se requiere pago",
+  "FreeBookingForm.info": "Tus créditos y descuentos cubren el precio total, así que no se cargará nada a tu tarjeta. {name} confirmará tu solicitud de reserva.",
+  "FreeBookingForm.submit": "Solicitar reserva",
+  "FreeBookingForm.error": "No pudimos enviar tu solicitud de reserva. Inténtalo de nuevo.",
+  "OrderBreakdown.platformCovered": "Cubierto por Pastime",
+  "PromoCodesPage.tab.payouts": "Pagos de Pastime",
+  "PromoCodesPage.payoutsHeading": "Pagos realizados por Pastime",
+  "PromoCodesPage.payoutsDescription": "Cuando los créditos o un código promocional de Pastime superan la comisión de Pastime, o una reserva es gratuita, Pastime paga al estudio el importe completo desde su saldo de Stripe cuando termina la sesión. Mantén al menos S$500 en el saldo de Stripe de Pastime para que estos pagos no se retrasen.",
+  "PromoCodesPage.payoutsEmpty": "Todavía no hay pagos realizados por Pastime.",
+  "PromoCodesPage.payoutsFetchError": "No pudimos cargar los pagos.",
+  "PlatformPayoutsList.details": "{date} · {reason, select, cancelled {Reserva cancelada} other {Reserva completada}} {bookingId}",
+  "PlatformPayoutsList.pastimePart": "Pagado por Pastime: {amount}",
+  "PlatformPayoutsList.status.paid": "Pagado el {date}",
+  "PlatformPayoutsList.status.balanceTooLow": "En espera: saldo de Stripe insuficiente",
+  "PlatformPayoutsList.status.retrying": "En espera: reintentando",
+  "PlatformPayoutsList.status.waitingForFunds": "Esperando los fondos de la reserva"
 }

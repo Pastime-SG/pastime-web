@@ -25,7 +25,12 @@ const {
 } = require('../services/policies');
 const { getProtectedDataParams } = require('../services/bookingData');
 const { CANCEL_PRIVILEGED_TRANSITIONS } = require('../services/cancellation');
-const { getIncludedRelationship, getTransactionLineItems } = require('../services/commission');
+const {
+  getBookingRequestForLineItems,
+  getIncludedRelationship,
+  getProviderPayoutProtectedData,
+  getTransactionLineItems,
+} = require('../services/commission');
 const {
   getBookingPromoCode,
   getPromoCodeProtectedData,
@@ -159,6 +164,10 @@ module.exports = (req, res) => {
   let promoCode = null;
   let loyalty = null;
   let providerId = null;
+  // A booking request after an inquiry that Pastime pays part of (or that is free) starts a new
+  // booking in that process: a transaction can't change its process
+  let newBookingRequest = null;
+  let listingRef = null;
 
   Promise.all([transactionPromise(sdk, bodyParams?.id), fetchCommission(sdk)])
     .then(async responses => {
@@ -202,6 +211,16 @@ module.exports = (req, res) => {
       // If the client sends expectedPayinTotal (checkout payment flows), ensure it
       assertExpectedPayinTotal(lineItems, orderData?.expectedPayinTotal);
 
+      const bookingRequest = getBookingRequestForLineItems({
+        processName,
+        transitionName,
+        lineItems,
+      });
+      if (bookingRequest && bookingRequest.paymentType !== 'standard') {
+        newBookingRequest = bookingRequest;
+        listingRef = listing.id;
+      }
+
       metadataMaybe = getUpdatedMetadata(orderData, transitionName, existingMetadata);
       // Bookings can't start within the listing's booking cutoff (e.g. 24 hours)
       assertBookingStartAfterCutoff({
@@ -234,6 +253,7 @@ module.exports = (req, res) => {
           ...policiesMaybe,
           ...getPromoCodeProtectedData(promoCode, lineItems),
           ...getLoyaltyProtectedData(loyalty, lineItems),
+          ...getProviderPayoutProtectedData(lineItems),
         },
         // A booking request after an inquiry: replace whatever the inquiry stored
         replaceServerOwned: BOOKING_REQUEST_TRANSITIONS.includes(transitionName),
@@ -250,8 +270,23 @@ module.exports = (req, res) => {
         },
       };
 
+      // A new booking in the process that matches how it's paid (the inquiry stays as it is)
+      const newBookingBody = newBookingRequest
+        ? {
+            processAlias: newBookingRequest.processAlias,
+            transition: newBookingRequest.transition,
+            params: { ...body.params, listingId: listingRef },
+          }
+        : null;
+      const makeRequest = () =>
+        newBookingBody
+          ? trustedSdk.transactions.initiate(newBookingBody, queryParams)
+          : trustedSdk.transactions.transition(body, queryParams);
+
       if (isSpeculative) {
-        return trustedSdk.transactions.transitionSpeculative(body, queryParams);
+        return newBookingBody
+          ? trustedSdk.transactions.initiateSpeculative(newBookingBody, queryParams)
+          : trustedSdk.transactions.transitionSpeculative(body, queryParams);
       }
       // A use of the promo code is counted only when the booking is made
       return withPromoCodeUse(
@@ -261,10 +296,7 @@ module.exports = (req, res) => {
           isSpeculative,
           details: { providerId, listingId: listingId?.uuid || null },
         },
-        () =>
-          withLoyaltyCredits({ loyalty, lineItems, isSpeculative }, () =>
-            trustedSdk.transactions.transition(body, queryParams)
-          )
+        () => withLoyaltyCredits({ loyalty, lineItems, isSpeculative }, makeRequest)
       );
     })
     .then(apiResponse => {

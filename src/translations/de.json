@@ -1827,5 +1827,21 @@
   "StudioTermsField.scrollHint": "Scrolle bis zum Ende der Bedingungen, um sie zu akzeptieren.",
   "StudioTermsField.readDone": "Du hast das Ende erreicht. Du kannst die Bedingungen jetzt akzeptieren.",
   "StudioTermsField.agree": "Ich stimme zu",
-  "StudioTermsField.loadError": "Die Studio-Bedingungen konnten nicht geladen werden. Bitte lade die Seite neu und versuche es erneut."
+  "StudioTermsField.loadError": "Die Studio-Bedingungen konnten nicht geladen werden. Bitte lade die Seite neu und versuche es erneut.",
+  "FreeBookingForm.title": "Keine Zahlung erforderlich",
+  "FreeBookingForm.info": "Dein Guthaben und deine Rabatte decken den gesamten Preis, deine Karte wird also nicht belastet. {name} bestätigt deine Buchungsanfrage.",
+  "FreeBookingForm.submit": "Buchung anfragen",
+  "FreeBookingForm.error": "Deine Buchungsanfrage konnte nicht gesendet werden. Bitte versuche es erneut.",
+  "OrderBreakdown.platformCovered": "Von Pastime übernommen",
+  "PromoCodesPage.tab.payouts": "Pastime-Auszahlungen",
+  "PromoCodesPage.payoutsHeading": "Von Pastime bezahlte Auszahlungen",
+  "PromoCodesPage.payoutsDescription": "Wenn Guthaben oder ein Pastime-Promo-Code höher sind als die Provision von Pastime oder eine Buchung kostenlos ist, zahlt Pastime dem Studio die volle Auszahlung aus seinem Stripe-Guthaben, sobald die Session endet. Halte mindestens S$500 im Stripe-Guthaben von Pastime, damit sich diese Auszahlungen nicht verzögern.",
+  "PromoCodesPage.payoutsEmpty": "Noch keine von Pastime bezahlten Auszahlungen.",
+  "PromoCodesPage.payoutsFetchError": "Die Auszahlungen konnten nicht geladen werden.",
+  "PlatformPayoutsList.details": "{date} · {reason, select, cancelled {Stornierte Buchung} other {Abgeschlossene Buchung}} {bookingId}",
+  "PlatformPayoutsList.pastimePart": "Von Pastime bezahlt: {amount}",
+  "PlatformPayoutsList.status.paid": "Bezahlt am {date}",
+  "PlatformPayoutsList.status.balanceTooLow": "Wartet: Stripe-Guthaben zu niedrig",
+  "PlatformPayoutsList.status.retrying": "Wartet: neuer Versuch",
+  "PlatformPayoutsList.status.waitingForFunds": "Wartet auf das Geld der Buchung"
 }

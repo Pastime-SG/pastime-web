@@ -3,6 +3,7 @@ const { getIntegrationSdk } = require('../sharetribe/integration');
 const { confirmSpentCredits, earnCredits, returnCredits } = require('../loyalty');
 const { getLoyaltySettings, wasLoyaltyEnabledAt } = require('../loyalty/settings');
 const { applyListingEvent, seedListingCategories } = require('../listingCategories');
+const { applyPayoutEvent, processPendingPlatformPayouts } = require('../platformPayouts');
 const { CANCEL_PRIVILEGED_TRANSITIONS } = require('../cancellation');
 const { isBookingProcess } = require('../bookingData');
 const { BOOKING_REQUEST_TRANSITIONS } = require('../policies');
@@ -29,6 +30,8 @@ const {
  * transaction's metadata (privileged), the customer comes from the transaction itself, and a
  * promo code use or credits are only given back for the booking that used them (the
  * transaction id they were linked to when the booking was made).
+ *
+ * Bookings paid out by Pastime (see services/platformPayouts) are paid from the same events.
  *
  * Listing events are read in the same queries, for the hero search's categories (see
  * services/listingCategories): no extra Sharetribe calls for them.
@@ -241,6 +244,15 @@ const processBookingEvents = async (now = new Date()) => {
     for (const event of events) {
       // eslint-disable-next-line no-await-in-loop
       changed += (await applyListingEvent(event)) ? 1 : (await applyEvent(event)).length;
+      // Providers of bookings paid out by Pastime: a failure is saved and retried, and never
+      // stops the other events
+      // eslint-disable-next-line no-await-in-loop
+      changed += (await applyPayoutEvent(event).catch(e => {
+        log.error(e, 'platform-payout-event-failed', { sequenceId: event.attributes.sequenceId });
+        return false;
+      }))
+        ? 1
+        : 0;
       position = event.attributes.sequenceId;
     }
     eventCount += events.length;
@@ -274,6 +286,9 @@ const startBookingEventsJob = () => {
       .catch(e => log.error(e, 'listing-categories-seed-failed', {}))
       .then(() => processBookingEvents())
       .catch(e => log.error(e, 'promo-code-booking-events-failed', {}))
+      // Payouts still waiting (Pastime's balance too low, funds not available yet)
+      .then(() => processPendingPlatformPayouts())
+      .catch(e => log.error(e, 'platform-payouts-retry-failed', {}))
       .finally(() => {
         running = false;
       });

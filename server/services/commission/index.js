@@ -1,10 +1,11 @@
 const { types } = require('sharetribe-flex-sdk');
 const { transactionLineItems } = require('../../api-util/lineItems');
 const {
-  calculateLineTotal,
   calculateTotalFromLineItems,
+  constructValidLineItems,
 } = require('../../api-util/lineItemHelpers');
 const { CREATED_BY_MERCHANT, getPromoCodeDiscount } = require('../promoCodes');
+const { getBookingRequest, isBookingProcess } = require('../bookingData');
 
 const { Money } = types;
 
@@ -26,7 +27,11 @@ const { Money } = types;
  *    is taken from the amount before GST, net of the discount: $50 with 10% off is $45, which is
  *    $41.28 before GST, so a 10% commission is $4.13 and the provider is paid $40.87.
  *  - An admin's (marketplace-wide) code is paid by the marketplace: only the customer's price is
- *    lowered, at most by the marketplace's commission, so the provider's payout doesn't change.
+ *    lowered (up to the whole price), and the provider is still paid in full.
+ *
+ * Loyalty credits are paid by the marketplace too. When an admin's discount and credits are more
+ * than the commission, Pastime pays the rest of the provider's payout from its Stripe balance
+ * (line item PLATFORM_FUNDED, see getPaymentPlan and server/services/platformPayouts).
  */
 
 // GST included in listing prices (Singapore: 9%). Can be changed with the GST_PERCENTAGE env var.
@@ -92,6 +97,22 @@ const PROVIDER_COMMISSION = 'line-item/provider-commission';
 const CUSTOMER_COMMISSION = 'line-item/customer-commission';
 const PROMO_DISCOUNT = 'line-item/promo-discount';
 const LOYALTY_CREDIT = 'line-item/loyalty-credit';
+// Customer: a remainder below Stripe's minimum charge, covered by Pastime
+const PLATFORM_COVERED = 'line-item/platform-covered';
+// Provider: the part of the provider's payout that Pastime pays (not shown to providers)
+const PLATFORM_FUNDED = 'line-item/platform-funded';
+
+// Stripe's minimum charge amounts (minor units) for the currencies Pastime could use
+// (https://docs.stripe.com/currencies#minimum-and-maximum-charge-amounts)
+const MINIMUM_CHARGES = { SGD: 50, USD: 50, EUR: 50, AUD: 50, GBP: 30, MYR: 200, HKD: 400 };
+const getMinimumCharge = currency => MINIMUM_CHARGES[currency] || 50;
+
+const discountLineItem = (amount, currency, isMerchantDiscount) => ({
+  code: PROMO_DISCOUNT,
+  unitPrice: new Money(-amount, currency),
+  quantity: 1,
+  includeFor: isMerchantDiscount ? ['customer', 'provider'] : ['customer'],
+});
 
 const isCommission = item => [PROVIDER_COMMISSION, CUSTOMER_COMMISSION].includes(item.code);
 const isOrderItem = item =>
@@ -114,13 +135,21 @@ const isOrderItem = item =>
 const getCommissionBeforeGst = (item, commission, baseAmount) => {
   // A minimum commission is used already: it's more than the percentage of the total with GST,
   // so it's also more than the percentage of the amount before GST
+  // (at most the amount it's taken from, e.g. 0 after a merchant's 100% discount)
   if (item.percentage == null) {
-    return item;
+    const maximum = baseAmount != null ? Math.max(baseAmount, 0) : item.unitPrice.amount;
+    return item.unitPrice.amount > maximum
+      ? { ...item, unitPrice: new Money(maximum, item.unitPrice.currency) }
+      : item;
   }
   const { currency } = item.unitPrice;
   const base = getAmountBeforeGst(baseAmount != null ? baseAmount : item.unitPrice.amount);
   const commissionFromPercentage = (base * Math.abs(item.percentage)) / 100;
-  const minimum = commission?.minimum_amount;
+  // The minimum commission is at most the amount it's taken from (e.g. 0 after a 100% discount)
+  const minimum = Math.min(
+    commission?.minimum_amount || 0,
+    baseAmount != null ? baseAmount : item.unitPrice.amount
+  );
   return minimum > commissionFromPercentage
     ? {
         code: PROVIDER_COMMISSION,
@@ -168,40 +197,44 @@ const getTransactionLineItems = ({
       ? getCommissionBeforeGst(item, commission, commissionBase)
       : item
   );
-  // An admin's discount is paid from the marketplace's commission: at most the commission
-  const marketplaceCommission = withCommission
-    .filter(isCommission)
-    .reduce((sum, item) => sum + Math.abs(calculateLineTotal(item).amount), 0);
-  const discountAmount = !discount
-    ? 0
-    : isMerchantDiscount
-    ? discount
-    : Math.min(discount, marketplaceCommission);
-  const discountItemMaybe =
-    discountAmount > 0
-      ? [
-          {
-            code: PROMO_DISCOUNT,
-            unitPrice: new Money(-discountAmount, orderTotal.currency),
-            quantity: 1,
-            includeFor: isMerchantDiscount ? ['customer', 'provider'] : ['customer'],
-          },
-        ]
-      : [];
+  const currency = orderTotal.currency;
+  // What the customer pays before discounts and credits (the order, plus any customer commission)
+  const customerTotal = calculateTotalFromLineItems(
+    withCommission.filter(item => item.includeFor.includes('customer'))
+  ).amount;
+  // A discount is at most the price
+  const discountAmount = Math.min(discount, customerTotal);
+  const customerAfterDiscount = customerTotal - discountAmount;
+  const discountItems =
+    discountAmount > 0 ? [discountLineItem(discountAmount, currency, isMerchantDiscount)] : [];
 
-  // Loyalty credits are paid from the marketplace's commission too (what's left of it after an
-  // admin's discount), and are at most the booking's price after discounts
-  const commissionLeft = marketplaceCommission - (isMerchantDiscount ? 0 : discountAmount);
+  // Loyalty credits: at most what's left to pay
   const creditsAmount = Math.max(
     0,
-    Math.min(Math.floor(loyaltyCredits || 0), orderTotal.amount - discountAmount, commissionLeft)
+    Math.min(Math.floor(loyaltyCredits || 0), customerAfterDiscount)
   );
   const creditsItemMaybe =
     creditsAmount > 0
       ? [
           {
             code: LOYALTY_CREDIT,
-            unitPrice: new Money(-creditsAmount, orderTotal.currency),
+            unitPrice: new Money(-creditsAmount, currency),
+            quantity: 1,
+            includeFor: ['customer'],
+          },
+        ]
+      : [];
+
+  // Stripe can't charge less than its minimum (S$0.50): a smaller amount left to pay is covered by
+  // Pastime, and the booking is free
+  const leftToPay = customerAfterDiscount - creditsAmount;
+  const coveredAmount = leftToPay > 0 && leftToPay < getMinimumCharge(currency) ? leftToPay : 0;
+  const coveredItemMaybe =
+    coveredAmount > 0
+      ? [
+          {
+            code: PLATFORM_COVERED,
+            unitPrice: new Money(-coveredAmount, currency),
             quantity: 1,
             includeFor: ['customer'],
           },
@@ -211,16 +244,113 @@ const getTransactionLineItems = ({
   // After the order's line items, before the commissions
   const firstCommissionIndex = withCommission.findIndex(isCommission);
   const insertAt = firstCommissionIndex === -1 ? withCommission.length : firstCommissionIndex;
-  return [
+  const allLineItems = [
     ...withCommission.slice(0, insertAt),
-    ...discountItemMaybe,
+    ...discountItems,
     ...creditsItemMaybe,
+    ...coveredItemMaybe,
     ...withCommission.slice(insertAt),
   ];
+
+  // Credits, an admin's discount and the covered amount are paid by Pastime: the provider is
+  // paid in full. Sharetribe can't pay the provider more than the customer pays, so the part
+  // paid by Pastime is taken out of the Sharetribe payout, and Pastime's server pays it to the
+  // provider together with the rest (see server/services/platformPayouts).
+  const payin = calculateTotalFromLineItems(
+    allLineItems.filter(item => item.includeFor.includes('customer'))
+  ).amount;
+  const payout = calculateTotalFromLineItems(
+    allLineItems.filter(item => item.includeFor.includes('provider'))
+  ).amount;
+  const platformFunded = payout - Math.max(payin, 0);
+  return platformFunded > 0
+    ? [
+        ...allLineItems,
+        {
+          code: PLATFORM_FUNDED,
+          unitPrice: new Money(-platformFunded, currency),
+          quantity: 1,
+          includeFor: ['provider'],
+        },
+      ]
+    : allLineItems;
+};
+
+/**
+ * How a booking is paid, from its line items:
+ *  - 'free': the customer pays nothing (no Stripe payment)
+ *  - 'platform-paid': Pastime pays part of the provider's payout
+ *  - 'standard': the customer's payment covers the payout
+ *
+ * @param {Array<Object>} lineItems
+ * @returns {{type: string, payinTotal: number, platformFunded: number, providerPayout: number}}
+ */
+const getPaymentPlan = lineItems => {
+  // A transaction's line items have their totals already (refund reversals left out); new ones
+  // from getTransactionLineItems don't
+  const active = (lineItems || []).filter(item => !item.reversal);
+  const items = active.every(item => item.lineTotal) ? active : constructValidLineItems(active);
+  const sum = role =>
+    items.filter(i => i.includeFor.includes(role)).reduce((t, i) => t + i.lineTotal.amount, 0);
+  const funded = items.find(i => i.code === PLATFORM_FUNDED);
+  const platformFunded = funded ? Math.abs(funded.lineTotal.amount) : 0;
+  const payinTotal = sum('customer');
+  return {
+    type: payinTotal === 0 ? 'free' : platformFunded > 0 ? 'platform-paid' : 'standard',
+    payinTotal,
+    platformFunded,
+    providerPayout: sum('provider') + platformFunded,
+  };
+};
+
+/**
+ * The provider's whole payout for the provider's emails, for bookings paid out by Pastime (in
+ * major units, e.g. 45.41, like the money in Sharetribe's email templates).
+ *
+ * @param {Array<Object>} lineItems
+ * @returns {Object} { providerPayout: { amount, currency } } or {}
+ */
+const getProviderPayoutProtectedData = lineItems => {
+  const plan = getPaymentPlan(lineItems);
+  const currency = (lineItems || [])[0]?.unitPrice?.currency;
+  return plan.type === 'standard' || !currency
+    ? {}
+    : { providerPayout: { amount: plan.providerPayout / 100, currency } };
+};
+
+// The booking request transitions the client can send (the server picks the final one)
+const CLIENT_BOOKING_REQUESTS = [
+  'transition/request-payment',
+  'transition/request-payment-after-inquiry',
+];
+
+/**
+ * The process alias and transition of a booking request, by how it's paid: the server decides
+ * them from the line items, never the client. Other transactions are left as they are.
+ *
+ * @param {Object} params
+ * @param {string} params.processName The client's process alias (or the transaction's process)
+ * @param {string} params.transitionName The client's transition
+ * @param {Array<Object>} params.lineItems
+ * @returns {{processAlias: string, transition: string, paymentType: string}|null} null if not a
+ * booking request
+ */
+const getBookingRequestForLineItems = ({ processName, transitionName, lineItems }) => {
+  if (!isBookingProcess(processName) || !CLIENT_BOOKING_REQUESTS.includes(transitionName)) {
+    return null;
+  }
+  const paymentType = getPaymentPlan(lineItems).type;
+  return { ...getBookingRequest(paymentType), paymentType };
 };
 
 module.exports = {
   LOYALTY_CREDIT,
+  getBookingRequestForLineItems,
+  getProviderPayoutProtectedData,
+  PLATFORM_COVERED,
+  PLATFORM_FUNDED,
+  getMinimumCharge,
+  getPaymentPlan,
   PROMO_DISCOUNT,
   getAmountBeforeGst,
   getIncludedRelationship,

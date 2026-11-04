@@ -13,6 +13,7 @@ import {
   LINE_ITEM_CUSTOMER_COMMISSION,
   LINE_ITEM_FIXED,
   LINE_ITEM_HOUR,
+  LINE_ITEM_PLATFORM_FUNDED,
   LINE_ITEM_PROVIDER_COMMISSION,
   LISTING_UNIT_TYPES,
   propTypes,
@@ -49,8 +50,13 @@ export const OrderBreakdownComponent = props => {
   const isCustomer = userRole === 'customer';
   const isProvider = userRole === 'provider';
   const allLineItems = transaction.attributes.lineItems || [];
-  // We'll show only line-items that are specific for the current userRole (customer vs provider)
-  const lineItems = allLineItems.filter(lineItem => lineItem.includeFor.includes(userRole));
+  // We'll show only line-items that are specific for the current userRole (customer vs provider).
+  // The part of the provider's payout that Pastime pays is never shown: providers see their
+  // whole payout (see LineItemTotalPrice).
+  const lineItems = allLineItems.filter(
+    lineItem =>
+      lineItem.includeFor.includes(userRole) && lineItem.code !== LINE_ITEM_PLATFORM_FUNDED
+  );
   const unitLineItem = lineItems.find(
     item => LISTING_UNIT_TYPES.includes(item.code) && !item.reversal
   );

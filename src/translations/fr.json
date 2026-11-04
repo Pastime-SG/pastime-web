@@ -1844,5 +1844,21 @@
   "StudioTermsField.scrollHint": "Faites défiler jusqu'à la fin des conditions pour les accepter.",
   "StudioTermsField.readDone": "Vous êtes arrivé à la fin. Vous pouvez maintenant accepter les conditions.",
   "StudioTermsField.agree": "J'accepte",
-  "StudioTermsField.loadError": "Impossible de charger les conditions pour les studios. Rechargez la page et réessayez."
+  "StudioTermsField.loadError": "Impossible de charger les conditions pour les studios. Rechargez la page et réessayez.",
+  "FreeBookingForm.title": "Aucun paiement requis",
+  "FreeBookingForm.info": "Vos crédits et réductions couvrent la totalité du prix : votre carte ne sera pas débitée. {name} confirmera votre demande de réservation.",
+  "FreeBookingForm.submit": "Demander une réservation",
+  "FreeBookingForm.error": "Nous n'avons pas pu envoyer votre demande de réservation. Veuillez réessayer.",
+  "OrderBreakdown.platformCovered": "Pris en charge par Pastime",
+  "PromoCodesPage.tab.payouts": "Versements Pastime",
+  "PromoCodesPage.payoutsHeading": "Versements payés par Pastime",
+  "PromoCodesPage.payoutsDescription": "Lorsque des crédits ou un code promo Pastime dépassent la commission de Pastime, ou qu'une réservation est gratuite, Pastime verse au studio la totalité de son paiement depuis son solde Stripe à la fin de la session. Gardez au moins S$500 sur le solde Stripe de Pastime pour que ces versements ne soient pas retardés.",
+  "PromoCodesPage.payoutsEmpty": "Aucun versement payé par Pastime pour le moment.",
+  "PromoCodesPage.payoutsFetchError": "Impossible de charger les versements.",
+  "PlatformPayoutsList.details": "{date} · {reason, select, cancelled {Réservation annulée} other {Réservation terminée}} {bookingId}",
+  "PlatformPayoutsList.pastimePart": "Payé par Pastime : {amount}",
+  "PlatformPayoutsList.status.paid": "Payé le {date}",
+  "PlatformPayoutsList.status.balanceTooLow": "En attente : solde Stripe insuffisant",
+  "PlatformPayoutsList.status.retrying": "En attente : nouvelle tentative",
+  "PlatformPayoutsList.status.waitingForFunds": "En attente des fonds de la réservation"
 }
