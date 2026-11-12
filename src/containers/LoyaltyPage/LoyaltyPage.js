@@ -4,6 +4,7 @@ import classNames from 'classnames';
 
 import { FormattedMessage, useIntl } from '../../util/reactIntl';
 import { formatMoney } from '../../util/currency';
+import { isFeatureUnavailableError } from '../../util/errors';
 import { types as sdkTypes } from '../../util/sdkLoader';
 import { isScrollingDisabled } from '../../ducks/ui.duck';
 
@@ -131,7 +132,13 @@ const LoyaltyPage = () => {
             </div>
           ) : fetchError ? (
             <p className={css.error}>
-              <FormattedMessage id="LoyaltyPage.fetchError" />
+              <FormattedMessage
+                id={
+                  isFeatureUnavailableError(fetchError)
+                    ? 'FeatureUnavailable.message'
+                    : 'LoyaltyPage.fetchError'
+                }
+              />
             </p>
           ) : account && !enabled && account.creditBalance === 0 && ledger.length === 0 ? (
             <p className={css.empty}>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { fetchPromoCodeSettings } from './api';
+import { isFeatureUnavailableError } from './errors';
 
 // Fetched once per page load, and shared by everything that asks
 let settingsPromise = null;
@@ -20,9 +21,11 @@ export const useStudioPromoCodesEnabled = () => {
       settingsPromise = Promise.resolve()
         .then(() => fetchPromoCodeSettings())
         .then(response => response?.merchantCodesEnabled !== false)
-        .catch(() => {
+        .catch(e => {
           settingsPromise = null;
-          return false;
+          // Firebase isn't set up on the app's server (e.g. the dev site): the menu link stays,
+          // and the page says the feature isn't available
+          return isFeatureUnavailableError(e);
         });
     }
     settingsPromise.then(value => {

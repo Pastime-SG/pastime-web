@@ -1,4 +1,5 @@
 const log = require('../../log');
+const { isFeatureUnavailableError } = require('../../services/firebase');
 const { listPlatformPayouts } = require('../../services/platformPayouts');
 
 /**
@@ -9,10 +10,14 @@ const { listPlatformPayouts } = require('../../services/platformPayouts');
 const listPayouts = async (req, res) => {
   try {
     const payouts = await listPlatformPayouts({ limit: 100 });
-    res.status(200).json({ payouts });
+    return res.status(200).json({ payouts });
   } catch (e) {
+    // Firebase isn't set up on this server (e.g. the dev site)
+    if (isFeatureUnavailableError(e)) {
+      return res.status(e.status).json({ status: e.status, code: e.code });
+    }
     log.error(e, 'platform-payouts-list-failed', {});
-    res.status(500).json({ status: 500, code: 'platform-payouts-unavailable' });
+    return res.status(500).json({ status: 500, code: 'platform-payouts-unavailable' });
   }
 };
 

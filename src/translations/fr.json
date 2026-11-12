@@ -1863,5 +1863,6 @@
   "PlatformPayoutsList.status.waitingForFunds": "En attente des fonds de la réservation",
   "TransactionPage.Cancellation.cancelRequestDescriptionFree": "Vous pouvez annuler gratuitement cette demande de réservation jusqu'à ce qu'elle soit acceptée. Rien n'a été payé.",
   "TransactionPage.Cancellation.cancelRequestModalDescriptionFree": "{otherUserDisplayName} ne pourra plus l'accepter.",
-  "TransactionPage.Cancellation.requestCancelledCustomerFree": "Vous avez annulé cette demande de réservation."
+  "TransactionPage.Cancellation.requestCancelledCustomerFree": "Vous avez annulé cette demande de réservation.",
+  "FeatureUnavailable.message": "Cette fonctionnalité n'est pas disponible dans cet environnement"
 }

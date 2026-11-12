@@ -7,7 +7,9 @@ import { fetchLoyalty } from '../../util/api';
 
 export const fetchLoyaltyThunk = createAsyncThunk(
   'LoyaltyPage/fetchLoyalty',
-  (_, { rejectWithValue }) => fetchLoyalty().catch(e => rejectWithValue(storableError(e)))
+  (_, { rejectWithValue }) =>
+    // The code is kept, e.g. 'feature-unavailable' where Firebase isn't set up
+    fetchLoyalty().catch(e => rejectWithValue({ ...storableError(e), code: e?.code || null }))
 );
 
 // ================ Slice ================ //

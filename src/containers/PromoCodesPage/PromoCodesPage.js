@@ -59,11 +59,16 @@ const ERROR_MESSAGE_IDS = {
   'max-uses-below-uses': 'PromoCodesPage.error.maxUsesBelowUses',
   'too-many-requests': 'PromoCodesPage.error.tooManyRequests',
   'merchant-codes-disabled': 'PromoCodesPage.error.merchantCodesDisabled',
+  'feature-unavailable': 'FeatureUnavailable.message',
 };
 
 // Why the codes couldn't be loaded, from the response status (none: the server wasn't reached)
 const getFetchErrorId = (error, isAdminView) => {
   const status = error?.status;
+  // Firebase isn't set up on the app's server (e.g. the dev site)
+  if (error?.code === 'feature-unavailable') {
+    return 'FeatureUnavailable.message';
+  }
   if (!status) {
     return 'PromoCodesPage.error.fetchNetwork';
   }
@@ -642,7 +647,13 @@ const PromoCodesPage = () => {
             ) : payoutsFetchError ? (
               <div className={css.error} role="alert">
                 <p className={css.errorText}>
-                  <FormattedMessage id="PromoCodesPage.payoutsFetchError" />
+                  <FormattedMessage
+                    id={
+                      payoutsFetchError.code === 'feature-unavailable'
+                        ? 'FeatureUnavailable.message'
+                        : 'PromoCodesPage.payoutsFetchError'
+                    }
+                  />
                 </p>
                 <InlineTextButton
                   className={css.action}

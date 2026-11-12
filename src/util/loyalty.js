@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { fetchLoyaltySettings } from './api';
+import { isFeatureUnavailableError } from './errors';
 
 // Fetched once per page load, and shared by everything that asks
 let settingsPromise = null;
@@ -19,9 +20,11 @@ export const useLoyaltyEnabled = () => {
       settingsPromise = Promise.resolve()
         .then(() => fetchLoyaltySettings())
         .then(response => response?.enabled === true)
-        .catch(() => {
+        .catch(e => {
           settingsPromise = null;
-          return false;
+          // Firebase isn't set up on the app's server (e.g. the dev site): the menu link stays,
+          // and the page says the feature isn't available
+          return isFeatureUnavailableError(e);
         });
     }
     settingsPromise.then(value => {

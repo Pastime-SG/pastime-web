@@ -38,6 +38,7 @@ const auth = require('./auth');
 const apiRouter = require('./apiRouter');
 const { startPendingPayoutsJob } = require('./services/cancellation/payouts');
 const { startBookingEventsJob } = require('./services/promoCodes/bookingEvents');
+const { isFirebaseConfigured } = require('./services/firebase');
 const { hasIntegrationCredentials } = require('./services/sharetribe/integration');
 const wellKnownRouter = require('./wellKnownRouter');
 const webmanifestResourceRoute = require('./resources/webmanifest');
@@ -362,15 +363,17 @@ const server = app.listen(PORT, () => {
   if (process.env.STRIPE_SECRET_KEY) {
     pendingPayoutsJob = startPendingPayoutsJob();
   }
-  const hasFirebase =
-    !!process.env.FIREBASE_SERVICE_ACCOUNT || !!process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
+  const hasFirebase = isFirebaseConfigured();
   if (hasFirebase && hasIntegrationCredentials()) {
     bookingEventsJob = startBookingEventsJob();
   }
   // Pastime features that need extra environment variables: say clearly what's missing
   const missing = [
     [!process.env.STRIPE_SECRET_KEY, 'STRIPE_SECRET_KEY (customer cancellations with refunds)'],
-    [!hasFirebase, 'FIREBASE_SERVICE_ACCOUNT (promo codes and loyalty credits)'],
+    [
+      !hasFirebase,
+      'FIREBASE_SERVICE_ACCOUNT (promo codes, credits and Pastime payouts: "not available" without it)',
+    ],
     [
       !hasIntegrationCredentials(),
       'SHARETRIBE_INTEGRATION_CLIENT_ID/SECRET (giving back promo code uses and credits)',

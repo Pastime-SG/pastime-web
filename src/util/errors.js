@@ -146,7 +146,24 @@ export const isTransactionInitiateBookingTimeNotAvailableError = error =>
 export const isTransactionInitiateBookingCutoffError = error =>
   hasErrorWithCode(error, 'booking-cutoff');
 
-const PROMO_CODE_ERROR_CODES = ['promo-code-invalid', 'promo-code-expired', 'promo-code-used-up'];
+/**
+ * Check if a feature isn't available because Firebase isn't set up on the app's server (e.g. the
+ * dev site): 503 'feature-unavailable' (see server/services/firebase). Works for errors straight
+ * from src/util/api.js ({ code }) and for stored ones ({ code } or apiErrors).
+ *
+ * @param {Object} error
+ * @returns {boolean}
+ */
+export const isFeatureUnavailableError = error =>
+  error?.code === 'feature-unavailable' || hasErrorWithCode(error, 'feature-unavailable');
+
+// 'feature-unavailable': promo codes can't be used where Firebase isn't set up
+const PROMO_CODE_ERROR_CODES = [
+  'promo-code-invalid',
+  'promo-code-expired',
+  'promo-code-used-up',
+  'feature-unavailable',
+];
 
 /**
  * The promo code error of a booking request (from the local API's initiate-privileged or

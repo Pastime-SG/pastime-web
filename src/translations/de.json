@@ -1846,5 +1846,6 @@
   "PlatformPayoutsList.status.waitingForFunds": "Wartet auf das Geld der Buchung",
   "TransactionPage.Cancellation.cancelRequestDescriptionFree": "Du kannst diese Buchungsanfrage kostenlos stornieren, bis sie angenommen wird. Es wurde nichts bezahlt.",
   "TransactionPage.Cancellation.cancelRequestModalDescriptionFree": "{otherUserDisplayName} kann sie dann nicht mehr annehmen.",
-  "TransactionPage.Cancellation.requestCancelledCustomerFree": "Du hast diese Buchungsanfrage storniert."
+  "TransactionPage.Cancellation.requestCancelledCustomerFree": "Du hast diese Buchungsanfrage storniert.",
+  "FeatureUnavailable.message": "Diese Funktion ist in dieser Umgebung nicht verfügbar"
 }

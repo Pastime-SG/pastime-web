@@ -15,6 +15,10 @@ const APP_NAME = 'pastime';
 
 let firestore = null;
 
+// Error code when Firebase isn't set up on this server (e.g. the dev site has no service account):
+// the features stored in Firestore aren't available there
+const FEATURE_UNAVAILABLE = 'feature-unavailable';
+
 const parseServiceAccount = () => {
   const { FIREBASE_SERVICE_ACCOUNT, FIREBASE_SERVICE_ACCOUNT_PATH } = process.env;
   if (FIREBASE_SERVICE_ACCOUNT) {
@@ -32,7 +36,43 @@ const parseServiceAccount = () => {
 };
 
 /**
- * The Firestore instance. The Firebase app is initialized on the first call.
+ * Whether Firebase is set up on this server (a service account is given).
+ *
+ * @returns {boolean}
+ */
+const isFirebaseConfigured = () =>
+  !!process.env.FIREBASE_SERVICE_ACCOUNT || !!process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
+
+/**
+ * The error for a feature that needs Firestore when Firebase isn't set up: 503 with the code
+ * 'feature-unavailable'. It has both shapes the app's server sends errors in: { status, code }
+ * (see the controllers' sendError) and the SDK's { status, statusText, data } (see handleError,
+ * e.g. a promo code at checkout).
+ *
+ * @returns {Error}
+ */
+const featureUnavailableError = () => {
+  const error = new Error(
+    'This feature is not available on this environment: Firebase is not set up (FIREBASE_SERVICE_ACCOUNT or FIREBASE_SERVICE_ACCOUNT_PATH).'
+  );
+  error.status = 503;
+  error.code = FEATURE_UNAVAILABLE;
+  error.statusText = FEATURE_UNAVAILABLE;
+  error.data = { errors: [{ status: 503, code: FEATURE_UNAVAILABLE }] };
+  return error;
+};
+
+/**
+ * Whether an error is the one for Firebase not being set up.
+ *
+ * @param {Error} e
+ * @returns {boolean}
+ */
+const isFeatureUnavailableError = e => e?.code === FEATURE_UNAVAILABLE;
+
+/**
+ * The Firestore instance. The Firebase app is initialized on the first call. Throws
+ * featureUnavailableError() when Firebase isn't set up.
  *
  * @returns {Object} Firestore
  */
@@ -42,9 +82,7 @@ const getFirestore = () => {
   }
   const serviceAccount = parseServiceAccount();
   if (!serviceAccount) {
-    throw new Error(
-      'Firebase service account is missing. Set FIREBASE_SERVICE_ACCOUNT or FIREBASE_SERVICE_ACCOUNT_PATH.'
-    );
+    throw featureUnavailableError();
   }
   const app = getApps().some(a => a.name === APP_NAME)
     ? getApp(APP_NAME)
@@ -54,6 +92,10 @@ const getFirestore = () => {
 };
 
 module.exports = {
+  FEATURE_UNAVAILABLE,
   FieldValue,
+  featureUnavailableError,
   getFirestore,
+  isFeatureUnavailableError,
+  isFirebaseConfigured,
 };

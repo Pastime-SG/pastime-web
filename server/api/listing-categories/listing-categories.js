@@ -1,4 +1,5 @@
 const log = require('../../log');
+const { isFeatureUnavailableError } = require('../../services/firebase');
 const { getActiveCategoryIds } = require('../../services/listingCategories');
 
 /**
@@ -14,6 +15,11 @@ const getActive = (req, res) =>
       res.status(200).json({ categoryIds });
     })
     .catch(e => {
+      // Firebase isn't set up on this server (e.g. the dev site): the categories aren't known,
+      // so the search bar shows them all
+      if (isFeatureUnavailableError(e)) {
+        return res.status(200).json({ categoryIds: null });
+      }
       log.error(e, 'listing-categories-active-failed', {});
       res.status(500).json({ status: 500, code: 'unknown' });
     });

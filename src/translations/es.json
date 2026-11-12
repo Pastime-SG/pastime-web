@@ -1863,5 +1863,6 @@
   "PlatformPayoutsList.status.waitingForFunds": "Esperando los fondos de la reserva",
   "TransactionPage.Cancellation.cancelRequestDescriptionFree": "Puedes cancelar esta solicitud de reserva gratis hasta que sea aceptada. No se ha cobrado nada.",
   "TransactionPage.Cancellation.cancelRequestModalDescriptionFree": "{otherUserDisplayName} ya no podrá aceptarla.",
-  "TransactionPage.Cancellation.requestCancelledCustomerFree": "Has cancelado esta solicitud de reserva."
+  "TransactionPage.Cancellation.requestCancelledCustomerFree": "Has cancelado esta solicitud de reserva.",
+  "FeatureUnavailable.message": "Esta función no está disponible en este entorno"
 }

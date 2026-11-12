@@ -11,6 +11,7 @@ const ERROR_MESSAGE_IDS = {
   'promo-code-invalid': 'PromoCodeField.error.invalid',
   'promo-code-expired': 'PromoCodeField.error.expired',
   'promo-code-used-up': 'PromoCodeField.error.usedUp',
+  'feature-unavailable': 'FeatureUnavailable.message',
 };
 
 /**
