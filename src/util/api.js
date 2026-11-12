@@ -89,7 +89,6 @@ const request = (path, options = {}) => {
 };
 
 // Keep the previous parameter order for the post method.
-// For now, only POST has own specific function, but you can create more or use request directly.
 const post = (path, body, options = {}) => {
   const requestOptions = {
     ...options,
@@ -99,6 +98,13 @@ const post = (path, body, options = {}) => {
 
   return request(path, requestOptions);
 };
+
+// The same for the other methods
+const get = (path, options = {}) => request(path, { ...options, method: methods.GET });
+const put = (path, body, options = {}) => request(path, { ...options, method: methods.PUT, body });
+const patch = (path, body, options = {}) =>
+  request(path, { ...options, method: methods.PATCH, body });
+const del = (path, options = {}) => request(path, { ...options, method: methods.DELETE });
 
 // Fetch transaction line items from the local API endpoint.
 //
@@ -150,4 +156,91 @@ export const createUserWithIdp = body => {
 // the marketplace.
 export const deleteUserAccount = body => {
   return post('/api/delete-account', body);
+};
+
+// Reschedule an accepted booking: request a new time, suggest another time, accept or decline.
+//
+// See `server/api/reschedule/reschedule.js` to see what data should be sent in the body.
+export const rescheduleBooking = body => {
+  return post('/api/reschedule', body);
+};
+
+// Customer cancellation of an accepted booking: 'preview' returns the refund the customer would
+// get now, 'cancel' refunds and cancels the booking (by the cancellation policy of the booking).
+//
+// See `server/api/cancel/cancel.js` to see what data should be sent in the body.
+export const cancelBooking = body => {
+  return post('/api/cancel', body);
+};
+
+// Promo codes (Firestore, see `server/api/promo-codes/`). The scope says whose codes:
+//  - 'merchant': the signed-in studio's own codes
+//  - 'admin': the marketplace's codes (admins only, checked on the server)
+//  - 'adminStudios': every studio's codes, for admins
+export const PROMO_CODE_SCOPES = ['merchant', 'admin', 'adminStudios'];
+const PROMO_CODE_BASE_PATHS = {
+  merchant: '/api/promo-codes',
+  admin: '/api/admin/promo-codes',
+  adminStudios: '/api/admin/promo-codes/merchant',
+};
+const promoCodesPath = (scope, id = null, suffix = '') =>
+  `${PROMO_CODE_BASE_PATHS[scope] || PROMO_CODE_BASE_PATHS.merchant}${
+    id ? `/${encodeURIComponent(id)}` : ''
+  }${suffix}`;
+
+export const fetchPromoCodes = (scope = 'merchant') => {
+  return get(promoCodesPath(scope));
+};
+
+export const createPromoCode = (body, scope = 'merchant') => {
+  return post(promoCodesPath(scope), body);
+};
+
+// For 'adminStudios', only { active } is used: admins don't change a studio's discount
+export const updatePromoCode = (id, body, scope = 'merchant') => {
+  return patch(promoCodesPath(scope, id), body);
+};
+
+export const deletePromoCode = (id, scope = 'merchant') => {
+  return del(promoCodesPath(scope, id));
+};
+
+export const fetchPromoCodeLedger = (id, scope = 'merchant') => {
+  return get(promoCodesPath(scope, id, '/ledger'));
+};
+
+// Whether studio promo codes are turned on (public)
+export const fetchPromoCodeSettings = () => {
+  return get('/api/promo-codes/settings');
+};
+
+// Turn studio promo codes on or off (admins only, checked on the server)
+export const updatePromoCodeSettings = merchantCodesEnabled => {
+  return put('/api/admin/promo-codes/settings', { merchantCodesEnabled });
+};
+
+// The signed-in customer's loyalty credits: balance, points and history (Firestore, see
+// `server/api/loyalty/`).
+export const fetchLoyalty = () => {
+  return get('/api/loyalty');
+};
+
+// Listing categories with at least one published listing (public): { categoryIds } or null
+export const fetchActiveCategories = () => {
+  return get('/api/listing-categories/active');
+};
+
+// Whether the loyalty program is on (public)
+export const fetchLoyaltySettings = () => {
+  return get('/api/loyalty/settings');
+};
+
+// Payouts Pastime's server makes to studios (admins only, checked on the server)
+export const fetchPlatformPayouts = () => {
+  return get('/api/admin/platform-payouts');
+};
+
+// Turn the loyalty program on or off (admins only, checked on the server)
+export const updateLoyaltySettings = enabled => {
+  return put('/api/admin/loyalty/settings', { enabled });
 };

@@ -1,0 +1,32 @@
+@import '../../../styles/customMediaQueries.css';
+
+.root {
+  display: flex;
+  flex-direction: column;
+}
+
+.heading {
+  margin: 0 0 8px 0;
+}
+
+.info {
+  margin: 0 0 24px 0;
+  color: var(--colorGrey700);
+}
+
+.message {
+  border-bottom-color: var(--colorGrey300);
+}
+
+.error {
+  margin: 16px 0 0 0;
+  color: var(--colorFail);
+}
+
+.submitButton {
+  margin-top: 22px;
+
+  @media (--viewportMedium) {
+    margin-top: 26px;
+  }
+}

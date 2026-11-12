@@ -178,23 +178,25 @@ export const ListingCard = props => {
         />
       )}
       <div className={css.info}>
-        {showPrice ? (
-          <div className={css.price} title={priceTooltip}>
-            {priceMessage}
-          </div>
-        ) : null}
         <div className={css.mainInfo}>
-          {showListingImage && (
-            <div className={classNames(css.title, { [css.lightText]: darkMode })}>
-              {titleFormatted}
-            </div>
-          )}
           {showAuthorInfo ? (
             <div className={classNames(css.authorInfo, { [css.lightText]: darkMode })}>
               {authorName}
             </div>
           ) : null}
+          {showListingImage && (
+            <div className={classNames(css.title, { [css.lightText]: darkMode })}>
+              {titleFormatted}
+            </div>
+          )}
         </div>
+        {showPrice ? (
+          <div className={css.priceRow}>
+            <div className={css.price} title={priceTooltip}>
+              {priceMessage}
+            </div>
+          </div>
+        ) : null}
       </div>
     </NamedLink>
   );

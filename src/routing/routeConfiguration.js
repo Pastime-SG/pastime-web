@@ -24,6 +24,8 @@ const LandingPage = loadable(() => import(/* webpackChunkName: "LandingPage" */ 
 const ListingPageCoverPhoto = loadable(() => import(/* webpackChunkName: "ListingPageCoverPhoto" */ /* webpackPrefetch: true */ '../containers/ListingPage/ListingPageCoverPhoto'));
 const ListingPageCarousel = loadable(() => import(/* webpackChunkName: "ListingPageCarousel" */ /* webpackPrefetch: true */ '../containers/ListingPage/ListingPageCarousel'));
 const ManageListingsPage = loadable(() => import(/* webpackChunkName: "ManageListingsPage" */ '../containers/ManageListingsPage/ManageListingsPage'));
+const LoyaltyPage = loadable(() => import(/* webpackChunkName: "LoyaltyPage" */ '../containers/LoyaltyPage/LoyaltyPage'));
+const PromoCodesPage = loadable(() => import(/* webpackChunkName: "PromoCodesPage" */ '../containers/PromoCodesPage/PromoCodesPage'));
 const ManageAccountPage = loadable(() => import(/* webpackChunkName: "ManageAccountPage" */ '../containers/ManageAccountPage/ManageAccountPage'));
 const PasswordChangePage = loadable(() => import(/* webpackChunkName: "PasswordChangePage" */ '../containers/PasswordChangePage/PasswordChangePage'));
 const PasswordRecoveryPage = loadable(() => import(/* webpackChunkName: "PasswordRecoveryPage" */ '../containers/PasswordRecoveryPage/PasswordRecoveryPage'));
@@ -146,6 +148,17 @@ const routeConfiguration = (layoutConfig, accessControlConfig) => {
       auth: true,
       component: CheckoutPage,
       setInitialValues: pageDataLoadingAPI.CheckoutPage.setInitialValues,
+      prioritizeLibraryLoading: {
+        stripe: true,
+      },
+    },
+    // Push payments (redirect): an example how to handle redirect return with push payment methods. Unused by default.
+    {
+      path: '/l/:slug/:id/checkout/return',
+      name: 'CheckoutRedirectReturnPage',
+      auth: true,
+      component: CheckoutPage,
+      extraProps: { mode: 'return-after-redirect' },
       prioritizeLibraryLoading: {
         stripe: true,
       },
@@ -323,6 +336,22 @@ const routeConfiguration = (layoutConfig, accessControlConfig) => {
       authPage: 'LoginPage',
       component: ManageListingsPage,
       loadData: pageDataLoadingAPI.ManageListingsPage.loadData,
+    },
+    {
+      path: '/credits',
+      name: 'LoyaltyPage',
+      auth: true,
+      authPage: 'LoginPage',
+      component: LoyaltyPage,
+      loadData: pageDataLoadingAPI.LoyaltyPage.loadData,
+    },
+    {
+      path: '/promo-codes',
+      name: 'PromoCodesPage',
+      auth: true,
+      authPage: 'LoginPage',
+      component: PromoCodesPage,
+      loadData: pageDataLoadingAPI.PromoCodesPage.loadData,
     },
     {
       path: '/account',

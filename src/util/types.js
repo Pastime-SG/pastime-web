@@ -406,6 +406,11 @@ export const LINE_ITEM_OFFER = 'line-item/offer';
 export const LINE_ITEM_REQUEST = 'line-item/request';
 export const LINE_ITEM_CUSTOMER_COMMISSION = 'line-item/customer-commission';
 export const LINE_ITEM_PROVIDER_COMMISSION = 'line-item/provider-commission';
+// Pastime: the part of the provider's payout that Pastime pays (credits, an admin's discount).
+// Provider-only, never shown (see server/services/commission).
+export const LINE_ITEM_PLATFORM_FUNDED = 'line-item/platform-funded';
+// Pastime: loyalty credits the customer chose to use (customer-only, negative)
+export const LINE_ITEM_LOYALTY_CREDIT = 'line-item/loyalty-credit';
 export const LINE_ITEM_SHIPPING_FEE = 'line-item/shipping-fee';
 export const LINE_ITEM_PICKUP_FEE = 'line-item/pickup-fee';
 

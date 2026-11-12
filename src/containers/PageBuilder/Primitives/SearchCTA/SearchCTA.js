@@ -12,6 +12,7 @@ import { FormattedMessage } from '../../../../util/reactIntl';
 import { createResourceLocatorString } from '../../../../util/routes';
 import { isOriginInUse } from '../../../../util/search';
 import { stringifyDateToISO8601 } from '../../../../util/dates';
+import { useActiveCategoryIds } from '../../../../util/listingCategories';
 
 // Shared components
 import { Form, PrimaryButton } from '../../../../components';
@@ -59,14 +60,19 @@ export const SearchCTA = React.forwardRef((props, ref) => {
   const [submitDisabled, setSubmitDisabled] = useState(false);
 
   const categoryConfig = config.categoryConfiguration;
+  // Only categories with listings, in the Console order (all of them until that's known)
+  const activeCategoryIds = useActiveCategoryIds();
+  const heroCategories = activeCategoryIds
+    ? categoryConfig.categories.filter(category => activeCategoryIds.includes(category.id))
+    : categoryConfig.categories;
 
   const filters = {
     categories: {
       enabled: categories,
-      isValid: () => categoryConfig.categories.length > 0,
+      isValid: () => heroCategories.length > 0,
       render: alignLeft => (
         <div className={css.filterField} key="categories">
-          <FilterCategories categories={categoryConfig.categories} alignLeft={alignLeft} />
+          <FilterCategories categories={heroCategories} alignLeft={alignLeft} />
         </div>
       ),
     },

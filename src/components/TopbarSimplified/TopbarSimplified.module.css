@@ -11,7 +11,7 @@
   justify-content: center;
 
   /* fill */
-  background-color: var(--colorWhite);
+  background-color: var(--colorPageBackground);
 
   /* shadows */
   box-shadow: var(--boxShadow);

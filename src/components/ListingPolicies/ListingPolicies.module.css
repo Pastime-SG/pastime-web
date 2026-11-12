@@ -1,0 +1,56 @@
+@import '../../styles/customMediaQueries.css';
+
+.root {
+  display: flex;
+  flex-direction: column;
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  position: relative;
+  margin: 0 0 6px 0;
+  padding-left: 18px;
+
+  &::before {
+    content: '•';
+    position: absolute;
+    left: 0;
+    color: var(--colorGrey300);
+  }
+
+  @media (--viewportMedium) {
+    margin: 0 0 8px 0;
+  }
+}
+
+.highlighted {
+  font-weight: var(--fontWeightSemiBold);
+}
+
+.ruleHeading {
+  font-weight: var(--fontWeightSemiBold);
+  margin-right: 6px;
+
+  &::after {
+    content: ':';
+  }
+}
+
+.note,
+.reschedule {
+  margin: 6px 0 0 0;
+
+  @media (--viewportMedium) {
+    margin: 8px 0 0 0;
+  }
+}
+
+.note {
+  font-size: 14px;
+  color: var(--colorGrey700);
+}

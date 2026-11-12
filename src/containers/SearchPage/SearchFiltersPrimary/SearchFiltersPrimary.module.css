@@ -3,7 +3,7 @@
 .root {
   display: flex;
   flex-direction: column;
-  background-color: var(--colorGrey50);
+  background-color: var(--colorPageBackground);
   position: relative;
 }
 

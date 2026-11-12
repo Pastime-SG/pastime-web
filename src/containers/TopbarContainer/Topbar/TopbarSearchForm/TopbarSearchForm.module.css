@@ -15,7 +15,7 @@
   display: flex;
   width: 24px;
   align-self: stretch;
-  background-color: var(--colorWhite);
+  background-color: var(--colorPageBackground);
 
   @media (--viewportMedium) {
     margin-left: 0;
@@ -72,12 +72,14 @@
   display: flex;
   width: 24px;
   align-self: stretch;
-  background-color: var(--colorWhite);
+  background-color: var(--colorPageBackground);
 }
 
 .desktopInput {
   composes: p from global;
   flex-grow: 1;
+  /* Blend with the header bar */
+  background-color: transparent;
   /* Font */
   height: var(--topbarHeightDesktop);
   line-height: unset;

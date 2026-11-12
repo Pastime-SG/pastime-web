@@ -1,0 +1,1 @@
+{{set-translations (asset "content/email-texts.json")}}{{t "BookingRescheduleAcceptedByCustomer.Subject" "{customerDisplayName} accepted the new time" customerDisplayName=transaction.customer.display-name}}

@@ -48,7 +48,12 @@ const SectionHero = props => {
     appearance,
     callToAction,
     options,
+    allSections = [],
   } = props;
+
+  // The hero at the top of the page has a large title, other heroes (e.g. "Run a workshop?")
+  // a smaller one
+  const isPageTopHero = allSections[0]?.sectionId === sectionId;
 
   // If external mapping has been included for fields
   // E.g. { h1: { component: MyAwesomeHeader } }
@@ -60,14 +65,28 @@ const SectionHero = props => {
     <SectionContainer
       id={sectionId}
       className={className}
-      rootClassName={classNames(rootClassName || css.root)}
+      rootClassName={classNames(rootClassName || css.root, { [css.rootCompact]: !isPageTopHero })}
       appearance={appearance}
       options={fieldOptions}
     >
       {hasHeaderFields ? (
-        <header className={defaultClasses.sectionDetails}>
-          <Field data={title} className={defaultClasses.title} options={fieldOptions} />
-          <Field data={description} className={defaultClasses.description} options={fieldOptions} />
+        <header className={classNames(defaultClasses.sectionDetails, css.heroDetails)}>
+          <Field
+            data={title}
+            className={classNames(
+              defaultClasses.title,
+              isPageTopHero ? css.heroTitle : css.heroTitleSmall
+            )}
+            options={fieldOptions}
+          />
+          <Field
+            data={description}
+            className={classNames(
+              defaultClasses.description,
+              isPageTopHero ? css.heroDescription : css.heroDescriptionSmall
+            )}
+            options={fieldOptions}
+          />
           <Field data={callToAction} className={defaultClasses.ctaButton} options={fieldOptions} />
         </header>
       ) : null}

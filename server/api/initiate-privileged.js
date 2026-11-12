@@ -1,5 +1,5 @@
 const sharetribeSdk = require('sharetribe-flex-sdk');
-const { transactionLineItems } = require('../api-util/lineItems');
+const { assertExpectedPayinTotal } = require('../api-util/assertExpectedPayinTotal');
 const { isIntentionToMakeOffer } = require('../api-util/negotiation');
 const {
   createCookieTokenStore,
@@ -9,10 +9,31 @@ const {
   serialize,
   fetchCommission,
 } = require('../api-util/sdk');
+const { sanitizePushPaymentBodyParams } = require('../api-util/pushPaymentMethodValidation');
+const { assertBookingStartAfterCutoff, getPoliciesProtectedData } = require('../services/policies');
+const { getProtectedDataParams } = require('../services/bookingData');
+const {
+  getBookingRequestForLineItems,
+  getIncludedRelationship,
+  getProviderPayoutProtectedData,
+  getTransactionLineItems,
+} = require('../services/commission');
+const {
+  getBookingPromoCode,
+  getPromoCodeProtectedData,
+  withPromoCodeUse,
+} = require('../services/promoCodes/checkout');
+const {
+  getBookingLoyalty,
+  getLoyaltyCreditsToUse,
+  getLoyaltyProtectedData,
+  withLoyaltyCredits,
+} = require('../services/loyalty/checkout');
 
 const { Money } = sharetribeSdk.types;
 
-const listingPromise = (sdk, id) => sdk.listings.show({ id });
+// The author is included for their own commission percentage (if they have one)
+const listingPromise = (sdk, id) => sdk.listings.show({ id, include: ['author'] });
 
 const getFullOrderData = (orderData, bodyParams, currency) => {
   const { offerInSubunits } = orderData || {};
@@ -50,41 +71,105 @@ const getMetadata = (orderData, transition) => {
 };
 
 module.exports = (req, res) => {
-  const { isSpeculative, orderData, bodyParams, queryParams } = req.body || {};
+  const { isSpeculative, orderData, bodyParams: incomingBodyParams, queryParams } = req.body || {};
+  let bodyParams;
+  try {
+    // Push payments (redirect): an example how to validate push payment method types. Unused by default.
+    bodyParams = sanitizePushPaymentBodyParams(incomingBodyParams);
+  } catch (e) {
+    return handleError(res, e, { skipErrorLogging: true });
+  }
   const transitionName = bodyParams.transition;
   // Share one cookie token store so a refresh during listings.show is reused for exchangeToken.
   const tokenStore = createCookieTokenStore(req, res);
   const sdk = getSdk(req, res, tokenStore);
   let lineItems = null;
   let metadataMaybe = {};
+  let policiesMaybe = {};
+  let promoCode = null;
+  let loyalty = null;
+  let providerId = null;
+  let requestParams = bodyParams;
 
   Promise.all([listingPromise(sdk, bodyParams?.params?.listingId), fetchCommission(sdk)])
-    .then(([showListingResponse, fetchAssetsResponse]) => {
+    .then(async ([showListingResponse, fetchAssetsResponse]) => {
       const listing = showListingResponse.data.data;
+      const author = getIncludedRelationship(showListingResponse.data, 'author');
       const commissionAsset = fetchAssetsResponse.data.data[0];
+      providerId = author?.id?.uuid;
+
+      // The promo code entered at checkout (if any): the provider's own code or an admin's
+      // The process the booking is made with (Sharetribe uses this alias)
+      const processName = bodyParams.processAlias;
+      promoCode = await getBookingPromoCode({ orderData, providerId, transitionName, processName });
+      // The customer's loyalty credits, if they chose to use them
+      loyalty = await getBookingLoyalty({ sdk, orderData, transitionName, processName });
 
       const currency = listing.attributes.price?.currency || orderData.currency;
       const { providerCommission, customerCommission } =
         commissionAsset?.type === 'jsonAsset' ? commissionAsset.attributes.data : {};
 
-      lineItems = transactionLineItems(
+      lineItems = getTransactionLineItems({
         listing,
-        getFullOrderData(orderData, bodyParams, currency),
+        orderData: getFullOrderData(orderData, bodyParams, currency),
         providerCommission,
-        customerCommission
-      );
+        customerCommission,
+        provider: author,
+        promoCode,
+        loyaltyCredits: getLoyaltyCreditsToUse(loyalty, currency),
+      });
+
+      // If the client sends expectedPayinTotal (checkout payment flows), ensure it
+      assertExpectedPayinTotal(lineItems, orderData?.expectedPayinTotal);
+
+      // A booking request uses the process that matches how it's paid: with Sharetribe's payout,
+      // paid out by Pastime (credits or an admin's discount), or free (no Stripe payment)
+      const bookingRequest = getBookingRequestForLineItems({
+        processName,
+        transitionName,
+        lineItems,
+      });
+      if (bookingRequest) {
+        requestParams = {
+          ...bodyParams,
+          processAlias: bookingRequest.processAlias,
+          transition: bookingRequest.transition,
+        };
+      }
+
       metadataMaybe = getMetadata(orderData, transitionName);
+      // Bookings can't start within the listing's booking cutoff (e.g. 24 hours)
+      assertBookingStartAfterCutoff({
+        listing,
+        transitionName,
+        bookingStart: bodyParams?.params?.bookingStart,
+      });
+      // A booking keeps the cancellation and rescheduling policies it was made with
+      policiesMaybe = getPoliciesProtectedData(listing, transitionName);
 
       return getTrustedSdk(req, res, tokenStore);
     })
     .then(trustedSdk => {
-      const { params } = bodyParams;
+      // The client's protected data is only passed on through getProtectedDataParams
+      const { protectedData: clientProtectedData, ...params } = bodyParams.params || {};
+      // Server-owned protected data (policies, promo code, credits) is only set here, never from
+      // the client
+      const protectedDataMaybe = getProtectedDataParams({
+        clientProtectedData,
+        serverProtectedData: {
+          ...policiesMaybe,
+          ...getPromoCodeProtectedData(promoCode, lineItems),
+          ...getLoyaltyProtectedData(loyalty, lineItems),
+          ...getProviderPayoutProtectedData(lineItems),
+        },
+      });
 
       // Add lineItems to the body params
       const body = {
-        ...bodyParams,
+        ...requestParams,
         params: {
           ...params,
+          ...protectedDataMaybe,
           lineItems,
           ...metadataMaybe,
         },
@@ -93,7 +178,19 @@ module.exports = (req, res) => {
       if (isSpeculative) {
         return trustedSdk.transactions.initiateSpeculative(body, queryParams);
       }
-      return trustedSdk.transactions.initiate(body, queryParams);
+      // A use of the promo code is counted, and credits taken, only when the booking is made
+      return withPromoCodeUse(
+        {
+          promoCode,
+          lineItems,
+          isSpeculative,
+          details: { providerId, listingId: params?.listingId?.uuid || null },
+        },
+        () =>
+          withLoyaltyCredits({ loyalty, lineItems, isSpeculative }, () =>
+            trustedSdk.transactions.initiate(body, queryParams)
+          )
+      );
     })
     .then(apiResponse => {
       const { status, statusText, data } = apiResponse;

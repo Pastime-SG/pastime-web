@@ -13,6 +13,7 @@ import {
   monthIdString,
   stringifyDateToISO8601,
 } from '../../util/dates';
+import { getEarliestBookingStart, getTimeSlotQueryAfterCutoff } from '../../util/policies';
 import {
   hasPermissionToInitiateTransactions,
   hasPermissionToViewData,
@@ -44,6 +45,72 @@ const removeOutdatedDateData = timeSlotsForDate => {
   );
 };
 
+/**
+ * Image query params for listings.show / ownListings.show.
+ * SSR uses a lean set (2 images, SEO + LCP variants) so crawlers
+ * cannot harvest every attached image URL from __PRELOADED_STATE__.
+ * The webapp (CSR) fetches the full image list.
+ *
+ * Two images (not one) keeps react-image-gallery in infinite mode from the first
+ * paint, so growing 2→N on CSR does not flash an unloaded last-image clone.
+ *
+ * @param {Object} listingImageConfig
+ * @param {string} [listingImageConfig.variantPrefix='listing-card']
+ * @param {number} listingImageConfig.aspectRatio
+ * @param {boolean} [isBrowser=typeof window !== 'undefined']
+ * @returns {Object} fields.image, optional limit.images, and imageVariant.* configs
+ */
+export const getShowListingImageParams = (
+  { variantPrefix = 'listing-card', aspectRatio },
+  isBrowser = typeof window !== 'undefined'
+) => {
+  const socialAndAvatarFields = [
+    'variants.facebook',
+    'variants.twitter',
+    'variants.square-small',
+    'variants.square-small2x',
+  ];
+
+  if (!isBrowser) {
+    // Lean SSR: first two images + variants needed for hero LCP, og/twitter, schema,
+    // and the base listing-card crop. That crop must be present so react-image-gallery
+    // gets a truthy `thumbnail` and reserves the thumb-strip height (avoids CLS when
+    // the client remount loadData adds the rest of the gallery).
+    return {
+      'fields.image': [
+        'variants.scaled-small',
+        'variants.scaled-medium',
+        'variants.scaled-large',
+        'variants.scaled-xlarge',
+        `variants.${variantPrefix}`,
+        `variants.${variantPrefix}-2x`,
+        ...socialAndAvatarFields,
+      ],
+      'limit.images': 2,
+      ...createImageVariantConfig(`${variantPrefix}`, 400, aspectRatio),
+      ...createImageVariantConfig(`${variantPrefix}-2x`, 800, aspectRatio),
+    };
+  }
+
+  return {
+    'fields.image': [
+      'variants.scaled-small',
+      'variants.scaled-medium',
+      'variants.scaled-large',
+      'variants.scaled-xlarge',
+      `variants.${variantPrefix}`,
+      `variants.${variantPrefix}-2x`,
+      `variants.${variantPrefix}-4x`,
+      `variants.${variantPrefix}-6x`,
+      ...socialAndAvatarFields,
+    ],
+    ...createImageVariantConfig(`${variantPrefix}`, 400, aspectRatio),
+    ...createImageVariantConfig(`${variantPrefix}-2x`, 800, aspectRatio),
+    ...createImageVariantConfig(`${variantPrefix}-4x`, 1600, aspectRatio),
+    ...createImageVariantConfig(`${variantPrefix}-6x`, 2400, aspectRatio),
+  };
+};
+
 // ================ Async Thunks ================ //
 
 //////////////////
@@ -68,31 +135,7 @@ const showListingPayloadCreator = ({ listingId, config, isOwn = false }, thunkAP
   const params = {
     id: listingId,
     include: ['author', 'author.profileImage', 'images', 'currentStock'],
-    'fields.image': [
-      // Scaled variants for large images
-      'variants.scaled-small',
-      'variants.scaled-medium',
-      'variants.scaled-large',
-      'variants.scaled-xlarge',
-
-      // Cropped variants for listing thumbnail images
-      `variants.${variantPrefix}`,
-      `variants.${variantPrefix}-2x`,
-      `variants.${variantPrefix}-4x`,
-      `variants.${variantPrefix}-6x`,
-
-      // Social media
-      'variants.facebook',
-      'variants.twitter',
-
-      // Avatars
-      'variants.square-small',
-      'variants.square-small2x',
-    ],
-    ...createImageVariantConfig(`${variantPrefix}`, 400, aspectRatio),
-    ...createImageVariantConfig(`${variantPrefix}-2x`, 800, aspectRatio),
-    ...createImageVariantConfig(`${variantPrefix}-4x`, 1600, aspectRatio),
-    ...createImageVariantConfig(`${variantPrefix}-6x`, 2400, aspectRatio),
+    ...getShowListingImageParams({ variantPrefix, aspectRatio }),
   };
 
   const show = isOwn ? sdk.ownListings.show(params) : sdk.listings.show(params);
@@ -162,10 +205,25 @@ const fetchTimeSlotsPayloadCreator = ({ listingId, start, end, timeZone, options
   const { extraQueryParams = null, useFetchTimeSlotsForDate = false } = options || {};
 
   // The maximum pagination page size for timeSlots is 500
-  const extraParams = extraQueryParams || {
+  const defaultExtraParams = extraQueryParams || {
     perPage: 500,
     page: 1,
   };
+
+  // The listing's booking cutoff (e.g. 24 hours): times within it can't be booked, so they are
+  // left out of the query. If the whole range is within the cutoff, nothing is fetched.
+  const listing = getState().marketplaceData?.entities?.listing?.[listingId?.uuid];
+  const query = getTimeSlotQueryAfterCutoff({
+    start,
+    end,
+    timeZone,
+    extraParams: defaultExtraParams,
+    earliestStart: getEarliestBookingStart(listing?.attributes?.publicData?.policies),
+  });
+  if (!query) {
+    return Promise.resolve([]);
+  }
+  const { start: queryStart, extraParams } = query;
 
   // For small time units, we fetch the data per date.
   // This is to avoid fetching too much data (with 15 minute intervals, there can be 24*4*31 = 2928 time slots)
@@ -178,7 +236,7 @@ const fetchTimeSlotsPayloadCreator = ({ listingId, start, end, timeZone, options
       return Promise.resolve(dateData?.timeSlots || []);
     }
 
-    return dispatch(timeSlotsRequest({ listingId, start, end, ...extraParams }))
+    return dispatch(timeSlotsRequest({ listingId, start: queryStart, end, ...extraParams }))
       .then(response => {
         return response.payload;
       })
@@ -186,7 +244,7 @@ const fetchTimeSlotsPayloadCreator = ({ listingId, start, end, timeZone, options
         return [];
       });
   } else {
-    return dispatch(timeSlotsRequest({ listingId, start, end, ...extraParams }))
+    return dispatch(timeSlotsRequest({ listingId, start: queryStart, end, ...extraParams }))
       .then(response => {
         return response.payload;
       })

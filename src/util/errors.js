@@ -139,6 +139,56 @@ export const isTransactionInitiateBookingTimeNotAvailableError = error =>
   hasErrorWithCode(error, ERROR_CODE_TRANSACTION_BOOKING_TIME_NOT_AVAILABLE);
 
 /**
+ * Check if the given API error (from the local API's initiate-privileged or
+ * transition-privileged) is due to the booking starting within the listing's booking cutoff
+ * (see server/services/policies).
+ */
+export const isTransactionInitiateBookingCutoffError = error =>
+  hasErrorWithCode(error, 'booking-cutoff');
+
+/**
+ * Check if a feature isn't available because Firebase isn't set up on the app's server (e.g. the
+ * dev site): 503 'feature-unavailable' (see server/services/firebase). Works for errors straight
+ * from src/util/api.js ({ code }) and for stored ones ({ code } or apiErrors).
+ *
+ * @param {Object} error
+ * @returns {boolean}
+ */
+export const isFeatureUnavailableError = error =>
+  error?.code === 'feature-unavailable' || hasErrorWithCode(error, 'feature-unavailable');
+
+// 'feature-unavailable': promo codes can't be used where Firebase isn't set up
+const PROMO_CODE_ERROR_CODES = [
+  'promo-code-invalid',
+  'promo-code-expired',
+  'promo-code-used-up',
+  'feature-unavailable',
+];
+
+/**
+ * The promo code error of a booking request (from the local API's initiate-privileged or
+ * transition-privileged, see server/services/promoCodes): 'promo-code-invalid',
+ * 'promo-code-expired' or 'promo-code-used-up'. Null for other errors.
+ *
+ * @param {Object} error
+ * @returns {string|null}
+ */
+export const getPromoCodeErrorCode = error =>
+  errorAPIErrors(error)
+    .map(apiError => apiError.code)
+    .find(code => PROMO_CODE_ERROR_CODES.includes(code)) || null;
+
+/**
+ * Check if a booking request failed because the customer's loyalty credits changed (e.g. used
+ * in another booking at the same time). See server/services/loyalty.
+ *
+ * @param {Object} error
+ * @returns {boolean}
+ */
+export const isLoyaltyCreditsUnavailableError = error =>
+  hasErrorWithCode(error, 'loyalty-credits-unavailable');
+
+/**
  * Check if the given API error (from `sdk.transaction.initiate()` or
  * `sdk.transaction.initiateSpeculative()`) is due to insufficient stock.
  */

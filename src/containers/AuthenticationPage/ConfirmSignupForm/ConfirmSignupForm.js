@@ -34,6 +34,7 @@ const ConfirmSignupFormComponent = props => (
         invalid,
         intl,
         termsAndConditions,
+        studioTermsField,
         authInfo,
         idp,
         preselectedUserType,
@@ -167,6 +168,8 @@ const ConfirmSignupFormComponent = props => (
           ) : null}
 
           <div className={css.bottomWrapper}>
+            {/* Studios accept the studio terms too */}
+            {userTypeConfig?.roles?.provider || userType === 'provider' ? studioTermsField : null}
             {termsAndConditions}
             <PrimaryButton type="submit" inProgress={submitInProgress} disabled={submitDisabled}>
               <FormattedMessage id="ConfirmSignupForm.signUp" values={{ idp: idp }} />

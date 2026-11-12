@@ -12,6 +12,9 @@ import SectionFeatures from './SectionFeatures';
 import SectionHero from './SectionHero';
 import SectionListings from './SectionListings';
 import SectionFooter from './SectionFooter';
+import SectionBrowseTiles, { BROWSE_TILES_SECTION_ID } from './SectionBrowseTiles';
+import SectionHowItWorks, { HOW_IT_WORKS_SECTION_ID } from './SectionHowItWorks';
+import SectionLandingHero, { LANDING_HERO_SECTION_ID } from './SectionLandingHero';
 
 // Styles
 // Note: these contain
@@ -44,6 +47,13 @@ const defaultSectionComponents = {
   footer: { component: SectionFooter },
   hero: { component: SectionHero },
   listings: { component: SectionListings },
+};
+
+// Sections that use their own component, by the anchor link ID set in Console
+const sectionComponentsById = {
+  [LANDING_HERO_SECTION_ID]: { component: SectionLandingHero },
+  [BROWSE_TILES_SECTION_ID]: { component: SectionBrowseTiles },
+  [HOW_IT_WORKS_SECTION_ID]: { component: SectionHowItWorks },
 };
 
 //////////////////////
@@ -131,7 +141,8 @@ const SectionBuilder = props => {
   return (
     <>
       {sectionsWithResolvedIds.map((section, index) => {
-        const Section = getComponent(section.sectionType);
+        const Section =
+          sectionComponentsById[section.sectionId]?.component || getComponent(section.sectionType);
         // If the default "dark" theme should be applied (when text color is white).
         // By default, this information is stored to customAppearance field
         const isDarkTheme =

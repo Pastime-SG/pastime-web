@@ -35,6 +35,7 @@ import TopbarContainer from '../../containers/TopbarContainer/TopbarContainer';
 import FooterContainer from '../../containers/FooterContainer/FooterContainer';
 // We need to get ToS asset and get it rendered for the modal on this page.
 import { TermsOfServiceContent } from '../../containers/TermsOfServicePage/TermsOfServicePage';
+
 // We need to get PrivacyPolicy asset and get it rendered for the modal on this page.
 import { PrivacyPolicyContent } from '../../containers/PrivacyPolicyPage/PrivacyPolicyPage';
 import NotFoundPage from '../../containers/NotFoundPage/NotFoundPage';
@@ -47,13 +48,18 @@ import {
 } from './AuthenticationPage.helpers';
 
 import TermsAndConditions from './TermsAndConditions/TermsAndConditions';
+import StudioTermsField from './StudioTerms/StudioTermsField';
 import ConfirmSignupForm from './ConfirmSignupForm/ConfirmSignupForm';
 import LoginForm from './LoginForm/LoginForm';
 import SignupForm from './SignupForm/SignupForm';
 import EmailVerificationInfo from './EmailVerificationInfo';
 import SocialLoginButtons from './SocialLoginButtons/SocialLoginButtons';
 
-import { TOS_ASSET_NAME, PRIVACY_POLICY_ASSET_NAME } from './AuthenticationPage.duck';
+import {
+  TOS_ASSET_NAME,
+  PRIVACY_POLICY_ASSET_NAME,
+  STUDIO_TERMS_ASSET_NAME,
+} from './AuthenticationPage.duck';
 
 import css from './AuthenticationPage.module.css';
 
@@ -315,6 +321,15 @@ export const AuthenticationPageComponent = props => {
       intl={intl}
     />
   );
+  // Studios (providers) accept the studio terms from Console when they sign up
+  const studioTermsField = (
+    <StudioTermsField
+      data={pageAssetsData?.[camelize(STUDIO_TERMS_ASSET_NAME)]?.data}
+      inProgress={pageAssetsFetchInProgress}
+      error={pageAssetsFetchError}
+      onManageDisableScrolling={onManageDisableScrolling}
+    />
+  );
   const signupLinkText = intl.formatMessage({ id: 'AuthenticationPage.signupLinkText' });
   const loginLinkText = intl.formatMessage({ id: 'AuthenticationPage.loginLinkText' });
 
@@ -390,6 +405,7 @@ export const AuthenticationPageComponent = props => {
                   })}
                   inProgress={authInProgress}
                   termsAndConditions={termsAndConditions}
+                  studioTermsField={studioTermsField}
                   preselectedUserType={preselectedUserType}
                   userTypes={userTypes}
                   userFields={userFields}
@@ -434,6 +450,7 @@ export const AuthenticationPageComponent = props => {
                   userTypes,
                 })}
                 termsAndConditions={termsAndConditions}
+                studioTermsField={studioTermsField}
                 authInfo={authInfo}
                 idp={idp}
                 preselectedUserType={preselectedUserType}

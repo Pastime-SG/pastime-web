@@ -60,6 +60,7 @@ import EditListingWizardTab, {
   AVAILABILITY,
   PHOTOS,
   STYLE,
+  POLICIES,
 } from './EditListingWizardTab';
 import css from './EditListingWizard.module.css';
 
@@ -102,7 +103,14 @@ const tabsForListingType = (processName, listingTypeConfig) => {
   // Note 4: Ensure that the last panel contains the messaging for not-yet-verified files so
   //         that it is clear to the user why the 'publish' button is disabled during verification
   const tabs = {
-    ['default-booking']: [DETAILS, ...locationMaybe, PRICING, AVAILABILITY, ...styleOrPhotosTab],
+    ['default-booking']: [
+      DETAILS,
+      ...locationMaybe,
+      PRICING,
+      AVAILABILITY,
+      ...styleOrPhotosTab,
+      POLICIES,
+    ],
     ['default-purchase']: [DETAILS, PRICING_AND_STOCK, ...deliveryMaybe, ...styleOrPhotosTab],
     ['default-negotiation']: [DETAILS, ...locationMaybe, ...pricingMaybe, ...styleOrPhotosTab],
     ['default-inquiry']: [DETAILS, ...locationMaybe, ...pricingMaybe, ...styleOrPhotosTab],
@@ -156,6 +164,9 @@ const tabLabelAndSubmit = (intl, tab, isNewListingFlow, isPriceDisabled, process
   } else if (tab === STYLE) {
     labelKey = 'EditListingWizard.tabLabelStyle';
     submitButtonKey = `EditListingWizard.${processNameString}${newOrEdit}.saveStyle`;
+  } else if (tab === POLICIES) {
+    labelKey = 'EditListingWizard.tabLabelPolicies';
+    submitButtonKey = `EditListingWizard.${processNameString}${newOrEdit}.savePolicies`;
   }
 
   return {
@@ -285,6 +296,8 @@ const tabCompleted = (tab, listing, config, options = {}) => {
       return images && images.length > 0;
     case STYLE:
       return !!cardStyle;
+    case POLICIES:
+      return !!publicData?.policies;
     default:
       return false;
   }

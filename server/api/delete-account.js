@@ -5,6 +5,7 @@ const {
   handleError,
   serialize,
 } = require('../api-util/sdk');
+const { BOOKING_PROCESS_NAMES } = require('../services/bookingData');
 
 const stripeRelatedStatesForBookings = [
   'state/pending-payment',
@@ -42,10 +43,11 @@ module.exports = (req, res) => {
   const tokenStore = createCookieTokenStore(req, res);
   const sdk = getSdk(req, res, tokenStore);
 
-  // Booking states that contain Stripe payment processing
+  // Booking states that contain Stripe payment processing (Pastime's booking processes too: their
+  // providers are paid out by Pastime's server when the booking ends)
   const ongoingBookingsWithIncompletePaymentProcessing = () =>
     sdk.transactions.query({
-      processNames: 'default-booking',
+      processNames: BOOKING_PROCESS_NAMES.join(','),
       states: stripeRelatedStatesForBookings.join(','),
     });
 

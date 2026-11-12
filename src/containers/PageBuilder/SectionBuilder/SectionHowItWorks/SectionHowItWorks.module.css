@@ -1,0 +1,159 @@
+@import '../../../../styles/customMediaQueries.css';
+
+.root {
+  --stepsHeadingColor: #16231f;
+  --stepsTextColor: #6b6156;
+  --stepsBackground: #f4eadb;
+  --stepsIconBackground: #1f5c4a;
+}
+
+/* Replaces the section's default padding (64px), so that sections sit closer together */
+.sectionContent {
+  position: relative;
+  word-break: break-word;
+  padding: 24px 0;
+
+  @media (--viewportMedium) {
+    padding: 32px 0;
+  }
+}
+
+/* The box around the steps: its colour is the section's background colour in Console. As wide
+   as the content of the other landing page sections. */
+.content {
+  max-width: calc(var(--contentMaxWidthPages) - 64px);
+  margin: 0 24px;
+  padding: 24px;
+  background-color: var(--stepsBackground);
+  border-radius: 12px;
+
+  @media (--viewportMedium) {
+    margin: 0 32px;
+    padding: 32px;
+  }
+
+  @media (min-width: 1120px) {
+    /* Centered once the page is wider than the content */
+    margin: 0 auto;
+  }
+}
+
+/* Text colour "white" in Console: light text on a dark box */
+.contentDark {
+  --stepsHeadingColor: var(--colorWhite);
+  --stepsTextColor: rgba(255, 255, 255, 0.85);
+}
+
+/* ================ Heading ================ */
+
+.header {
+  margin-bottom: 24px;
+
+  @media (--viewportMedium) {
+    margin-bottom: 32px;
+  }
+}
+
+.title {
+  margin: 0;
+  padding: 0;
+  font-family: var(--fontFamilyFraunces);
+  font-size: 24px;
+  font-weight: var(--fontWeightSemiBold);
+  line-height: 30px;
+  color: var(--stepsHeadingColor);
+  text-align: left;
+}
+
+.description {
+  margin: 12px 0 0 0;
+  max-width: 65ch;
+  font-family: var(--fontFamilyInstrumentSans);
+  color: var(--stepsTextColor);
+
+  @media (--viewportMedium) {
+    margin: 16px 0 0 0;
+  }
+}
+
+/* ================ Steps ================ */
+
+/* 1 column on phones, 2 on tablets, 4 on desktop */
+.steps {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  @media (--viewportMedium) {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 32px;
+  }
+
+  @media (--viewportLarge) {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.step {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+
+  @media (--viewportMedium) {
+    gap: 16px;
+  }
+}
+
+/* The block's image from Console, in a round 36px icon */
+.icon {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  overflow: hidden;
+  border-radius: 50%;
+  background-color: var(--stepsIconBackground);
+}
+
+.stepBody {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.stepNumber {
+  font-family: var(--fontFamilyIBMPlexMono);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  color: var(--stepsTextColor);
+}
+
+.stepTitle {
+  margin: 2px 0 6px 0;
+  padding: 0;
+  font-family: var(--fontFamilyFraunces);
+  font-size: 18px;
+  font-weight: var(--fontWeightSemiBold);
+  line-height: 24px;
+  color: var(--stepsHeadingColor);
+}
+
+/* Nested so that it applies over the global "heading + paragraph" spacing */
+.stepBody .stepText {
+  margin: 0;
+  padding: 0;
+  font-family: var(--fontFamilyInstrumentSans);
+  font-size: 14px;
+  font-weight: var(--fontWeightRegular);
+  line-height: 20px;
+  color: var(--stepsTextColor);
+}
+
+.stepLink {
+  margin-top: 6px;
+  font-family: var(--fontFamilyInstrumentSans);
+  font-size: 14px;
+}

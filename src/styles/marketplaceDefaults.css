@@ -36,6 +36,11 @@
   /* B&W and Grey palette */
 
   --colorWhite: hsl(0 0% 100%);
+
+  /* Pastime: background of every page and of the header bar */
+  --colorPageBackground: #fff9ef;
+  /* Pastime: light text on the hero image */
+  --colorHeroText: #fbf3e6;
   --colorGrey50: hsl(240 3% 98%);
   --colorGrey100: hsl(240 3% 90%);
   --colorGrey200: hsl(240 3% 80%);
@@ -83,6 +88,12 @@
   --colorStatusFinalState: var(--colorGrey600);
 
   /* ================ Font ================ */
+  /* Pastime fonts (loaded in public/index.html) */
+  --fontFamilyInstrumentSans: 'Instrument Sans', -apple-system, BlinkMacSystemFont, 'Inter',
+    Helvetica, Arial, sans-serif;
+  --fontFamilyFraunces: 'Fraunces', Georgia, 'Times New Roman', serif;
+  --fontFamilyIBMPlexMono: 'IBM Plex Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
+
   --fontFamily: -apple-system, BlinkMacSystemFont, 'Inter', Helvetica, Arial, sans-serif,
     'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
 
@@ -221,7 +232,7 @@ body {
   text-rendering: optimizeSpeed;
   font-optical-sizing: auto;
 
-  background-color: var(--colorGrey50);
+  background-color: var(--colorPageBackground);
 }
 
 ::selection {

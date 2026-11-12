@@ -52,6 +52,7 @@ import SectionHero from './SectionHero';
 import SectionReviews from './SectionReviews';
 import SectionAuthorMaybe from './SectionAuthorMaybe';
 import SectionMapMaybe from './SectionMapMaybe';
+import SectionPoliciesMaybe from './SectionPoliciesMaybe';
 import CustomListingFields from './CustomListingFields';
 import Notifications from './Notifications/Notifications';
 import ListingPageAccessWrapper from './ListingPageAccessWrapper';
@@ -307,6 +308,7 @@ export const ListingPageComponent = props => {
               intl={intl}
             />
 
+            <SectionPoliciesMaybe publicData={publicData} />
             <SectionMapMaybe
               geolocation={geolocation}
               publicData={publicData}

@@ -1,32 +1,44 @@
 @import '../../styles/customMediaQueries.css';
 
+/* Pastime listing card: image on top, white body with the studio, the workshop name and a price pill.
+   ⚠️ The body's height is hardcoded in SectionListings.js calculateCarouselHeight() (cardInfoHeight):
+   update it when you change the spacing or font sizes below. */
 .root {
+  --cardHeadingColor: #16231f;
+  --cardTextColor: #6b6156;
+  --cardPriceBackground: #f3e6d2;
+
   /* Layout */
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+
+  background-color: var(--colorWhite);
+  border: 1px solid #efe6d8;
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(22, 35, 31, 0.06);
+  /* The hover lift uses "translate" (not "transform"): carousels position the cards with
+     "transform" (e.g. the trending section), and the two must not override each other */
+  transition: box-shadow ease-in-out 150ms, translate ease-in-out 150ms;
 
   /* Remove link's hover effect */
   &:hover {
     text-decoration: none;
   }
-}
-
-.aspectRatioWrapper {
-  transition: var(--transitionStyleButton);
-  background: var(--colorGrey100); /* Loading BG color */
-  border-radius: var(--borderRadiusMedium);
 
   @media (--viewportMedium) {
     &:hover {
-      transform: scale(1.02);
-      box-shadow: var(--boxShadowListingCard);
+      translate: 0 -2px;
+      box-shadow: 0 6px 16px rgba(22, 35, 31, 0.1);
     }
   }
 }
 
+.aspectRatioWrapper {
+  background: var(--colorGrey100); /* Loading BG color */
+}
+
 .rootForImage {
-  border: solid 1px var(--colorGrey100);
-  border-radius: var(--borderRadiusMedium);
   width: 100%;
   height: 100%;
 }
@@ -39,85 +51,88 @@
   color: var(--colorWhite);
 }
 
+/* ⚠️ 12px + 12px padding: cardInfoPadding in calculateCarouselHeight() */
 .info {
   /* Layout */
   display: flex;
   flex-direction: column;
-  /* ⚠️ padding width is hardcoded in SectionListings.js calculateCarouselHeight() as cardInfoPadding*/
-  padding: 14px 0 2px 0;
-}
-
-/* ⚠️ the total calculated height of this selector is hardcoded in SectionListings.js calculateCarouselHeight() as priceHeight*/
-.price {
-  composes: textSmall from global;
-  /* Layout */
-  flex-shrink: 0;
-  margin-bottom: 4px;
-  color: var(--colorGrey700);
-}
-
-.priceValue {
-  /* Font */
-  font-weight: var(--fontWeightSemiBold);
-  color: var(--marketplaceColor);
-
-  /* Remove default margins from font */
-  margin-top: 0;
-  margin-bottom: 0;
-
-  @media (--viewportMedium) {
-    margin-top: 0;
-    margin-bottom: 0;
-  }
-}
-
-.perUnit {
-  /* Font */
-  font-weight: var(--fontWeightSemiBold);
-  color: var(--marketplaceColor);
-
-  /* Remove default margins from font */
-  margin-top: 0;
-  margin-bottom: 0;
-
-  @media (--viewportMedium) {
-    margin-top: 0;
-    margin-bottom: 0;
-  }
+  flex-grow: 1;
+  padding: 12px;
 }
 
 .mainInfo {
   display: flex;
   flex-direction: column;
+  gap: 2px;
 }
 
-/* ⚠️ the calculated height of this selector is hardcoded in SectionListings.js calculateCarouselHeight() as titleHeightSingleLine */
-.title {
-  /* Font */
-  composes: textSmall from global;
-  font-weight: var(--fontWeightBold);
-  color: var(--colorGrey700);
-  margin: 0;
-}
-
-/* ⚠️ the calculated height of this selector is hardcoded in SectionListings.js calculateCarouselHeight() as authorInfoHeight & authorInfoHeighMobile */
+/* Studio name. ⚠️ 18px + 2px gap: authorInfoHeight in calculateCarouselHeight() */
 .authorInfo {
-  /* Font */
-  composes: marketplaceTinyFontStyles from global;
-  font-weight: var(--fontWeightMedium);
-  color: var(--colorGrey700);
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 
-  padding-top: 4px;
-  padding-bottom: 4px;
+  font-family: var(--fontFamilyInstrumentSans);
+  font-size: 12px;
+  font-weight: var(--fontWeightRegular);
+  line-height: 18px;
+  color: var(--cardTextColor);
+}
 
-  /* Remove default margins from font */
-  margin-top: 0;
-  margin-bottom: 0;
+/* Workshop name: up to 2 lines, then "…". Always takes 2 lines so that the cards in a row are
+   the same height. ⚠️ 2 x 22px: titleHeight in calculateCarouselHeight() */
+.title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  min-height: 44px;
+  margin: 0;
 
-  @media (--viewportMedium) {
-    margin-top: 0;
-    margin-bottom: 0;
-  }
+  font-family: var(--fontFamilyInstrumentSans);
+  font-size: 16px;
+  font-weight: var(--fontWeightSemiBold);
+  line-height: 22px;
+  color: var(--cardHeadingColor);
+}
+
+/* ⚠️ 8px margin + 28px pill: priceHeight in calculateCarouselHeight() */
+.priceRow {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: auto;
+  padding-top: 8px;
+}
+
+.price {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 10px;
+
+  background-color: var(--cardPriceBackground);
+  border-radius: 8px;
+
+  font-family: var(--fontFamilyIBMPlexMono);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 28px;
+  color: var(--cardHeadingColor);
+  white-space: nowrap;
+}
+
+.priceValue,
+.perUnit {
+  margin: 0;
+  font: inherit;
+  color: inherit;
+}
+
+.perUnit {
+  margin-left: 4px;
+  font-size: 12px;
 }
 
 .longWord {

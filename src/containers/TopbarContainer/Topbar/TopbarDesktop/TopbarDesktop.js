@@ -4,6 +4,8 @@ import classNames from 'classnames';
 import { FormattedMessage } from '../../../../util/reactIntl';
 import { ACCOUNT_SETTINGS_PAGES } from '../../../../routing/routeConfiguration';
 import { showCreateListingLinkForUser } from '../../../../util/userHelpers';
+import { useLoyaltyEnabled } from '../../../../util/loyalty';
+import { useStudioPromoCodesEnabled } from '../../../../util/promoCodes';
 import {
   Avatar,
   InlineTextButton,
@@ -58,6 +60,11 @@ const InboxLink = ({ notificationCount, inboxTab }) => {
 };
 
 const ProfileMenu = ({ currentPage, currentUser, onLogout, showManageListingsLink, intl }) => {
+  const loyaltyEnabled = useLoyaltyEnabled();
+  // Admins always see promo codes (to turn studio codes back on); studios only while they're on
+  const isAdmin = currentUser?.attributes?.profile?.metadata?.isAdmin === true;
+  const studioPromoCodesEnabled = useStudioPromoCodesEnabled();
+  const showPromoCodes = isAdmin || studioPromoCodesEnabled;
   const currentPageClass = page => {
     const isAccountSettingsPage =
       page === 'AccountSettingsPage' && ACCOUNT_SETTINGS_PAGES.includes(currentPage);
@@ -83,6 +90,28 @@ const ProfileMenu = ({ currentPage, currentUser, onLogout, showManageListingsLin
             >
               <span className={css.menuItemBorder} />
               <FormattedMessage id="TopbarDesktop.yourListingsLink" />
+            </NamedLink>
+          </MenuItem>
+        ) : null}
+        {showManageListingsLink && showPromoCodes ? (
+          <MenuItem key="PromoCodesPage">
+            <NamedLink
+              className={classNames(css.menuLink, currentPageClass('PromoCodesPage'))}
+              name="PromoCodesPage"
+            >
+              <span className={css.menuItemBorder} />
+              <FormattedMessage id="TopbarDesktop.promoCodesLink" />
+            </NamedLink>
+          </MenuItem>
+        ) : null}
+        {!showManageListingsLink && loyaltyEnabled ? (
+          <MenuItem key="LoyaltyPage">
+            <NamedLink
+              className={classNames(css.menuLink, currentPageClass('LoyaltyPage'))}
+              name="LoyaltyPage"
+            >
+              <span className={css.menuItemBorder} />
+              <FormattedMessage id="TopbarDesktop.creditsLink" />
             </NamedLink>
           </MenuItem>
         ) : null}

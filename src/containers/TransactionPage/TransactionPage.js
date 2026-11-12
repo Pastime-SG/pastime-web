@@ -74,6 +74,10 @@ import RequestChangesModal from './RequestChangesModal/RequestChangesModal';
 import MakeCounterOfferModal from './MakeCounterOfferModal/MakeCounterOfferModal';
 import SendMessageForm from './SendMessageForm/SendMessageForm';
 import TransactionPanel from './TransactionPanel/TransactionPanel';
+import Reschedule from './Reschedule/Reschedule';
+import Cancellation from './Cancellation/Cancellation';
+import { getCancellationInfo } from './Cancellation/Cancellation.helpers';
+import { getRescheduleInfo } from './Reschedule/Reschedule.helpers';
 
 import {
   makeTransition,
@@ -81,6 +85,10 @@ import {
   sendReview,
   fetchMoreMessages,
   fetchTimeSlots,
+  fetchRescheduleTimeSlots,
+  rescheduleBookingAction,
+  fetchCancelPreview,
+  cancelBookingAction,
   fetchTransactionLineItems,
   uploadFile,
   clearUploadedFiles,
@@ -379,6 +387,17 @@ export const TransactionPageComponent = props => {
     onDownloadFile,
     fileDownloads,
     fileUploadsDisabled,
+    onReschedule,
+    onFetchRescheduleTimeSlots,
+    rescheduleInProgress,
+    rescheduleError,
+    onFetchCancelPreview,
+    onCancelBooking,
+    cancelPreview,
+    cancelPreviewInProgress,
+    cancelPreviewError,
+    cancelInProgress,
+    cancelError,
     ...restOfProps
   } = props;
 
@@ -523,12 +542,22 @@ export const TransactionPageComponent = props => {
     const { reviewRating, reviewContent } = values;
     const rating = Number.parseInt(reviewRating, 10);
     const { states, transitions } = process;
+    // The transaction's process version tells which review transitions exist. The next
+    // transitions are already loaded with the page.
+    const hasNextTransition = transitionName =>
+      !!transitionName && (nextTransitions || []).some(t => t?.attributes?.name === transitionName);
 
     // The download process only supports a single customer-side review transition.
     // Bidirectional review transitions (REVIEW_1/REVIEW_2) don't exist in that process.
     const transitionOptions = isDownloadProcess(processName)
       ? {
           reviewAsFirst: transitions.REVIEW,
+          hasOtherPartyReviewedFirst: false,
+        }
+      : transactionRole === CUSTOMER && hasNextTransition(transitions.REVIEW_BY_CUSTOMER)
+      ? {
+          // Booking process: only the customer reviews (older process versions have 2 reviews)
+          reviewAsFirst: transitions.REVIEW_BY_CUSTOMER,
           hasOtherPartyReviewedFirst: false,
         }
       : transactionRole === CUSTOMER
@@ -754,6 +783,9 @@ export const TransactionPageComponent = props => {
         process
       )
     : {};
+  const cancellationInfo = isDataAvailable
+    ? getCancellationInfo({ transaction, transactionRole, nextTransitions })
+    : null;
 
   const hasLineItems = transaction?.attributes?.lineItems?.length > 0;
   const unitLineItem = hasLineItems
@@ -900,6 +932,79 @@ export const TransactionPageComponent = props => {
           isCounterpartyInactive={isCounterpartyInactive}
         />
       )}
+      reschedule={
+        <Reschedule
+          info={getRescheduleInfo({ transaction, transactionRole, nextTransitions })}
+          listing={listing}
+          timeZone={listing?.attributes?.availabilityPlan?.timezone || 'Etc/UTC'}
+          otherUserDisplayName={otherUserDisplayNameString}
+          monthlyTimeSlots={props.monthlyTimeSlots}
+          timeSlotsForDate={props.timeSlotsForDate}
+          onFetchTimeSlots={props.onFetchTimeSlots}
+          onFetchRescheduleTimeSlots={onFetchRescheduleTimeSlots}
+          onReschedule={(action, bookingStart) =>
+            onReschedule({
+              txId: transaction.id,
+              action,
+              bookingStart,
+            })
+          }
+          rescheduleInProgress={rescheduleInProgress}
+          rescheduleError={rescheduleError}
+          onManageDisableScrolling={onManageDisableScrolling}
+        />
+      }
+      cancellation={
+        <Cancellation
+          info={cancellationInfo}
+          transactionRole={transactionRole}
+          otherUserDisplayName={otherUserDisplayNameString}
+          timeZone={listing?.attributes?.availabilityPlan?.timezone || 'Etc/UTC'}
+          onCancelRequest={() =>
+            // makeTransition resolves with the rejected action when the transition fails
+            onTransition(transaction.id, process?.transitions?.CUSTOMER_CANCEL_REQUEST, {}).then(
+              result => {
+                if (result?.error) {
+                  throw result.payload || result.error;
+                }
+                return result;
+              }
+            )
+          }
+          cancelRequestInProgress={
+            !!transitionInProgress &&
+            transitionInProgress === process?.transitions?.CUSTOMER_CANCEL_REQUEST
+          }
+          cancelRequestError={transitionError}
+          onFetchCancelPreview={() => onFetchCancelPreview({ txId: transaction.id })}
+          cancelPreview={cancelPreview}
+          cancelPreviewInProgress={cancelPreviewInProgress}
+          cancelPreviewError={cancelPreviewError}
+          onCancel={() =>
+            onCancelBooking({
+              txId: transaction.id,
+              refreshNotifications: cancellationInfo?.refreshNotifications,
+            })
+          }
+          cancelInProgress={cancelInProgress}
+          cancelError={cancelError}
+          onProviderCancel={transitionName =>
+            // makeTransition resolves with the rejected action when the transition fails
+            onTransition(transaction.id, transitionName, {}).then(result => {
+              if (result?.error) {
+                throw result.payload || result.error;
+              }
+              return result;
+            })
+          }
+          providerCancelInProgress={
+            !!transitionInProgress &&
+            transitionInProgress === cancellationInfo?.providerCancelTransition
+          }
+          providerCancelError={transitionError}
+          onManageDisableScrolling={onManageDisableScrolling}
+        />
+      }
       fileAttachments={
         <FileAttachments
           isDownloadProcess={isDownloadProcess(processName)}
@@ -1175,6 +1280,13 @@ const TransactionPage = props => {
     fetchLineItemsError,
     fileUploadsDisabled,
     fileDownloads,
+    rescheduleInProgress,
+    rescheduleError,
+    cancelPreview,
+    cancelPreviewInProgress,
+    cancelPreviewError,
+    cancelInProgress,
+    cancelError,
   } = useSelector(state => state.TransactionPage, shallowEqual);
 
   const currentUser = useSelector(state => state.user?.currentUser);
@@ -1237,6 +1349,15 @@ const TransactionPage = props => {
     (fileAttachmentId, isOwnFile) => dispatch(downloadFile(fileAttachmentId, isOwnFile)),
     [dispatch]
   );
+  const onReschedule = useCallback(params => dispatch(rescheduleBookingAction(params)), [dispatch]);
+  const onFetchCancelPreview = useCallback(params => dispatch(fetchCancelPreview(params)), [
+    dispatch,
+  ]);
+  const onCancelBooking = useCallback(params => dispatch(cancelBookingAction(params)), [dispatch]);
+  const onFetchRescheduleTimeSlots = useCallback(
+    (listing, durationMinutes) => dispatch(fetchRescheduleTimeSlots(listing, durationMinutes)),
+    [dispatch]
+  );
 
   return (
     <TransactionPageComponent
@@ -1279,6 +1400,17 @@ const TransactionPage = props => {
       onDownloadFile={onDownloadFile}
       fileDownloads={fileDownloads}
       history={history}
+      onReschedule={onReschedule}
+      onFetchCancelPreview={onFetchCancelPreview}
+      onCancelBooking={onCancelBooking}
+      cancelPreview={cancelPreview}
+      cancelPreviewInProgress={cancelPreviewInProgress}
+      cancelPreviewError={cancelPreviewError}
+      cancelInProgress={cancelInProgress}
+      cancelError={cancelError}
+      onFetchRescheduleTimeSlots={onFetchRescheduleTimeSlots}
+      rescheduleInProgress={rescheduleInProgress}
+      rescheduleError={rescheduleError}
     />
   );
 };

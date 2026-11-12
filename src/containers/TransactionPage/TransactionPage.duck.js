@@ -11,7 +11,13 @@ import {
   stringifyDateToISO8601,
 } from '../../util/dates';
 import { isTransactionsTransitionInvalidTransition, storableError } from '../../util/errors';
-import { transactionLineItems, transitionPrivileged } from '../../util/api';
+import { getEarliestBookingStart, getTimeSlotQueryAfterCutoff } from '../../util/policies';
+import {
+  cancelBooking,
+  rescheduleBooking,
+  transactionLineItems,
+  transitionPrivileged,
+} from '../../util/api';
 import * as log from '../../util/log';
 import {
   updatedEntities,
@@ -19,6 +25,7 @@ import {
   denormalisedResponseEntities,
 } from '../../util/data';
 import {
+  BOOKING_PROCESS_NAME,
   resolveLatestProcessName,
   getProcess,
   isBookingProcess,
@@ -106,10 +113,23 @@ const fetchTimeSlotsPayloadCreator = (
   const { extraQueryParams = null, useFetchTimeSlotsForDate = false } = options || {};
 
   // The maximum pagination page size for timeSlots is 500
-  const extraParams = extraQueryParams || {
+  const defaultExtraParams = extraQueryParams || {
     perPage: 500,
     page: 1,
   };
+
+  // The listing's booking cutoff (e.g. 24 hours): times within it can't be booked (or
+  // rescheduled to), so they are left out of the query. If the whole range is within the cutoff,
+  // nothing is fetched.
+  const listing = getState().marketplaceData?.entities?.listing?.[listingId?.uuid];
+  const query = getTimeSlotQueryAfterCutoff({
+    start,
+    end,
+    timeZone,
+    extraParams: defaultExtraParams,
+    earliestStart: getEarliestBookingStart(listing?.attributes?.publicData?.policies),
+  });
+  const { start: queryStart, extraParams } = query || {};
 
   // For small time units, we fetch the data per date.
   // This is to avoid fetching too much data (with 15 minute intervals, there can be 24*4*31 = 2928 time slots)
@@ -122,8 +142,11 @@ const fetchTimeSlotsPayloadCreator = (
       return Promise.resolve({ timeSlots: dateData?.timeSlots || [], dateId, type: 'date' });
     }
 
+    if (!query) {
+      return Promise.resolve({ timeSlots: [], dateId, type: 'date' });
+    }
     return sdk.timeslots
-      .query({ listingId, start, end, ...extraParams })
+      .query({ listingId, start: queryStart, end, ...extraParams })
       .then(response => {
         const timeSlots = denormalisedResponseEntities(response);
         return { timeSlots, dateId, type: 'date' };
@@ -133,8 +156,11 @@ const fetchTimeSlotsPayloadCreator = (
       });
   } else {
     const monthId = monthIdString(start, timeZone);
+    if (!query) {
+      return Promise.resolve({ timeSlots: [], monthId, type: 'month' });
+    }
     return sdk.timeslots
-      .query({ listingId, start, end, ...extraParams })
+      .query({ listingId, start: queryStart, end, ...extraParams })
       .then(response => {
         const timeSlots = denormalisedResponseEntities(response);
         return { timeSlots, monthId, type: 'month' };
@@ -155,12 +181,19 @@ export const fetchTimeSlots = (listingId, start, end, timeZone, options) => disp
   return dispatch(fetchTimeSlotsThunk({ listingId, start, end, timeZone, options }));
 };
 
+// Time slots for rescheduling a booking: the next two months, counting only the days that have a
+// free time long enough for the booking.
+export const fetchRescheduleTimeSlots = (listing, durationMinutes) => dispatch =>
+  fetchMonthlyTimeSlots(dispatch, listing, durationMinutes);
+
 //////////////////////
 // fetchTransaction //
 //////////////////////
 
 // Helper function for loadData call.
-const fetchMonthlyTimeSlots = (dispatch, listing) => {
+// minDurationMinutes: only days with a free time of at least this length count as available
+// (e.g. the duration of a booking that is rescheduled).
+const fetchMonthlyTimeSlots = (dispatch, listing, minDurationMinutes) => {
   const hasWindow = typeof window !== 'undefined';
   const { availabilityPlan, publicData } = listing?.attributes || {};
   const tz = availabilityPlan?.timezone;
@@ -187,14 +220,17 @@ const fetchMonthlyTimeSlots = (dispatch, listing) => {
       return Math.min(min, priceVariant.bookingLengthInMinutes);
     }, Number.MAX_SAFE_INTEGER);
 
+    // A rescheduled booking keeps its own duration (e.g. the session length it was booked with)
+    const sessionLengthInMinutes = minDurationMinutes || bookingLengthInMinutes;
     const nextMonthEnd = isFixed
-      ? getStartOf(nextMonth, 'minute', tz, bookingLengthInMinutes, 'minutes')
+      ? getStartOf(nextMonth, 'minute', tz, sessionLengthInMinutes, 'minutes')
       : nextMonth;
     const followingMonthEnd = isFixed
-      ? getStartOf(nextAfterNextMonth, 'minute', tz, bookingLengthInMinutes, 'minutes')
+      ? getStartOf(nextAfterNextMonth, 'minute', tz, sessionLengthInMinutes, 'minutes')
       : nextAfterNextMonth;
 
-    const minDurationStartingInInterval = isFixed ? bookingLengthInMinutes : 60;
+    const minDurationStartingInInterval =
+      minDurationMinutes || (isFixed ? bookingLengthInMinutes : 60);
 
     const options = intervalAlign => {
       return ['fixed', 'hour'].includes(unitType)
@@ -377,6 +413,12 @@ const makeTransitionPayloadCreator = (
     .then(response => {
       dispatch(addMarketplaceEntities(response));
       dispatch(fetchCurrentUserNotifications());
+      // After the provider accepts a booking, they can request a reschedule. Whether the
+      // transaction's process version supports it comes from its next transitions, which were
+      // fetched when the booking wasn't accepted yet. Other transitions don't need them again.
+      if (processName === BOOKING_PROCESS_NAME && transitionName === process.transitions.ACCEPT) {
+        dispatch(fetchTransitionsThunk({ id: txId }));
+      }
 
       // There could be automatic transitions after this transition
       // For example mark-received-from-purchased > auto-complete.
@@ -788,6 +830,77 @@ export const fetchNextTransitions = id => dispatch => {
   return dispatch(fetchTransitionsThunk({ id }));
 };
 
+///////////////////////
+// rescheduleBooking //
+///////////////////////
+
+// Request a new time, suggest another time, accept or decline (see server/api/reschedule/reschedule.js).
+// The endpoint returns the updated transaction and its booking, so nothing is fetched again. The
+// next transitions aren't needed: they only tell if the first request can be made.
+const rescheduleBookingPayloadCreator = (
+  { txId, action, bookingStart },
+  { dispatch, rejectWithValue }
+) => {
+  const bookingStartMaybe = bookingStart ? { bookingStart } : {};
+  return rescheduleBooking({ transactionId: txId, action, ...bookingStartMaybe })
+    .then(response => {
+      dispatch(addMarketplaceEntities(response));
+      // Answering a request clears it from the user's notifications. A new request doesn't
+      // change the requester's notifications.
+      if (action !== 'request') {
+        dispatch(fetchCurrentUserNotifications());
+      }
+      return response;
+    })
+    .catch(e => rejectWithValue({ ...storableError(e), code: e?.code || null }));
+};
+
+export const rescheduleBookingThunk = createAsyncThunk(
+  'TransactionPage/rescheduleBooking',
+  rescheduleBookingPayloadCreator
+);
+
+// Backward compatible wrapper for rescheduleBooking
+export const rescheduleBookingAction = params => dispatch => {
+  return dispatch(rescheduleBookingThunk(params)).unwrap();
+};
+
+///////////////////
+// cancelBooking //
+///////////////////
+
+// The refund the customer would get when cancelling an accepted booking now (see
+// server/api/cancel/cancel.js): { ruleHeading, refundPercentage, currency, paid, stripeFee, refund }
+export const fetchCancelPreviewThunk = createAsyncThunk(
+  'TransactionPage/fetchCancelPreview',
+  ({ txId }, { rejectWithValue }) =>
+    cancelBooking({ transactionId: txId, action: 'preview' }).catch(e =>
+      rejectWithValue({ ...storableError(e), code: e?.code || null })
+    )
+);
+
+// Cancel an accepted booking. The endpoint returns the updated transaction, so nothing is fetched
+// again, except the notifications if the booking needed the customer's attention.
+export const cancelBookingThunk = createAsyncThunk(
+  'TransactionPage/cancelBooking',
+  ({ txId, refreshNotifications }, { dispatch, rejectWithValue }) =>
+    cancelBooking({ transactionId: txId, action: 'cancel' })
+      .then(response => {
+        dispatch(addMarketplaceEntities(response));
+        if (refreshNotifications) {
+          dispatch(fetchCurrentUserNotifications());
+        }
+        return response;
+      })
+      .catch(e => rejectWithValue({ ...storableError(e), code: e?.code || null }))
+);
+
+// Backward compatible wrappers
+export const fetchCancelPreview = params => dispatch =>
+  dispatch(fetchCancelPreviewThunk(params)).unwrap();
+export const cancelBookingAction = params => dispatch =>
+  dispatch(cancelBookingThunk(params)).unwrap();
+
 ////////////////////
 // FetchLineItems //
 ////////////////////
@@ -856,6 +969,13 @@ const initialState = {
   fetchTransitionsInProgress: false,
   fetchTransitionsError: null,
   processTransitions: null,
+  rescheduleInProgress: null,
+  rescheduleError: null,
+  cancelPreview: null,
+  cancelPreviewInProgress: false,
+  cancelPreviewError: null,
+  cancelInProgress: false,
+  cancelError: null,
   lineItems: null,
   fetchLineItemsInProgress: false,
   fetchLineItemsError: null,
@@ -957,6 +1077,43 @@ const transactionPageSlice = createSlice({
         state.fetchTransitionsError = action.payload;
       })
       // makeTransition cases
+      // cancelBooking cases
+      .addCase(fetchCancelPreviewThunk.pending, state => {
+        state.cancelPreview = null;
+        state.cancelPreviewInProgress = true;
+        state.cancelPreviewError = null;
+      })
+      .addCase(fetchCancelPreviewThunk.fulfilled, (state, action) => {
+        state.cancelPreview = action.payload;
+        state.cancelPreviewInProgress = false;
+      })
+      .addCase(fetchCancelPreviewThunk.rejected, (state, action) => {
+        state.cancelPreviewInProgress = false;
+        state.cancelPreviewError = action.payload;
+      })
+      .addCase(cancelBookingThunk.pending, state => {
+        state.cancelInProgress = true;
+        state.cancelError = null;
+      })
+      .addCase(cancelBookingThunk.fulfilled, state => {
+        state.cancelInProgress = false;
+      })
+      .addCase(cancelBookingThunk.rejected, (state, action) => {
+        state.cancelInProgress = false;
+        state.cancelError = action.payload;
+      })
+      // rescheduleBooking cases
+      .addCase(rescheduleBookingThunk.pending, (state, action) => {
+        state.rescheduleInProgress = action.meta.arg.action;
+        state.rescheduleError = null;
+      })
+      .addCase(rescheduleBookingThunk.fulfilled, state => {
+        state.rescheduleInProgress = null;
+      })
+      .addCase(rescheduleBookingThunk.rejected, (state, action) => {
+        state.rescheduleInProgress = null;
+        state.rescheduleError = action.payload;
+      })
       .addCase(makeTransitionThunk.pending, (state, action) => {
         state.transitionInProgress = action.meta.arg.transitionName;
         state.transitionError = null;

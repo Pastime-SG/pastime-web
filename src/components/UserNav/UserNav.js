@@ -2,6 +2,7 @@ import React from 'react';
 import { FormattedMessage, useIntl } from '../../util/reactIntl';
 import classNames from 'classnames';
 import { ACCOUNT_SETTINGS_PAGES } from '../../routing/routeConfiguration';
+import { useStudioPromoCodesEnabled } from '../../util/promoCodes';
 import { LinkTabNavHorizontal } from '../../components';
 
 import css from './UserNav.module.css';
@@ -20,6 +21,8 @@ const UserNav = props => {
   const { className, rootClassName, currentPage, showManageListingsLink } = props;
   const intl = useIntl();
   const classes = classNames(rootClassName || css.root, className);
+  // Hidden while admins have turned studio promo codes off
+  const showPromoCodes = useStudioPromoCodesEnabled();
 
   const manageListingsTabMaybe = showManageListingsLink
     ? [
@@ -30,6 +33,17 @@ const UserNav = props => {
             name: 'ManageListingsPage',
           },
         },
+        ...(showPromoCodes || currentPage === 'PromoCodesPage'
+          ? [
+              {
+                text: <FormattedMessage id="UserNav.promoCodes" />,
+                selected: currentPage === 'PromoCodesPage',
+                linkProps: {
+                  name: 'PromoCodesPage',
+                },
+              },
+            ]
+          : []),
       ]
     : [];
 

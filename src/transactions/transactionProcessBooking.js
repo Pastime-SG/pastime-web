@@ -1,7 +1,12 @@
 /**
  * Transaction process graph for bookings:
  *   - default-booking
+ *   - booking-platform-paid: the same graph; Pastime's server pays the provider (credits or an
+ *     admin's discount are more than the commission)
+ *   - booking-free: the same graph, without the payment step (transition/request)
  */
+
+import { PAYMENT_METHOD_CARD, stripePaymentMethodInfo } from './paymentMethods';
 
 /**
  * Transitions
@@ -18,6 +23,9 @@ export const transitions = {
   // At this transition a PaymentIntent is created by Marketplace API.
   // After this transition, the actual payment must be made on client-side directly to Stripe.
   REQUEST_PAYMENT: 'transition/request-payment',
+
+  // booking-free: the customer pays nothing, so the request goes straight to the provider
+  REQUEST_FREE: 'transition/request',
 
   // A customer can also initiate a transaction with an inquiry, and
   // then transition that with a request.
@@ -48,13 +56,56 @@ export const transitions = {
   // Admin can also cancel the transition.
   CANCEL: 'transition/cancel',
 
+  // Rescheduling an accepted booking (one reschedule loop per booking). These are privileged
+  // transitions that go through the server: see server/api/reschedule/reschedule.js
+  REQUEST_RESCHEDULE_BY_CUSTOMER: 'transition/request-reschedule-by-customer',
+  REQUEST_RESCHEDULE_BY_PROVIDER: 'transition/request-reschedule-by-provider',
+  ACCEPT_RESCHEDULE_BY_PROVIDER: 'transition/accept-reschedule-by-provider',
+  ACCEPT_RESCHEDULE_BY_CUSTOMER: 'transition/accept-reschedule-by-customer',
+  COUNTER_RESCHEDULE_BY_PROVIDER: 'transition/counter-reschedule-by-provider',
+  COUNTER_RESCHEDULE_BY_CUSTOMER: 'transition/counter-reschedule-by-customer',
+  DECLINE_RESCHEDULE_BY_PROVIDER: 'transition/decline-reschedule-by-provider',
+  DECLINE_RESCHEDULE_BY_CUSTOMER: 'transition/decline-reschedule-by-customer',
+  // The backend expires an unanswered reschedule request when the booking starts.
+  EXPIRE_RESCHEDULE_REQUESTED_BY_CUSTOMER: 'transition/expire-reschedule-requested-by-customer',
+  EXPIRE_RESCHEDULE_REQUESTED_BY_PROVIDER: 'transition/expire-reschedule-requested-by-provider',
+  // Admin can cancel the booking while a reschedule request is pending.
+  CANCEL_RESCHEDULE_REQUESTED_BY_CUSTOMER: 'transition/cancel-reschedule-requested-by-customer',
+  CANCEL_RESCHEDULE_REQUESTED_BY_PROVIDER: 'transition/cancel-reschedule-requested-by-provider',
+
+  // Customer cancellations. Before the booking is accepted: free.
+  CUSTOMER_CANCEL_REQUEST: 'transition/customer-cancel-request',
+  // After it's accepted, by the cancellation rules copied to the booking. These are privileged
+  // transitions that go through the server: see server/api/cancel
+  CUSTOMER_CANCEL: 'transition/customer-cancel',
+  CUSTOMER_CANCEL_RESCHEDULE_REQUESTED_BY_CUSTOMER:
+    'transition/customer-cancel-reschedule-requested-by-customer',
+  CUSTOMER_CANCEL_RESCHEDULE_REQUESTED_BY_PROVIDER:
+    'transition/customer-cancel-reschedule-requested-by-provider',
+  CUSTOMER_CANCEL_NO_REFUND: 'transition/customer-cancel-no-refund',
+  CUSTOMER_CANCEL_NO_REFUND_RESCHEDULE_REQUESTED_BY_CUSTOMER:
+    'transition/customer-cancel-no-refund-reschedule-requested-by-customer',
+  CUSTOMER_CANCEL_NO_REFUND_RESCHEDULE_REQUESTED_BY_PROVIDER:
+    'transition/customer-cancel-no-refund-reschedule-requested-by-provider',
+  // Provider (studio) cancellations of an accepted booking: the customer is refunded in full
+  PROVIDER_CANCEL: 'transition/provider-cancel',
+  PROVIDER_CANCEL_RESCHEDULE_REQUESTED_BY_CUSTOMER:
+    'transition/provider-cancel-reschedule-requested-by-customer',
+  PROVIDER_CANCEL_RESCHEDULE_REQUESTED_BY_PROVIDER:
+    'transition/provider-cancel-reschedule-requested-by-provider',
+  // The backend pays out the provider of a booking cancelled without a refund at the booking end
+  PAYOUT_CANCELLED_WITHOUT_REFUND: 'transition/payout-cancelled-without-refund',
+
   // The backend will mark the transaction completed.
   COMPLETE: 'transition/complete',
   OPERATOR_COMPLETE: 'transition/operator-complete',
 
-  // Reviews are given through transaction transitions. Review 1 can be
-  // by provider or customer, and review 2 will be the other party of
-  // the transaction.
+  // Reviews are given through transaction transitions. Only the customer reviews the provider:
+  // the review is published right away.
+  REVIEW_BY_CUSTOMER: 'transition/review-by-customer',
+
+  // Older process versions: review 1 can be by provider or customer, and review 2 will be the
+  // other party of the transaction. Kept for transactions made with those versions.
   REVIEW_1_BY_PROVIDER: 'transition/review-1-by-provider',
   REVIEW_2_BY_PROVIDER: 'transition/review-2-by-provider',
   REVIEW_1_BY_CUSTOMER: 'transition/review-1-by-customer',
@@ -81,8 +132,11 @@ export const states = {
   PREAUTHORIZED: 'preauthorized',
   DECLINED: 'declined',
   ACCEPTED: 'accepted',
+  RESCHEDULE_REQUESTED_BY_CUSTOMER: 'reschedule-requested-by-customer',
+  RESCHEDULE_REQUESTED_BY_PROVIDER: 'reschedule-requested-by-provider',
   EXPIRED: 'expired',
   CANCELED: 'canceled',
+  CANCELLED_WITHOUT_REFUND: 'cancelled-without-refund',
   DELIVERED: 'delivered',
   REVIEWED: 'reviewed',
   REVIEWED_BY_CUSTOMER: 'reviewed-by-customer',
@@ -113,6 +167,7 @@ export const graph = {
       on: {
         [transitions.INQUIRE]: states.INQUIRY,
         [transitions.REQUEST_PAYMENT]: states.PENDING_PAYMENT,
+        [transitions.REQUEST_FREE]: states.PREAUTHORIZED,
       },
     },
     [states.INQUIRY]: {
@@ -136,6 +191,7 @@ export const graph = {
         [transitions.EXPIRE]: states.EXPIRED,
         [transitions.ACCEPT]: states.ACCEPTED,
         [transitions.OPERATOR_ACCEPT]: states.ACCEPTED,
+        [transitions.CUSTOMER_CANCEL_REQUEST]: states.CANCELED,
       },
     },
 
@@ -146,13 +202,50 @@ export const graph = {
         [transitions.CANCEL]: states.CANCELED,
         [transitions.COMPLETE]: states.DELIVERED,
         [transitions.OPERATOR_COMPLETE]: states.DELIVERED,
+        [transitions.REQUEST_RESCHEDULE_BY_CUSTOMER]: states.RESCHEDULE_REQUESTED_BY_CUSTOMER,
+        [transitions.REQUEST_RESCHEDULE_BY_PROVIDER]: states.RESCHEDULE_REQUESTED_BY_PROVIDER,
+        [transitions.CUSTOMER_CANCEL]: states.CANCELED,
+        [transitions.CUSTOMER_CANCEL_NO_REFUND]: states.CANCELLED_WITHOUT_REFUND,
+        [transitions.PROVIDER_CANCEL]: states.CANCELED,
+      },
+    },
+    [states.RESCHEDULE_REQUESTED_BY_CUSTOMER]: {
+      on: {
+        [transitions.ACCEPT_RESCHEDULE_BY_PROVIDER]: states.ACCEPTED,
+        [transitions.DECLINE_RESCHEDULE_BY_PROVIDER]: states.ACCEPTED,
+        [transitions.COUNTER_RESCHEDULE_BY_PROVIDER]: states.RESCHEDULE_REQUESTED_BY_PROVIDER,
+        [transitions.EXPIRE_RESCHEDULE_REQUESTED_BY_CUSTOMER]: states.ACCEPTED,
+        [transitions.CANCEL_RESCHEDULE_REQUESTED_BY_CUSTOMER]: states.CANCELED,
+        [transitions.CUSTOMER_CANCEL_RESCHEDULE_REQUESTED_BY_CUSTOMER]: states.CANCELED,
+        [transitions.CUSTOMER_CANCEL_NO_REFUND_RESCHEDULE_REQUESTED_BY_CUSTOMER]:
+          states.CANCELLED_WITHOUT_REFUND,
+        [transitions.PROVIDER_CANCEL_RESCHEDULE_REQUESTED_BY_CUSTOMER]: states.CANCELED,
+      },
+    },
+    [states.RESCHEDULE_REQUESTED_BY_PROVIDER]: {
+      on: {
+        [transitions.ACCEPT_RESCHEDULE_BY_CUSTOMER]: states.ACCEPTED,
+        [transitions.DECLINE_RESCHEDULE_BY_CUSTOMER]: states.ACCEPTED,
+        [transitions.COUNTER_RESCHEDULE_BY_CUSTOMER]: states.RESCHEDULE_REQUESTED_BY_CUSTOMER,
+        [transitions.EXPIRE_RESCHEDULE_REQUESTED_BY_PROVIDER]: states.ACCEPTED,
+        [transitions.CANCEL_RESCHEDULE_REQUESTED_BY_PROVIDER]: states.CANCELED,
+        [transitions.CUSTOMER_CANCEL_RESCHEDULE_REQUESTED_BY_PROVIDER]: states.CANCELED,
+        [transitions.CUSTOMER_CANCEL_NO_REFUND_RESCHEDULE_REQUESTED_BY_PROVIDER]:
+          states.CANCELLED_WITHOUT_REFUND,
+        [transitions.PROVIDER_CANCEL_RESCHEDULE_REQUESTED_BY_PROVIDER]: states.CANCELED,
       },
     },
 
+    [states.CANCELLED_WITHOUT_REFUND]: {
+      on: {
+        [transitions.PAYOUT_CANCELLED_WITHOUT_REFUND]: states.CANCELED,
+      },
+    },
     [states.CANCELED]: {},
     [states.DELIVERED]: {
       on: {
         [transitions.EXPIRE_REVIEW_PERIOD]: states.REVIEWED,
+        [transitions.REVIEW_BY_CUSTOMER]: states.REVIEWED,
         [transitions.REVIEW_1_BY_CUSTOMER]: states.REVIEWED_BY_CUSTOMER,
         [transitions.REVIEW_1_BY_PROVIDER]: states.REVIEWED_BY_PROVIDER,
       },
@@ -174,6 +267,39 @@ export const graph = {
   },
 };
 
+// Transitions of the reschedule loop. They're shown in the activity feed with their own
+// messages, because most of them lead back to the accepted state.
+export const rescheduleTransitions = [
+  transitions.REQUEST_RESCHEDULE_BY_CUSTOMER,
+  transitions.REQUEST_RESCHEDULE_BY_PROVIDER,
+  transitions.ACCEPT_RESCHEDULE_BY_PROVIDER,
+  transitions.ACCEPT_RESCHEDULE_BY_CUSTOMER,
+  transitions.COUNTER_RESCHEDULE_BY_PROVIDER,
+  transitions.COUNTER_RESCHEDULE_BY_CUSTOMER,
+  transitions.DECLINE_RESCHEDULE_BY_PROVIDER,
+  transitions.DECLINE_RESCHEDULE_BY_CUSTOMER,
+  transitions.EXPIRE_RESCHEDULE_REQUESTED_BY_CUSTOMER,
+  transitions.EXPIRE_RESCHEDULE_REQUESTED_BY_PROVIDER,
+];
+
+// Customer cancellations. They're shown in the activity feed with their own messages.
+export const customerCancelTransitions = [
+  transitions.CUSTOMER_CANCEL_REQUEST,
+  transitions.CUSTOMER_CANCEL,
+  transitions.CUSTOMER_CANCEL_RESCHEDULE_REQUESTED_BY_CUSTOMER,
+  transitions.CUSTOMER_CANCEL_RESCHEDULE_REQUESTED_BY_PROVIDER,
+  transitions.CUSTOMER_CANCEL_NO_REFUND,
+  transitions.CUSTOMER_CANCEL_NO_REFUND_RESCHEDULE_REQUESTED_BY_CUSTOMER,
+  transitions.CUSTOMER_CANCEL_NO_REFUND_RESCHEDULE_REQUESTED_BY_PROVIDER,
+];
+
+// Provider cancellations of an accepted booking (full refund)
+export const providerCancelTransitions = [
+  transitions.PROVIDER_CANCEL,
+  transitions.PROVIDER_CANCEL_RESCHEDULE_REQUESTED_BY_CUSTOMER,
+  transitions.PROVIDER_CANCEL_RESCHEDULE_REQUESTED_BY_PROVIDER,
+];
+
 // Check if a transition is the kind that should be rendered
 // when showing transition history (e.g. ActivityFeed)
 // The first transition and most of the expiration transitions made by system are not relevant
@@ -185,20 +311,31 @@ export const isRelevantPastTransition = transition => {
     transitions.COMPLETE,
     transitions.OPERATOR_COMPLETE,
     transitions.CONFIRM_PAYMENT,
+    transitions.REQUEST_FREE,
     transitions.DECLINE,
     transitions.OPERATOR_DECLINE,
     transitions.EXPIRE,
+    transitions.REVIEW_BY_CUSTOMER,
     transitions.REVIEW_1_BY_CUSTOMER,
     transitions.REVIEW_1_BY_PROVIDER,
     transitions.REVIEW_2_BY_CUSTOMER,
     transitions.REVIEW_2_BY_PROVIDER,
+    transitions.CANCEL_RESCHEDULE_REQUESTED_BY_CUSTOMER,
+    transitions.CANCEL_RESCHEDULE_REQUESTED_BY_PROVIDER,
+    ...rescheduleTransitions,
+    ...customerCancelTransitions,
+    ...providerCancelTransitions,
   ].includes(transition);
 };
 
 // Processes might be different on how reviews are handled.
 // Default processes use two-sided diamond shape, where either party can make the review first
 export const isCustomerReview = transition => {
-  return [transitions.REVIEW_1_BY_CUSTOMER, transitions.REVIEW_2_BY_CUSTOMER].includes(transition);
+  return [
+    transitions.REVIEW_BY_CUSTOMER,
+    transitions.REVIEW_1_BY_CUSTOMER,
+    transitions.REVIEW_2_BY_CUSTOMER,
+  ].includes(transition);
 };
 
 // Processes might be different on how reviews are handled.
@@ -214,9 +351,81 @@ export const isProviderReview = transition => {
 // should go through the local API endpoints, or if using JS SDK is
 // enough.
 export const isPrivileged = transition => {
-  return [transitions.REQUEST_PAYMENT, transitions.REQUEST_PAYMENT_AFTER_INQUIRY].includes(
-    transition
-  );
+  return [
+    transitions.REQUEST_PAYMENT,
+    transitions.REQUEST_PAYMENT_AFTER_INQUIRY,
+    transitions.REQUEST_FREE,
+    transitions.REQUEST_RESCHEDULE_BY_CUSTOMER,
+    transitions.REQUEST_RESCHEDULE_BY_PROVIDER,
+    transitions.ACCEPT_RESCHEDULE_BY_PROVIDER,
+    transitions.ACCEPT_RESCHEDULE_BY_CUSTOMER,
+    transitions.COUNTER_RESCHEDULE_BY_PROVIDER,
+    transitions.COUNTER_RESCHEDULE_BY_CUSTOMER,
+    transitions.DECLINE_RESCHEDULE_BY_PROVIDER,
+    transitions.DECLINE_RESCHEDULE_BY_CUSTOMER,
+    transitions.CUSTOMER_CANCEL,
+    transitions.CUSTOMER_CANCEL_RESCHEDULE_REQUESTED_BY_CUSTOMER,
+    transitions.CUSTOMER_CANCEL_RESCHEDULE_REQUESTED_BY_PROVIDER,
+    transitions.CUSTOMER_CANCEL_NO_REFUND,
+    transitions.CUSTOMER_CANCEL_NO_REFUND_RESCHEDULE_REQUESTED_BY_CUSTOMER,
+    transitions.CUSTOMER_CANCEL_NO_REFUND_RESCHEDULE_REQUESTED_BY_PROVIDER,
+  ].includes(transition);
+};
+
+/**
+ * Client-side map of payment methods this process handles at checkout.
+ *
+ * Structure: supportedPayments[processor][methodId] = { paymentDirection }
+ *
+ * This does not create Stripe/Sharetribe support by itself. Support depends on the
+ * transaction process saved to the Sharetribe backend (CLI): transitions and their
+ * Stripe actions. Only declare methods your backend process is built for.
+ *
+ * paymentDirection:
+ * - 'pull' — card-style: authorize now, capture later (e.g. when the provider accepts)
+ * - 'push' — customer pays on confirm; funds are pushed (no preauthorization)
+ *
+ * Defaults come from paymentMethods.js via stripePaymentMethodInfo; override only if needed.
+ */
+export const supportedPayments = {
+  stripe: {
+    ...stripePaymentMethodInfo(PAYMENT_METHOD_CARD),
+  },
+};
+
+/**
+ * Resolve checkout transitions for a payment method and transaction state.
+ *
+ * @param {Object} params
+ * @param {string} params.paymentProcessor - e.g. 'stripe'
+ * @param {string} params.paymentMethod - e.g. 'card'
+ * @param {string} [params.state='initial'] - current transaction state (from process.states)
+ * @param {string} [params.unsupportedPaymentErrorMessage] - shared error message from transaction.js wrapper
+ * @returns {{ requestPaymentTransition: string, confirmPaymentTransition: string }}
+ * @throws {Error} when paymentProcessor/paymentMethod is not in supportedPayments
+ */
+export const getCheckoutPaymentTransitions = ({
+  paymentProcessor,
+  paymentMethod,
+  state = 'initial',
+  unsupportedPaymentErrorMessage,
+}) => {
+  const paymentConfig = supportedPayments[paymentProcessor]?.[paymentMethod];
+  if (!paymentConfig) {
+    const errorMessage =
+      unsupportedPaymentErrorMessage ||
+      `Unsupported payment: processor=${paymentProcessor}, method=${paymentMethod}`;
+    throw new Error(errorMessage);
+  }
+
+  const isInquiry = state === states.INQUIRY;
+
+  return {
+    requestPaymentTransition: isInquiry
+      ? transitions.REQUEST_PAYMENT_AFTER_INQUIRY
+      : transitions.REQUEST_PAYMENT,
+    confirmPaymentTransition: transitions.CONFIRM_PAYMENT,
+  };
 };
 
 // Check when transaction is completed (booking over)
@@ -224,6 +433,7 @@ export const isCompleted = transition => {
   const txCompletedTransitions = [
     transitions.COMPLETE,
     transitions.OPERATOR_COMPLETE,
+    transitions.REVIEW_BY_CUSTOMER,
     transitions.REVIEW_1_BY_CUSTOMER,
     transitions.REVIEW_1_BY_PROVIDER,
     transitions.REVIEW_2_BY_CUSTOMER,
@@ -235,6 +445,17 @@ export const isCompleted = transition => {
   return txCompletedTransitions.includes(transition);
 };
 
+/**
+ * Check if payment has expired (PAYMENT_EXPIRED state).
+ * Payment expires automatically from PENDING_PAYMENT via EXPIRE_PAYMENT transition.
+ *
+ * @param {Object} tx transaction entity
+ * @returns {boolean}
+ */
+export const hasPaymentExpired = tx => {
+  return tx?.attributes?.lastTransition === transitions.EXPIRE_PAYMENT;
+};
+
 // Check when transaction is refunded (booking did not happen)
 // In these transitions action/stripe-refund-payment is called
 export const isRefunded = transition => {
@@ -242,9 +463,19 @@ export const isRefunded = transition => {
     transitions.EXPIRE_PAYMENT,
     transitions.EXPIRE,
     transitions.CANCEL,
+    transitions.CANCEL_RESCHEDULE_REQUESTED_BY_CUSTOMER,
+    transitions.CANCEL_RESCHEDULE_REQUESTED_BY_PROVIDER,
+    transitions.CUSTOMER_CANCEL_REQUEST,
     transitions.DECLINE,
+    ...providerCancelTransitions,
   ];
   return txRefundedTransitions.includes(transition);
 };
 
-export const statesNeedingProviderAttention = [states.PREAUTHORIZED];
+export const statesNeedingProviderAttention = [
+  states.PREAUTHORIZED,
+  states.RESCHEDULE_REQUESTED_BY_CUSTOMER,
+];
+
+// The customer needs to answer the provider's reschedule request
+export const statesNeedingCustomerAttention = [states.RESCHEDULE_REQUESTED_BY_PROVIDER];

@@ -1,10 +1,11 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 
 import { pick } from '../../util/common';
-import { initiatePrivileged, transitionPrivileged } from '../../util/api';
+import { fetchLoyalty, initiatePrivileged, transitionPrivileged } from '../../util/api';
 import { denormalisedResponseEntities } from '../../util/data';
-import { storableError } from '../../util/errors';
+import { getPromoCodeErrorCode, storableError } from '../../util/errors';
 import * as log from '../../util/log';
+import { PAYMENT_METHOD_CARD } from '../../transactions/paymentMethods';
 import { setCurrentUserHasOrders, fetchCurrentUser } from '../../ducks/user.duck';
 
 import { storeData } from './CheckoutPageSessionHelpers';
@@ -23,12 +24,25 @@ const initiateOrderPayloadCreator = (
   // If we already have a transaction ID, we should transition, not initiate.
   const isTransition = !!transactionId;
 
-  const { deliveryMethod, quantity, bookingDates, ...otherOrderParams } = orderParams;
+  const {
+    deliveryMethod,
+    quantity,
+    bookingDates,
+    expectedPayinTotal,
+    promoCode,
+    useCredits,
+    ...otherOrderParams
+  } = orderParams;
   const quantityMaybe = quantity ? { stockReservationQuantity: quantity } : {};
   const bookingParamsMaybe = bookingDates || {};
 
   // Parameters only for client app's server
-  const orderData = deliveryMethod ? { deliveryMethod } : {};
+  const orderData = {
+    ...(deliveryMethod ? { deliveryMethod } : {}),
+    ...(expectedPayinTotal ? { expectedPayinTotal } : {}),
+    ...(promoCode ? { promoCode } : {}),
+    ...(useCredits ? { useCredits: true } : {}),
+  };
 
   // Parameters for Marketplace API
   const transitionParams = {
@@ -298,6 +312,8 @@ const speculateTransactionPayloadCreator = (
     priceVariantName,
     quantity,
     bookingDates,
+    promoCode,
+    useCredits,
     ...otherOrderParams
   } = orderParams;
   const quantityMaybe = quantity ? { stockReservationQuantity: quantity } : {};
@@ -307,14 +323,22 @@ const speculateTransactionPayloadCreator = (
   const orderData = {
     ...(deliveryMethod ? { deliveryMethod } : {}),
     ...(priceVariantName ? { priceVariantName } : {}),
+    ...(promoCode ? { promoCode } : {}),
+    ...(useCredits ? { useCredits: true } : {}),
   };
+
+  // Card pull speculation needs a placeholder cardToken for the Marketplace API.
+  // Push methods must omit cardToken (they use paymentMethodTypes instead).
+  const checkoutPaymentMethod =
+    orderParams.protectedData?.checkoutPaymentMethod || PAYMENT_METHOD_CARD;
+  const needsSpeculativeCardToken = checkoutPaymentMethod === PAYMENT_METHOD_CARD;
 
   // Parameters for Marketplace API
   const transitionParams = {
     ...quantityMaybe,
     ...bookingParamsMaybe,
     ...otherOrderParams,
-    cardToken: 'CheckoutPage_speculative_card_token',
+    ...(needsSpeculativeCardToken ? { cardToken: 'CheckoutPage_speculative_card_token' } : {}),
   };
 
   const bodyParams = isTransition
@@ -435,6 +459,13 @@ export const stripeCustomer = () => dispatch => {
   return dispatch(stripeCustomerThunk({}));
 };
 
+// The customer's loyalty credits, so that checkout can offer to use them (app's server, which
+// reads the balance from Firestore)
+export const fetchLoyaltyAccountThunk = createAsyncThunk('CheckoutPage/fetchLoyaltyAccount', () =>
+  // No credits at checkout while the loyalty program is off
+  fetchLoyalty().then(response => (response.enabled ? response.account : null))
+);
+
 // ================ Slice ================ //
 
 const initialState = {
@@ -450,6 +481,7 @@ const initialState = {
   stripeCustomerFetchError: null,
   initiateInquiryInProgress: false,
   initiateInquiryError: null,
+  loyaltyAccount: null,
 };
 
 const checkoutPageSlice = createSlice({
@@ -488,18 +520,29 @@ const checkoutPageSlice = createSlice({
       .addCase(speculateTransactionThunk.pending, state => {
         state.speculateTransactionInProgress = true;
         state.speculateTransactionError = null;
-        state.speculatedTransaction = null;
+        // Keep existing speculatedTransaction until the new response arrives so the checkout
+        // form stays mounted (e.g. when switching card vs iDEAL) and the price breakdown
+        // does not flash empty.
       })
       .addCase(speculateTransactionThunk.fulfilled, (state, action) => {
         state.speculateTransactionInProgress = false;
         state.speculatedTransaction = action.payload;
       })
       .addCase(speculateTransactionThunk.rejected, (state, action) => {
-        console.error(action.payload);
         state.speculateTransactionInProgress = false;
+        // A promo code that can't be used isn't a page error: the previous preview (without the
+        // code) stays, and the promo code field explains why
+        if (getPromoCodeErrorCode(action.payload)) {
+          return;
+        }
+        console.error(action.payload);
         state.speculateTransactionError = action.payload;
+        state.speculatedTransaction = null;
       })
       // Stripe Customer cases
+      .addCase(fetchLoyaltyAccountThunk.fulfilled, (state, action) => {
+        state.loyaltyAccount = action.payload;
+      })
       .addCase(stripeCustomerThunk.pending, state => {
         state.stripeCustomerFetched = false;
         state.stripeCustomerFetchError = null;

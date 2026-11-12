@@ -36,6 +36,10 @@ const passport = require('passport');
 
 const auth = require('./auth');
 const apiRouter = require('./apiRouter');
+const { startPendingPayoutsJob } = require('./services/cancellation/payouts');
+const { startBookingEventsJob } = require('./services/promoCodes/bookingEvents');
+const { isFirebaseConfigured } = require('./services/firebase');
+const { hasIntegrationCredentials } = require('./services/sharetribe/integration');
 const wellKnownRouter = require('./wellKnownRouter');
 const webmanifestResourceRoute = require('./resources/webmanifest');
 const robotsTxtRoute = require('./resources/robotsTxt');
@@ -343,12 +347,41 @@ if (cspEnabled) {
   });
 }
 
+// Background jobs, started once the server is listening and stopped on shutdown:
+// - payouts of cancelled bookings that wait for the funds to be available (partial refunds)
+// - promo code uses given back or completed when bookings change (reads Sharetribe events every
+//   15 minutes)
+let pendingPayoutsJob = null;
+let bookingEventsJob = null;
+
 const server = app.listen(PORT, () => {
   const mode = dev ? 'development' : 'production';
   console.log(`Listening to port ${PORT} in ${mode} mode`); // eslint-disable-line no-console
   if (dev) {
     console.log(`Open http://localhost:${PORT}/ and start hacking!\n`); // eslint-disable-line no-console
   }
+  if (process.env.STRIPE_SECRET_KEY) {
+    pendingPayoutsJob = startPendingPayoutsJob();
+  }
+  const hasFirebase = isFirebaseConfigured();
+  if (hasFirebase && hasIntegrationCredentials()) {
+    bookingEventsJob = startBookingEventsJob();
+  }
+  // Pastime features that need extra environment variables: say clearly what's missing
+  const missing = [
+    [!process.env.STRIPE_SECRET_KEY, 'STRIPE_SECRET_KEY (customer cancellations with refunds)'],
+    [
+      !hasFirebase,
+      'FIREBASE_SERVICE_ACCOUNT (promo codes, credits and Pastime payouts: "not available" without it)',
+    ],
+    [
+      !hasIntegrationCredentials(),
+      'SHARETRIBE_INTEGRATION_CLIENT_ID/SECRET (giving back promo code uses and credits)',
+    ],
+  ].filter(([isMissing]) => isMissing);
+  missing.forEach(([, name]) => {
+    console.warn(`Missing environment variable: ${name}`); // eslint-disable-line no-console
+  });
 });
 
 // Graceful shutdown:
@@ -356,6 +389,8 @@ const server = app.listen(PORT, () => {
 ['SIGINT', 'SIGTERM'].forEach(signal => {
   process.on(signal, () => {
     console.log('Shutting down...'); // eslint-disable-line no-console
+    clearInterval(pendingPayoutsJob);
+    clearInterval(bookingEventsJob);
     server.close(() => {
       console.log('Server shut down.'); // eslint-disable-line no-console
     });

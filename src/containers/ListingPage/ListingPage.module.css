@@ -645,6 +645,17 @@
   }
 }
 
+.sectionPolicies {
+  padding: 0 24px;
+  margin-bottom: 36px;
+  scroll-margin-top: calc(var(--topbarHeight) + 24px);
+
+  @media (--viewportMedium) {
+    padding: 0;
+    margin-bottom: 40px;
+  }
+}
+
 .sectionReviews,
 .sectionAuthor {
   padding: 0 24px;
@@ -714,7 +725,7 @@
   left: 0;
   right: 0;
   padding: 24px;
-  background-color: var(--colorWhite);
+  background-color: var(--colorPageBackground);
 
   @media (--viewportMedium) {
     position: static;

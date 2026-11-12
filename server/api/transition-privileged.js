@@ -1,5 +1,5 @@
 const sharetribeSdk = require('sharetribe-flex-sdk');
-const { transactionLineItems } = require('../api-util/lineItems');
+const { assertExpectedPayinTotal } = require('../api-util/assertExpectedPayinTotal');
 const {
   addOfferToMetadata,
   getAmountFromPreviousOffer,
@@ -9,6 +9,7 @@ const {
   isIntentionToUpdateOffer,
   throwErrorIfNegotiationOfferHasInvalidHistory,
 } = require('../api-util/negotiation');
+const { sanitizePushPaymentBodyParams } = require('../api-util/pushPaymentMethodValidation');
 const {
   createCookieTokenStore,
   getSdk,
@@ -17,10 +18,37 @@ const {
   serialize,
   fetchCommission,
 } = require('../api-util/sdk');
+const { RESCHEDULE_USER_TRANSITIONS } = require('../services/reschedule');
+const {
+  BOOKING_REQUEST_TRANSITIONS,
+  assertBookingStartAfterCutoff,
+  getPoliciesProtectedData,
+} = require('../services/policies');
+const { getProtectedDataParams } = require('../services/bookingData');
+const { CANCEL_PRIVILEGED_TRANSITIONS } = require('../services/cancellation');
+const {
+  getBookingRequestForLineItems,
+  getIncludedRelationship,
+  getProviderPayoutProtectedData,
+  getTransactionLineItems,
+} = require('../services/commission');
+const {
+  getBookingPromoCode,
+  getPromoCodeProtectedData,
+  withPromoCodeUse,
+} = require('../services/promoCodes/checkout');
+const {
+  getBookingLoyalty,
+  getLoyaltyCreditsToUse,
+  getLoyaltyProtectedData,
+  withLoyaltyCredits,
+} = require('../services/loyalty/checkout');
 
 const { Money } = sharetribeSdk.types;
 
-const transactionPromise = (sdk, id) => sdk.transactions.show({ id, include: ['listing'] });
+// The provider is included for their own commission percentage (if they have one)
+const transactionPromise = (sdk, id) =>
+  sdk.transactions.show({ id, include: ['listing', 'provider'] });
 const getListingRelationShip = transactionShowAPIData => {
   const { data, included } = transactionShowAPIData;
   const { relationships } = data;
@@ -115,7 +143,24 @@ const getUpdatedMetadata = (orderData, transition, existingMetadata) => {
 };
 
 module.exports = (req, res) => {
-  const { isSpeculative, orderData, bodyParams, queryParams } = req.body || {};
+  const { isSpeculative, orderData, bodyParams: incomingBodyParams, queryParams } = req.body || {};
+  let bodyParams;
+  try {
+    // Push payments (redirect): an example how to validate push payment method types. Unused by default.
+    bodyParams = sanitizePushPaymentBodyParams(incomingBodyParams);
+  } catch (e) {
+    return handleError(res, e, { skipErrorLogging: true });
+  }
+
+  // Reschedule transitions are validated in server/api/reschedule/reschedule.js: they can't be
+  // made through this generic endpoint, which passes the params through.
+  if (RESCHEDULE_USER_TRANSITIONS.includes(bodyParams?.transition)) {
+    return res.status(403).json({ status: 403, code: 'use-reschedule-endpoint' });
+  }
+  // Cancel transitions refund the payment: see server/api/cancel
+  if (CANCEL_PRIVILEGED_TRANSITIONS.includes(bodyParams?.transition)) {
+    return res.status(403).json({ status: 403, code: 'use-cancel-endpoint' });
+  }
 
   // Share one cookie token store so a refresh during transactions.show is reused for exchangeToken.
   const tokenStore = createCookieTokenStore(req, res);
@@ -123,13 +168,29 @@ module.exports = (req, res) => {
   const transitionName = bodyParams.transition;
   let lineItems = null;
   let metadataMaybe = {};
+  let policiesMaybe = {};
+  let promoCode = null;
+  let loyalty = null;
+  let providerId = null;
+  // A booking request after an inquiry that Pastime pays part of (or that is free) starts a new
+  // booking in that process: a transaction can't change its process
+  let newBookingRequest = null;
+  let listingRef = null;
 
   Promise.all([transactionPromise(sdk, bodyParams?.id), fetchCommission(sdk)])
-    .then(responses => {
+    .then(async responses => {
       const [showTransactionResponse, fetchAssetsResponse] = responses;
       const transaction = showTransactionResponse.data.data;
       const listing = getListingRelationShip(showTransactionResponse.data);
+      const provider = getIncludedRelationship(showTransactionResponse.data, 'provider');
       const commissionAsset = fetchAssetsResponse.data.data[0];
+      providerId = provider?.id?.uuid;
+
+      // The promo code entered at checkout (if any), for booking requests after an inquiry
+      const { processName } = transaction.attributes;
+      promoCode = await getBookingPromoCode({ orderData, providerId, transitionName, processName });
+      // The customer's loyalty credits, if they chose to use them
+      loyalty = await getBookingLoyalty({ sdk, orderData, transitionName, processName });
 
       const existingMetadata = transaction?.attributes?.metadata;
       const existingOffers = existingMetadata?.offers || [];
@@ -145,14 +206,38 @@ module.exports = (req, res) => {
       const { providerCommission, customerCommission } =
         commissionAsset?.type === 'jsonAsset' ? commissionAsset.attributes.data : {};
 
-      lineItems = transactionLineItems(
+      lineItems = getTransactionLineItems({
         listing,
-        getFullOrderData(orderData, bodyParams, currency, existingOffers),
+        orderData: getFullOrderData(orderData, bodyParams, currency, existingOffers),
         providerCommission,
-        customerCommission
-      );
+        customerCommission,
+        provider: provider,
+        promoCode,
+        loyaltyCredits: getLoyaltyCreditsToUse(loyalty, currency),
+      });
+
+      // If the client sends expectedPayinTotal (checkout payment flows), ensure it
+      assertExpectedPayinTotal(lineItems, orderData?.expectedPayinTotal);
+
+      const bookingRequest = getBookingRequestForLineItems({
+        processName,
+        transitionName,
+        lineItems,
+      });
+      if (bookingRequest && bookingRequest.paymentType !== 'standard') {
+        newBookingRequest = bookingRequest;
+        listingRef = listing.id;
+      }
 
       metadataMaybe = getUpdatedMetadata(orderData, transitionName, existingMetadata);
+      // Bookings can't start within the listing's booking cutoff (e.g. 24 hours)
+      assertBookingStartAfterCutoff({
+        listing,
+        transitionName,
+        bookingStart: bodyParams?.params?.bookingStart,
+      });
+      // A booking keeps the cancellation and rescheduling policies it was made with
+      policiesMaybe = getPoliciesProtectedData(listing, transitionName);
 
       return getTrustedSdk(req, res, tokenStore);
     })
@@ -165,22 +250,62 @@ module.exports = (req, res) => {
       //   after a provider's offer, you can add that logic in this same function.
       const roleBasedBodyParams = getRoleBasedBodyParams(orderData, bodyParams);
       // Omit listingId from params (transition/request-payment-after-inquiry does not need it)
-      const { listingId, ...restParams } = roleBasedBodyParams?.params || {};
+      // The client's protected data is only passed on through getProtectedDataParams
+      const { listingId, protectedData: clientProtectedData, ...restParams } =
+        roleBasedBodyParams?.params || {};
+      // Server-owned protected data (policies, promo code, credits) is only set here, never from
+      // the client
+      const protectedDataMaybe = getProtectedDataParams({
+        clientProtectedData,
+        serverProtectedData: {
+          ...policiesMaybe,
+          ...getPromoCodeProtectedData(promoCode, lineItems),
+          ...getLoyaltyProtectedData(loyalty, lineItems),
+          ...getProviderPayoutProtectedData(lineItems),
+        },
+        // A booking request after an inquiry: replace whatever the inquiry stored
+        replaceServerOwned: BOOKING_REQUEST_TRANSITIONS.includes(transitionName),
+      });
 
       // Add lineItems to the body params
       const body = {
         ...bodyParams,
         params: {
           ...restParams,
+          ...protectedDataMaybe,
           lineItems,
           ...metadataMaybe,
         },
       };
 
+      // A new booking in the process that matches how it's paid (the inquiry stays as it is)
+      const newBookingBody = newBookingRequest
+        ? {
+            processAlias: newBookingRequest.processAlias,
+            transition: newBookingRequest.transition,
+            params: { ...body.params, listingId: listingRef },
+          }
+        : null;
+      const makeRequest = () =>
+        newBookingBody
+          ? trustedSdk.transactions.initiate(newBookingBody, queryParams)
+          : trustedSdk.transactions.transition(body, queryParams);
+
       if (isSpeculative) {
-        return trustedSdk.transactions.transitionSpeculative(body, queryParams);
+        return newBookingBody
+          ? trustedSdk.transactions.initiateSpeculative(newBookingBody, queryParams)
+          : trustedSdk.transactions.transitionSpeculative(body, queryParams);
       }
-      return trustedSdk.transactions.transition(body, queryParams);
+      // A use of the promo code is counted only when the booking is made
+      return withPromoCodeUse(
+        {
+          promoCode,
+          lineItems,
+          isSpeculative,
+          details: { providerId, listingId: listingId?.uuid || null },
+        },
+        () => withLoyaltyCredits({ loyalty, lineItems, isSpeculative }, makeRequest)
+      );
     })
     .then(apiResponse => {
       const { status, statusText, data } = apiResponse;

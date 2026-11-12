@@ -88,6 +88,8 @@ const allowShowingExtraInfo = (showExtraInfo, transactionPartyInfo) => {
  * @param {stateDataShape} props.stateData - The state data
  * @param {boolean} props.showBookingLocation - Whether the booking location is shown
  * @param {React.ReactNode} props.activityFeed - The activity feed
+ * @param {React.ReactNode} [props.reschedule] - Rescheduling of an accepted booking
+ * @param {React.ReactNode} [props.cancellation] - Customer cancellation of a booking
  * @param {Function} props.actionButtons - The action buttons function
  * @param {React.ReactNode} props.orderBreakdown - The order breakdown
  * @param {React.ReactNode} props.orderPanel - The order panel
@@ -121,6 +123,8 @@ export class TransactionPanelComponent extends Component {
       requestQuote,
       offer,
       fileAttachments,
+      reschedule,
+      cancellation,
       activityFeed,
       actionButtons,
       isInquiryProcess,
@@ -231,6 +235,8 @@ export class TransactionPanelComponent extends Component {
             {offer}
             {transactionFieldsComponent}
             {fileAttachments}
+            {reschedule}
+            {cancellation}
 
             {!isInquiryProcess ? (
               <div className={css.orderDetails}>

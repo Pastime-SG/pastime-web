@@ -2,6 +2,11 @@
 
 .root {
   border-top: 1px solid var(--colorGrey100);
+  background-color: var(--colorPageBackground);
+
+  /* All footer text in Instrument Sans (the logo is an image) */
+  --fontFamily: var(--fontFamilyInstrumentSans);
+  font-family: var(--fontFamily);
 }
 
 .footer {

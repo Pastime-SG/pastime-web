@@ -4,6 +4,10 @@ import { isEmpty } from '../../util/common';
 import { pickUserFieldsData, addScopePrefix } from '../../util/userHelpers';
 import { pickReferralData } from '../../util/webStorageHelpers';
 
+// When a studio accepted the studio terms at signup (see StudioTerms/StudioTermsField)
+const getStudioTermsAcceptance = accepted =>
+  accepted === true ? { studioTermsAcceptedAt: new Date().toISOString() } : {};
+
 // Returns full userType config based on selected userType
 const getUserTypeConfig = (userType, userTypes) => {
   return userTypes.find(config => {
@@ -81,12 +85,24 @@ export const getExtendedDataMaybe = (submitValues, userType, userFields, extraDa
  * @returns {(values: Object) => void}
  */
 export const getHandleSubmitSignup = ({ submitSignup, userFields, userTypes }) => values => {
-  const { userType, email, password, fname, lname, displayName, ...rest } = values;
+  const {
+    userType,
+    email,
+    password,
+    fname,
+    lname,
+    displayName,
+    studioTermsAccepted,
+    ...rest
+  } = values;
   const displayNameMaybe = displayName ? { displayName: displayName.trim() } : {};
 
   // Set referral to user private data if it exists and is valid
   const userTypeConfig = getUserTypeConfig(userType, userTypes);
-  const extraPrivateData = pickReferralData(userTypeConfig);
+  const extraPrivateData = {
+    ...pickReferralData(userTypeConfig),
+    ...getStudioTermsAcceptance(studioTermsAccepted),
+  };
 
   const submitParams = {
     email,
@@ -126,6 +142,7 @@ export const getHandleSubmitConfirm = ({
     firstName: newFirstName,
     lastName: newLastName,
     displayName,
+    studioTermsAccepted,
     ...rest
   } = values;
 
@@ -141,7 +158,10 @@ export const getHandleSubmitConfirm = ({
 
   // Set referral to user private data if it exists and is valid
   const userTypeConfig = getUserTypeConfig(userType, userTypes);
-  const extraPrivateData = pickReferralData(userTypeConfig);
+  const extraPrivateData = {
+    ...pickReferralData(userTypeConfig),
+    ...getStudioTermsAcceptance(studioTermsAccepted),
+  };
 
   // Pass other values as extended data according to user field configuration
   const extendedDataMaybe = getExtendedDataMaybe(rest, userType, userFields, {

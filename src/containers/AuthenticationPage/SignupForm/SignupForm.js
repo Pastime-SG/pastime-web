@@ -45,6 +45,7 @@ const SignupFormComponent = props => (
         invalid,
         intl,
         termsAndConditions,
+        studioTermsField,
         preselectedUserType,
         userTypes,
         userFields,
@@ -216,6 +217,8 @@ const SignupFormComponent = props => (
           ) : null}
 
           <div className={css.bottomWrapper}>
+            {/* Studios accept the studio terms too */}
+            {userTypeConfig?.roles?.provider || userType === 'provider' ? studioTermsField : null}
             {termsAndConditions}
             {isPasswordUsedMoreThanOnce(values) ? (
               <div className={css.error}>

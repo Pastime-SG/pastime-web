@@ -1,0 +1,1 @@
+{{set-translations (asset "content/email-texts.json")}}{{t "BookingExpiredRequestProvider.Subject" "A booking request for {listingTitle} expired" listingTitle=transaction.listing.title }}

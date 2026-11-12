@@ -6,6 +6,13 @@ import { LINE_ITEMS, propTypes } from '../../util/types';
 
 import css from './OrderBreakdown.module.css';
 
+const PASTIME_LINE_ITEM_LABELS = {
+  'line-item/promo-discount': 'OrderBreakdown.promoDiscount',
+  'line-item/loyalty-credit': 'OrderBreakdown.loyaltyCredit',
+  // A remainder below Stripe's minimum charge (S$0.50), covered by Pastime
+  'line-item/platform-covered': 'OrderBreakdown.platformCovered',
+};
+
 /**
  * Renders non-reversal line items that are not listed in the
  * `LINE_ITEMS` array in util/types.js
@@ -39,10 +46,13 @@ const LineItemUnknownItemsMaybe = props => {
       {items.map((item, i) => {
         const quantity = item.quantity;
 
-        const label =
-          quantity && quantity > 1
-            ? `${humanizeLineItemCode(item.code)} x ${quantity}`
-            : humanizeLineItemCode(item.code);
+        // Pastime's promo code discount and loyalty credits (see server/services/commission)
+        // have their own labels
+        const labelId = PASTIME_LINE_ITEM_LABELS[item.code];
+        const name = labelId
+          ? intl.formatMessage({ id: labelId })
+          : humanizeLineItemCode(item.code);
+        const label = quantity && quantity > 1 ? `${name} x ${quantity}` : name;
 
         const formattedTotal = formatMoney(intl, item.lineTotal);
         return (
