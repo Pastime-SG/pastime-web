@@ -9,6 +9,7 @@ const {
   isIntentionToUpdateOffer,
   throwErrorIfNegotiationOfferHasInvalidHistory,
 } = require('../api-util/negotiation');
+const { sanitizePushPaymentBodyParams } = require('../api-util/pushPaymentMethodValidation');
 const {
   createCookieTokenStore,
   getSdk,
@@ -142,7 +143,14 @@ const getUpdatedMetadata = (orderData, transition, existingMetadata) => {
 };
 
 module.exports = (req, res) => {
-  const { isSpeculative, orderData, bodyParams, queryParams } = req.body || {};
+  const { isSpeculative, orderData, bodyParams: incomingBodyParams, queryParams } = req.body || {};
+  let bodyParams;
+  try {
+    // Push payments (redirect): an example how to validate push payment method types. Unused by default.
+    bodyParams = sanitizePushPaymentBodyParams(incomingBodyParams);
+  } catch (e) {
+    return handleError(res, e, { skipErrorLogging: true });
+  }
 
   // Reschedule transitions are validated in server/api/reschedule/reschedule.js: they can't be
   // made through this generic endpoint, which passes the params through.

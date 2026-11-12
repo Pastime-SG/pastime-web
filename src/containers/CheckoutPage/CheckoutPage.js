@@ -18,7 +18,11 @@ import { requireListingImage } from '../../util/configHelpers';
 
 // Import global thunk functions
 import { isScrollingDisabled } from '../../ducks/ui.duck';
-import { confirmCardPayment, retrievePaymentIntent } from '../../ducks/stripe.duck';
+import {
+  confirmCardPayment,
+  confirmRedirectPayment,
+  retrievePaymentIntent,
+} from '../../ducks/stripe.duck';
 import { savePaymentMethod } from '../../ducks/paymentMethods.duck';
 
 // Import shared components
@@ -43,10 +47,12 @@ import CheckoutPageWithPayment, {
   loadInitialDataForStripePayments,
 } from './CheckoutPageWithPayment';
 import CheckoutPageWithInquiryProcess from './CheckoutPageWithInquiryProcess';
+import CheckoutPageRedirectReturn from './CheckoutPageRedirectReturn/CheckoutPageRedirectReturn';
 import CheckoutPageAccessWrapper from './CheckoutPageAccessWrapper';
 import css from './CheckoutPage.module.css';
 
 const STORAGE_KEY = 'CheckoutPage';
+export const CHECKOUT_MODE_RETURN_AFTER_REDIRECT = 'return-after-redirect';
 
 const onSubmitCallback = () => {
   clearData(STORAGE_KEY);
@@ -69,6 +75,7 @@ const CheckoutPageComponent = props => {
     params,
     scrollingDisabled,
     speculateTransactionInProgress,
+    speculatedTransaction,
     onInquiryWithoutPayment,
     initiateOrderError,
     pageData,
@@ -76,11 +83,15 @@ const CheckoutPageComponent = props => {
     isDataLoaded,
     config,
     processName,
+    mode,
   } = props;
 
   const routeConfiguration = useRouteConfiguration();
   const intl = useIntl();
   const isInquiryProcess = processName === INQUIRY_PROCESS_NAME;
+  const isReturnAfterRedirect = mode === CHECKOUT_MODE_RETURN_AFTER_REDIRECT;
+  const hasSpeculatedTransactionForRender =
+    !speculateTransactionInProgress || speculatedTransaction?.id;
 
   // Handle redirection to ListingPage if required data is not available
   const listing = pageData?.listing;
@@ -121,10 +132,12 @@ const CheckoutPageComponent = props => {
       transactionFieldConfigs={transactionFieldConfigs}
       {...props}
     />
+  ) : isReturnAfterRedirect ? (
+    <CheckoutPageRedirectReturn {...props} />
   ) : processName &&
     !isInquiryProcess &&
     // The page stays while a promo code is applied (the price preview is fetched again)
-    (!speculateTransactionInProgress || pageData?.isUpdatingPrice) ? (
+    (hasSpeculatedTransactionForRender || pageData?.isUpdatingPrice) ? (
     <CheckoutPageWithPayment
       config={config}
       routeConfiguration={routeConfiguration}
@@ -159,6 +172,7 @@ const CheckoutPageComponent = props => {
  * @returns {JSX.Element}
  */
 const CheckoutPage = props => {
+  const { mode } = props;
   const dispatch = useDispatch();
   const history = useHistory();
   const config = useConfiguration();
@@ -167,6 +181,7 @@ const CheckoutPage = props => {
   const [isDataLoaded, setIsDataLoaded] = useState(false);
 
   const processName = getProcessName(pageData);
+  const isReturnAfterRedirect = mode === CHECKOUT_MODE_RETURN_AFTER_REDIRECT;
 
   const {
     listing,
@@ -211,6 +226,11 @@ const CheckoutPage = props => {
   const onConfirmCardPayment = useCallback(params => dispatch(confirmCardPayment(params)), [
     dispatch,
   ]);
+  // Push payments (redirect): an example how to confirm redirect payment method via Stripe SDK. Unused by default.
+  const onConfirmRedirectPayment = useCallback(params => dispatch(confirmRedirectPayment(params)), [
+    dispatch,
+  ]);
+
   const onConfirmPayment = useCallback(
     (transactionId, transitionName, transitionParams) =>
       dispatch(confirmPayment(transactionId, transitionName, transitionParams)),
@@ -230,7 +250,8 @@ const CheckoutPage = props => {
     setIsDataLoaded(true);
 
     // Do not fetch extra data if user is not active (E.g. they are in pending-approval state.)
-    if (isUserAuthorized(currentUser)) {
+    // Return-after-redirect only resumes confirm — do not speculate or fetch StripeCustomer.
+    if (isUserAuthorized(currentUser) && !isReturnAfterRedirect) {
       // This is for processes using payments with Stripe integration
       // Inquiry process has no payment transitions; skip speculate/Stripe customer fetch.
       if (getProcessName(data) !== INQUIRY_PROCESS_NAME) {
@@ -275,6 +296,7 @@ const CheckoutPage = props => {
       onInitiateOrder={onInitiateOrder}
       onRetrievePaymentIntent={onRetrievePaymentIntent}
       onConfirmCardPayment={onConfirmCardPayment}
+      onConfirmRedirectPayment={onConfirmRedirectPayment}
       onConfirmPayment={onConfirmPayment}
       onFetchTransaction={onFetchTransaction}
       onSavePaymentMethod={onSavePaymentMethod}

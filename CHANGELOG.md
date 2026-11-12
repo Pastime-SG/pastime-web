@@ -14,6 +14,21 @@ way to update this template, but currently, we follow a pattern:
 
 ## Upcoming version 2026-XX-XX
 
+## [v12.7.0] 2026-11-10
+
+- [change] Refactor checkout flow.
+
+  - Move payment-related transaction info closer to transaction process. (transactionProcess\*.js
+    files must export supportedPayments info.)
+  - Move transitions needed on the checkout page to the process files
+  - hasPaymentExpired function was moved to the process files
+  - Rename: SavedCardDetails => PaymentMethodPicker
+  - Make it easier to add support for additional payment methods, but this does not enable any push
+    methods. This drafts a partial flow to make it easier to add support.
+
+  [#904](https://github.com/sharetribe/web-template/pull/904)
+
+- [change] Update README [#977](https://github.com/sharetribe/web-template/pull/977)
 - [add] Add currently available translations.
   [#975](https://github.com/sharetribe/web-template/pull/975)
 - [add] Add a CircleCI job to check that translations are sorted alphabetically.
@@ -32,6 +47,8 @@ way to update this template, but currently, we follow a pattern:
   [#970](https://github.com/sharetribe/web-template/pull/970)
 - [change] Update webpack and webpack-dev-server.
   [#969](https://github.com/sharetribe/web-template/pull/969)
+
+  [v12.7.0]: https://github.com/sharetribe/web-template/compare/v12.6.0...v12.7.0
 
 ## [v12.6.0] 2026-10-26
 

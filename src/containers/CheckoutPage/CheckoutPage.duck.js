@@ -5,6 +5,7 @@ import { fetchLoyalty, initiatePrivileged, transitionPrivileged } from '../../ut
 import { denormalisedResponseEntities } from '../../util/data';
 import { getPromoCodeErrorCode, storableError } from '../../util/errors';
 import * as log from '../../util/log';
+import { PAYMENT_METHOD_CARD } from '../../transactions/paymentMethods';
 import { setCurrentUserHasOrders, fetchCurrentUser } from '../../ducks/user.duck';
 
 import { storeData } from './CheckoutPageSessionHelpers';
@@ -326,12 +327,18 @@ const speculateTransactionPayloadCreator = (
     ...(useCredits ? { useCredits: true } : {}),
   };
 
+  // Card pull speculation needs a placeholder cardToken for the Marketplace API.
+  // Push methods must omit cardToken (they use paymentMethodTypes instead).
+  const checkoutPaymentMethod =
+    orderParams.protectedData?.checkoutPaymentMethod || PAYMENT_METHOD_CARD;
+  const needsSpeculativeCardToken = checkoutPaymentMethod === PAYMENT_METHOD_CARD;
+
   // Parameters for Marketplace API
   const transitionParams = {
     ...quantityMaybe,
     ...bookingParamsMaybe,
     ...otherOrderParams,
-    cardToken: 'CheckoutPage_speculative_card_token',
+    ...(needsSpeculativeCardToken ? { cardToken: 'CheckoutPage_speculative_card_token' } : {}),
   };
 
   const bodyParams = isTransition
@@ -513,8 +520,9 @@ const checkoutPageSlice = createSlice({
       .addCase(speculateTransactionThunk.pending, state => {
         state.speculateTransactionInProgress = true;
         state.speculateTransactionError = null;
-        // The previous preview stays until the new one arrives (e.g. when a promo code is
-        // applied), so that the price breakdown doesn't disappear meanwhile
+        // Keep existing speculatedTransaction until the new response arrives so the checkout
+        // form stays mounted (e.g. when switching card vs iDEAL) and the price breakdown
+        // does not flash empty.
       })
       .addCase(speculateTransactionThunk.fulfilled, (state, action) => {
         state.speculateTransactionInProgress = false;
