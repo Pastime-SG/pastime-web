@@ -107,7 +107,7 @@ export const ListingCard = props => {
     listing,
     renderSizes,
     setActiveListing,
-    showAuthorInfo = true,
+    showAuthorInfo = false,
     lazyLoadImage = true,
   } = props;
 
