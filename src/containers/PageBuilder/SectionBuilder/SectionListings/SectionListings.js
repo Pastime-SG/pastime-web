@@ -137,7 +137,6 @@ const calculateCarouselHeight = (
   const paddingHorizontal = 2 * 32; // 2x32px
   // Listing card body (see ListingCard.module.css): the same on mobile and desktop
   const cardInfoPadding = 12 + 12; // padding-top + padding-bottom
-  const authorInfoHeight = 18 + 2; // line height + gap
   const titleHeight = 22 * 2; // always 2 lines
   const priceHeight = 8 + 28; // padding-top + price pill
   const cardBorder = 1 + 1;
@@ -153,8 +152,7 @@ const calculateCarouselHeight = (
   const cardWidth =
     (mainColumnWidth - paddingHorizontal - gutters) / (isMobileBreakpoint ? 1 : numColumns);
   const cardImageHeight = cardWidth / parsedAspectRatio;
-  const cardInfoHeight =
-    cardInfoPadding + authorInfoHeight + titleHeight + priceHeight + cardBorder;
+  const cardInfoHeight = cardInfoPadding + titleHeight + priceHeight + cardBorder;
 
   const totalCardHeight = cardImageHeight + cardInfoHeight;
   const totalWithPaddings = totalCardHeight + containerPaddingTop + containerPaddingBottom;
