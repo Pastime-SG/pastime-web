@@ -1744,7 +1744,7 @@
   "PromoCodeForm.discountPercentage": "Prozent",
   "PromoCodeForm.discountFixed": "Fester Betrag",
   "PromoCodeForm.percentageLabel": "Rabatt (%)",
-  "PromoCodeForm.percentageInvalid": "Gib eine ganze Zahl von 1 bis 100 ein",
+  "PromoCodeForm.percentageInvalid": "Gib eine ganze Zahl von 1 bis {max} ein",
   "PromoCodeForm.amountLabel": "Rabattbetrag",
   "PromoCodeForm.amountRequired": "Gib einen Betrag ein",
   "PromoCodeForm.discountLocked": "Dieser Code wurde bereits genutzt: Sein Rabatt kann nicht geändert werden.",

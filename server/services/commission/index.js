@@ -24,8 +24,10 @@ const { Money } = types;
  *
  * Promo codes (see server/services/promoCodes) add a discount line item:
  *  - A merchant's code lowers the price for the customer and the provider's payout. The commission
- *    is taken from the amount before GST, net of the discount: $50 with 10% off is $45, which is
- *    $41.28 before GST, so a 10% commission is $4.13 and the provider is paid $40.87.
+ *    is still taken from the original price before GST: $50 with 10% off is $45, and a 10%
+ *    commission of $45.87 (the $50 before GST) is $4.59, so the provider is paid $40.41. The
+ *    commission is at most the discounted price (the payout can't be negative); merchant codes are
+ *    at most 80% off (see server/services/promoCodes), so this only matters for fixed amounts.
  *  - An admin's (marketplace-wide) code is paid by the marketplace: only the customer's price is
  *    lowered (up to the whole price), and the provider is still paid in full.
  *
@@ -128,35 +130,35 @@ const isOrderItem = item =>
  *
  * @param {Object} item Provider commission line item from transactionLineItems
  * @param {Object} [commission] The provider commission used (percentage, minimum_amount)
- * @param {number} [baseAmount] The amount (with GST) the commission is taken from, if not the
- * line item's (e.g. the order total net of a merchant's discount)
+ * @param {number} [maxAmount] The most the commission can be (e.g. the order total net of a
+ * merchant's discount, so the provider's payout isn't negative)
  * @returns {Object} Line item
  */
-const getCommissionBeforeGst = (item, commission, baseAmount) => {
+const getCommissionBeforeGst = (item, commission, maxAmount) => {
+  const { currency } = item.unitPrice;
+  const fixedCommission = amount => ({
+    code: PROVIDER_COMMISSION,
+    unitPrice: new Money(amount, currency),
+    quantity: -1,
+    includeFor: ['provider'],
+  });
+  const maximum = maxAmount != null ? Math.max(maxAmount, 0) : null;
   // A minimum commission is used already: it's more than the percentage of the total with GST,
   // so it's also more than the percentage of the amount before GST
-  // (at most the amount it's taken from, e.g. 0 after a merchant's 100% discount)
   if (item.percentage == null) {
-    const maximum = baseAmount != null ? Math.max(baseAmount, 0) : item.unitPrice.amount;
-    return item.unitPrice.amount > maximum
-      ? { ...item, unitPrice: new Money(maximum, item.unitPrice.currency) }
+    return maximum != null && item.unitPrice.amount > maximum
+      ? { ...item, unitPrice: new Money(maximum, currency) }
       : item;
   }
-  const { currency } = item.unitPrice;
-  const base = getAmountBeforeGst(baseAmount != null ? baseAmount : item.unitPrice.amount);
+  const base = getAmountBeforeGst(item.unitPrice.amount);
   const commissionFromPercentage = (base * Math.abs(item.percentage)) / 100;
-  // The minimum commission is at most the amount it's taken from (e.g. 0 after a 100% discount)
-  const minimum = Math.min(
-    commission?.minimum_amount || 0,
-    baseAmount != null ? baseAmount : item.unitPrice.amount
-  );
-  return minimum > commissionFromPercentage
-    ? {
-        code: PROVIDER_COMMISSION,
-        unitPrice: new Money(minimum, currency),
-        quantity: -1,
-        includeFor: ['provider'],
-      }
+  const upTo = maximum != null ? maximum : item.unitPrice.amount;
+  const minimum = Math.min(commission?.minimum_amount || 0, upTo);
+  if (minimum > commissionFromPercentage) {
+    return fixedCommission(minimum);
+  }
+  return maximum != null && commissionFromPercentage > maximum
+    ? fixedCommission(maximum)
     : { ...item, unitPrice: new Money(base, currency) };
 };
 
@@ -190,11 +192,12 @@ const getTransactionLineItems = ({
   const discount = promoCode ? getPromoCodeDiscount(promoCode, orderTotal) : 0;
   const isMerchantDiscount = promoCode?.createdBy === CREATED_BY_MERCHANT;
 
-  // A merchant's discount lowers the amount the commission is taken from
-  const commissionBase = isMerchantDiscount ? orderTotal.amount - discount : undefined;
+  // The commission is taken from the original price, but with a merchant's discount it's at most
+  // the discounted price
+  const maxCommission = isMerchantDiscount ? orderTotal.amount - discount : undefined;
   const withCommission = lineItems.map(item =>
     item.code === PROVIDER_COMMISSION
-      ? getCommissionBeforeGst(item, commission, commissionBase)
+      ? getCommissionBeforeGst(item, commission, maxCommission)
       : item
   );
   const currency = orderTotal.currency;

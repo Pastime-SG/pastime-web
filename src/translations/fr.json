@@ -1761,7 +1761,7 @@
   "PromoCodeForm.discountPercentage": "Pourcentage",
   "PromoCodeForm.discountFixed": "Montant fixe",
   "PromoCodeForm.percentageLabel": "Réduction (%)",
-  "PromoCodeForm.percentageInvalid": "Saisissez un nombre entier de 1 à 100",
+  "PromoCodeForm.percentageInvalid": "Saisissez un nombre entier de 1 à {max}",
   "PromoCodeForm.amountLabel": "Montant de la réduction",
   "PromoCodeForm.amountRequired": "Saisissez un montant",
   "PromoCodeForm.discountLocked": "Ce code a déjà été utilisé : sa réduction ne peut pas être modifiée.",

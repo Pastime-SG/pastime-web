@@ -24,7 +24,11 @@ import {
 import TopbarContainer from '../../containers/TopbarContainer/TopbarContainer';
 import FooterContainer from '../../containers/FooterContainer/FooterContainer';
 
-import PromoCodeForm, { DISCOUNT_FIXED, DISCOUNT_PERCENTAGE } from './PromoCodeForm/PromoCodeForm';
+import PromoCodeForm, {
+  DISCOUNT_FIXED,
+  DISCOUNT_PERCENTAGE,
+  MERCHANT_MAX_PERCENTAGE,
+} from './PromoCodeForm/PromoCodeForm';
 import {
   clearSaveError,
   createPromoCodeThunk,
@@ -756,6 +760,7 @@ const PromoCodesPage = () => {
                 isEdit={isEdit}
                 isUsed={modalCode.usesCount > 0}
                 marketplaceCurrency={config.currency}
+                maxPercentage={showAdminView ? 100 : MERCHANT_MAX_PERCENTAGE}
                 inProgress={saveInProgress}
                 errorMessage={getErrorMessage(intl, saveError)}
               />
