@@ -10,7 +10,7 @@ const { assertMerchantCodesEnabled, getPromoCodeSettings } = require('./settings
  *     providerId: '<user id>' | null,   // merchant codes apply to that merchant's listings
  *     createdById: '<user id>' | null,  // the admin who created an admin code
  *     discountType: 'percentage' | 'fixed',
- *     percentage: 10,                   // percentage codes (1-100)
+ *     percentage: 10,                   // percentage codes (1-100; merchant codes 1-80)
  *     amount: 500, currency: 'SGD',     // fixed codes, in minor units
  *     maxUses: 100 | null,              // null: unlimited
  *     usesCount: 0,                     // increased when a booking uses the code
@@ -32,6 +32,10 @@ const CREATED_BY_MERCHANT = 'merchant';
 const CREATED_BY_ADMIN = 'admin';
 const DISCOUNT_PERCENTAGE = 'percentage';
 const DISCOUNT_FIXED = 'fixed';
+// Merchant codes can be at most 80% off (Pastime's business rule): the provider commission is
+// taken from the original price (see server/services/commission), so a bigger discount could
+// leave less than the commission to pay it from
+const MERCHANT_MAX_PERCENTAGE = 80;
 
 const CODE_PATTERN = /^[A-Z0-9_-]{3,20}$/;
 const CURRENCY_PATTERN = /^[A-Z]{3}$/;
@@ -80,10 +84,14 @@ const promoCodeRef = (db, id) => {
  * @param {Object} input From the web app
  * @param {Object} [options]
  * @param {boolean} [options.isNew] Validate the code too (it can't be changed later)
+ * @param {number} [options.maxPercentage] Highest percentage allowed (100 for admins)
  * @param {Date} [options.now]
  * @returns {Object} Values to store (without timestamps and ownership)
  */
-const validatePromoCodeInput = (input, { isNew = false, now = new Date() } = {}) => {
+const validatePromoCodeInput = (
+  input,
+  { isNew = false, maxPercentage = 100, now = new Date() } = {}
+) => {
   const {
     code,
     discountType,
@@ -105,7 +113,7 @@ const validatePromoCodeInput = (input, { isNew = false, now = new Date() } = {})
   }
 
   if (discountType === DISCOUNT_PERCENTAGE) {
-    if (!isWholeNumber(percentage, 1, 100)) {
+    if (!isWholeNumber(percentage, 1, maxPercentage)) {
       throw promoCodeError(400, 'invalid-percentage');
     }
     Object.assign(values, { discountType, percentage, amount: null, currency: null });
@@ -176,6 +184,7 @@ const serializePromoCode = doc => {
 const merchantOwner = (providerId, providerName = null) => ({
   collection: COLLECTION,
   docId: code => merchantCodeId(providerId, code),
+  maxPercentage: MERCHANT_MAX_PERCENTAGE,
   // The studio's name is stored for the admin view (names can't be looked up without extra
   // Sharetribe calls)
   fields: {
@@ -197,6 +206,7 @@ const allMerchantsOwner = () => ({
   docId: () => {
     throw new Error('Admins create marketplace codes, not studio codes');
   },
+  maxPercentage: MERCHANT_MAX_PERCENTAGE,
   fields: {},
   owns: data => data.createdBy === CREATED_BY_MERCHANT,
   list: collection => collection.where('createdBy', '==', CREATED_BY_MERCHANT).get(),
@@ -218,7 +228,10 @@ const listPromoCodes = async owner => {
 
 // Create a promo code. Fails with 409 'code-exists' if the owner has it already.
 const createPromoCode = async (owner, input) => {
-  const values = validatePromoCodeInput(input, { isNew: true });
+  const values = validatePromoCodeInput(input, {
+    isNew: true,
+    maxPercentage: owner.maxPercentage,
+  });
   const ref = getFirestore()
     .collection(owner.collection)
     .doc(owner.docId(values.code));
@@ -261,7 +274,7 @@ const getOwnPromoCodeRef = async (owner, id) => {
 const updatePromoCode = async (owner, id, input) => {
   const { ref, data } = await getOwnPromoCodeRef(owner, id);
   const usesCount = data.usesCount || 0;
-  const values = validatePromoCodeInput(input);
+  const values = validatePromoCodeInput(input, { maxPercentage: owner.maxPercentage });
   const changesDiscount =
     values.discountType !== data.discountType ||
     values.percentage !== (data.percentage ?? null) ||
@@ -732,6 +745,7 @@ module.exports = {
   setPromoCodeSyncPosition,
   listMerchantPromoCodeLedger,
   CREATED_BY_MERCHANT,
+  MERCHANT_MAX_PERCENTAGE,
   DISCOUNT_FIXED,
   DISCOUNT_PERCENTAGE,
   confirmPromoCodeUse,

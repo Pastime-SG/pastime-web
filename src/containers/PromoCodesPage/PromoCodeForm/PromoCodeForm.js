@@ -20,6 +20,8 @@ import css from './PromoCodeForm.module.css';
 
 export const DISCOUNT_PERCENTAGE = 'percentage';
 export const DISCOUNT_FIXED = 'fixed';
+// Same rule as the server: studio codes can be at most 80% off
+export const MERCHANT_MAX_PERCENTAGE = 80;
 
 // Same rule as the server: 3-20 letters, numbers, dashes or underscores
 const CODE_PATTERN = /^[A-Za-z0-9_-]{3,20}$/;
@@ -35,7 +37,8 @@ const wholeNumberBetween = (message, min, max) => value => {
   return isValid ? undefined : message;
 };
 
-const optional = validator => value => (value === '' || value == null ? undefined : validator(value));
+const optional = validator => value =>
+  value === '' || value == null ? undefined : validator(value);
 
 /**
  * Form for creating or editing a promo code. The code can't be changed after it's created, and
@@ -50,6 +53,7 @@ const optional = validator => value => (value === '' || value == null ? undefine
  * @param {boolean} props.isEdit
  * @param {boolean} props.isUsed The code has been used: the discount can't be changed
  * @param {string} props.marketplaceCurrency
+ * @param {number} [props.maxPercentage] Highest percentage allowed (80 for studios, 100 for admins)
  * @param {boolean} props.inProgress
  * @param {string} [props.errorMessage]
  * @returns {JSX.Element}
@@ -68,6 +72,7 @@ const PromoCodeForm = props => (
         isEdit,
         isUsed,
         marketplaceCurrency,
+        maxPercentage = MERCHANT_MAX_PERCENTAGE,
         inProgress,
         errorMessage,
       } = formRenderProps;
@@ -125,13 +130,16 @@ const PromoCodeForm = props => (
                 name="percentage"
                 type="number"
                 min="1"
-                max="100"
+                max={maxPercentage}
                 step="1"
                 label={intl.formatMessage({ id: 'PromoCodeForm.percentageLabel' })}
                 validate={wholeNumberBetween(
-                  intl.formatMessage({ id: 'PromoCodeForm.percentageInvalid' }),
+                  intl.formatMessage(
+                    { id: 'PromoCodeForm.percentageInvalid' },
+                    { max: maxPercentage }
+                  ),
                   1,
-                  100
+                  maxPercentage
                 )}
               />
             ) : (

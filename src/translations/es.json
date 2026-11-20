@@ -1761,7 +1761,7 @@
   "PromoCodeForm.discountPercentage": "Porcentaje",
   "PromoCodeForm.discountFixed": "Importe fijo",
   "PromoCodeForm.percentageLabel": "Descuento (%)",
-  "PromoCodeForm.percentageInvalid": "Introduce un número entero de 1 a 100",
+  "PromoCodeForm.percentageInvalid": "Introduce un número entero de 1 a {max}",
   "PromoCodeForm.amountLabel": "Importe del descuento",
   "PromoCodeForm.amountRequired": "Introduce un importe",
   "PromoCodeForm.discountLocked": "Este código ya se ha usado: no se puede cambiar su descuento.",

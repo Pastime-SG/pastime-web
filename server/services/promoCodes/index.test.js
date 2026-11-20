@@ -140,6 +140,20 @@ describe('promo codes', () => {
       invalid({ ...percentageCode, maxUses: 0 }, 'invalid-max-uses');
       invalid({ ...percentageCode, expiresAt: '2000-01-01T00:00:00Z' }, 'invalid-expiry');
     });
+
+    it('limits the percentage to the given maximum (80% for studio codes)', () => {
+      const withMax = percentage =>
+        validatePromoCodeInput({ ...percentageCode, percentage }, { maxPercentage: 80 });
+      expect(withMax(80).percentage).toBe(80);
+      expect(() => withMax(81)).toThrow('invalid-percentage');
+      expect(validatePromoCodeInput({ ...percentageCode, percentage: 100 }).percentage).toBe(100);
+    });
+  });
+
+  it('refuses studio codes above 80% off', async () => {
+    await expect(
+      createMerchantPromoCode('provider-1', { ...percentageCode, percentage: 81 })
+    ).rejects.toThrow('invalid-percentage');
   });
 
   it("creates, lists and deletes a merchant's codes", async () => {

@@ -138,17 +138,42 @@ describe('promo code discounts', () => {
       .reduce((sum, item) => sum + item.lineTotal.amount, 0);
   const lineTotal = (lineItems, code) => lineItems.find(i => i.code === code)?.lineTotal.amount;
 
-  it("takes a merchant's discount from the price and the payout, commission from the net pre-GST amount", () => {
-    // $50, 10% off: $45, $41.28 before GST, 10% commission $4.13, merchant gets $40.87
+  it("takes a merchant's discount from the price and the payout, commission from the original pre-GST price", () => {
+    // $50, 10% off: $45; 10% commission of $45.87 ($50 before GST) is $4.59, merchant gets $40.41
     const lineItems = lineItemsWith({
       createdBy: 'merchant',
       discountType: 'percentage',
       percentage: 10,
     });
     expect(lineTotal(lineItems, 'line-item/promo-discount')).toBe(-500);
-    expect(lineTotal(lineItems, 'line-item/provider-commission')).toBe(-413);
+    expect(lineTotal(lineItems, 'line-item/provider-commission')).toBe(-459);
     expect(totalFor(lineItems, 'customer')).toBe(4500);
-    expect(totalFor(lineItems, 'provider')).toBe(4087);
+    expect(totalFor(lineItems, 'provider')).toBe(4041);
+  });
+
+  it("keeps the commission at most the price after a merchant's fixed discount", () => {
+    // $48 off $50: the customer pays $2, so the commission is $2 (not $4.59) and the payout $0
+    const lineItems = lineItemsWith({
+      createdBy: 'merchant',
+      discountType: 'fixed',
+      amount: 4800,
+      currency: 'SGD',
+    });
+    expect(totalFor(lineItems, 'customer')).toBe(200);
+    expect(lineTotal(lineItems, 'line-item/provider-commission')).toBe(-200);
+    expect(totalFor(lineItems, 'provider')).toBe(0);
+  });
+
+  it("takes the commission from the original price at a merchant's 80% discount", () => {
+    // $50, 80% off: the customer pays $10, commission $4.59, merchant gets $5.41
+    const lineItems = lineItemsWith({
+      createdBy: 'merchant',
+      discountType: 'percentage',
+      percentage: 80,
+    });
+    expect(totalFor(lineItems, 'customer')).toBe(1000);
+    expect(lineTotal(lineItems, 'line-item/provider-commission')).toBe(-459);
+    expect(totalFor(lineItems, 'provider')).toBe(541);
   });
 
   const { getPaymentPlan } = require('./index');
@@ -287,12 +312,12 @@ describe('promo code discounts', () => {
     });
 
     it("come on top of a merchant's discount; the provider gets the discounted payout", () => {
-      // $45 after 10% off: commission $4.13, provider $40.87
+      // $45 after 10% off: commission $4.59, provider $40.41
       const lineItems = lineItemsWith(merchantCode, undefined, 1000);
       expect(lineTotal(lineItems, 'line-item/loyalty-credit')).toBe(-1000);
       expect(totalFor(lineItems, 'customer')).toBe(3500);
-      expect(getPaymentPlan(lineItems).providerPayout).toBe(4087);
-      expect(getPaymentPlan(lineItems).platformFunded).toBe(587);
+      expect(getPaymentPlan(lineItems).providerPayout).toBe(4041);
+      expect(getPaymentPlan(lineItems).platformFunded).toBe(541);
     });
 
     it("add up with an admin's discount", () => {
