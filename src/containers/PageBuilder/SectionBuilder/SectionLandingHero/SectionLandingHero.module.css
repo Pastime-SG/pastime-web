@@ -4,7 +4,8 @@
    sections below show sooner. */
 .root {
   --heroMinHeight: clamp(420px, 60vh, 560px);
-  overflow: hidden;
+  /* Not clipped: the search bar's category list can open below the hero */
+  overflow: visible;
   /* Room below the content for the image indicators */
   padding-bottom: 40px;
 
@@ -18,6 +19,7 @@
 .slides {
   position: absolute;
   inset: 0;
+  overflow: hidden;
 }
 
 /* The images are stacked: the active one fades in over the others */
