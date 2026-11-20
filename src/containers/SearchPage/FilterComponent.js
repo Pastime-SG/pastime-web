@@ -3,6 +3,7 @@ import React from 'react';
 // utils
 import { SCHEMA_TYPE_ENUM, SCHEMA_TYPE_MULTI_ENUM, SCHEMA_TYPE_LONG } from '../../util/types';
 import { convertCategoriesToSelectTreeOptions, constructQueryParamName } from '../../util/search';
+import { useActiveCategoryIds } from '../../util/listingCategories';
 
 // component imports
 import SelectSingleFilter from './SelectSingleFilter/SelectSingleFilter';
@@ -12,6 +13,31 @@ import KeywordFilter from './KeywordFilter/KeywordFilter';
 import PriceFilter from './PriceFilter/PriceFilter';
 import IntegerRangeFilter from './IntegerRangeFilter/IntegerRangeFilter';
 import SeatsFilter from './SeatsFilter/SeatsFilter';
+
+/**
+ * Category filter that lists only the categories with at least one published listing (like the
+ * hero search bar). The selected category stays in the list even if it has no listings, so it can
+ * be seen and cleared. Every category is shown until the active ones are known.
+ */
+const CategoryFilter = props => {
+  const { listingCategories, initialValues, queryParamNames, ...rest } = props;
+  const activeCategoryIds = useActiveCategoryIds();
+  const selectedCategoryId = initialValues?.[queryParamNames?.[0]];
+  const activeIds = activeCategoryIds ? new Set(activeCategoryIds) : null;
+  const categories = activeIds
+    ? (listingCategories || []).filter(
+        category => activeIds.has(category.id) || category.id === selectedCategoryId
+      )
+    : listingCategories;
+  return (
+    <SelectSingleFilter
+      queryParamNames={queryParamNames}
+      initialValues={initialValues}
+      options={convertCategoriesToSelectTreeOptions(categories)}
+      {...rest}
+    />
+  );
+};
 
 /**
  * FilterComponent is used to map configured filter types
@@ -54,13 +80,13 @@ const FilterComponent = props => {
       const label = intl.formatMessage({ id: 'FilterComponent.categoryLabel' });
 
       return (
-        <SelectSingleFilter
+        <CategoryFilter
           name={key}
           label={label}
           queryParamNames={queryParamNames}
           initialValues={initialValues(queryParamNames, liveEdit)}
           onSubmit={getHandleChangedValueFn(useHistoryPush)}
-          options={convertCategoriesToSelectTreeOptions(listingCategories)}
+          listingCategories={listingCategories}
           isNestedEnum={isNestedEnum}
           getAriaLabel={getAriaLabel}
           {...rest}
